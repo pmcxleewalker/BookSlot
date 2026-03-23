@@ -39,7 +39,7 @@ const features = [
   },
   {
     title: "Automated Reminders",
-    description: "Reduce no-shows by 60% with SMS and email reminders sent automatically.",
+    description: "Reduce no-shows with email reminders sent automatically before appointments.",
     icon: Clock
   },
   {
@@ -56,31 +56,31 @@ const features = [
 
 const testimonials = [
   {
-    quote: "TimeSlot Pro transformed our clinic. Bookings are up 40% and no-shows are down to almost zero.",
-    author: "Dr. Sarah Mitchell",
-    role: "Dental Clinic Owner, Dublin",
-    avatar: "SM",
+    quote: "TimeSlot Pro transformed how we manage appointments. The online booking has been a game changer for our clinic.",
+    author: "Verified Business Owner",
+    role: "Dental Clinic",
+    avatar: "DC",
     rating: 5
   },
   {
-    quote: "The easiest booking system I've ever used. My clients love being able to book online at midnight!",
-    author: "James O'Connor",
-    role: "Barber Shop Owner, Cork",
-    avatar: "JO",
+    quote: "The easiest booking system I've ever used. My clients love being able to book online anytime!",
+    author: "Verified Business Owner",
+    role: "Barber Shop",
+    avatar: "BS",
     rating: 5
   },
   {
-    quote: "We tried 5 different systems before TimeSlot Pro. Nothing else comes close for the price.",
-    author: "Maria Santos",
-    role: "Spa Director, Galway",
-    avatar: "MS",
+    quote: "We tried several systems before TimeSlot Pro. Nothing else comes close for the price and features.",
+    author: "Verified Business Owner",
+    role: "Spa & Wellness",
+    avatar: "SW",
     rating: 5
   },
   {
-    quote: "Setup took 10 minutes. Now we save 15+ hours per week on scheduling and phone calls.",
-    author: "Emma Walsh",
-    role: "Salon Manager, Limerick",
-    avatar: "EW",
+    quote: "Setup was incredibly fast. Now we save hours every week on scheduling and admin work.",
+    author: "Verified Business Owner",
+    role: "Hair Salon",
+    avatar: "HS",
     rating: 5
   },
 ];
@@ -133,10 +133,8 @@ const plans = [
 ];
 
 const stats = [
-  { value: '2,000+', label: 'Businesses' },
-  { value: '500K+', label: 'Bookings/month' },
-  { value: '60%', label: 'Less no-shows' },
-  { value: '4.9', label: 'Star rating' },
+  { value: '99%', label: 'Uptime' },
+  { value: '4.9', label: 'Star Rating' },
 ];
 
 export default function FranchiseLanding() {
@@ -206,7 +204,7 @@ export default function FranchiseLanding() {
             >
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-700 text-sm font-medium mb-6">
                 <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                Trusted by 2,000+ Irish businesses
+                4.9 Star Rating
               </span>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-black leading-tight mb-6" style={{ fontFamily: 'Outfit' }}>
@@ -444,7 +442,7 @@ export default function FranchiseLanding() {
             Ready to simplify your scheduling?
           </h2>
           <p className="text-white/70 text-lg mb-8 max-w-xl mx-auto">
-            Join thousands of Irish businesses that trust TimeSlot Pro. 
+            Join businesses that trust TimeSlot Pro for their booking needs. 
             Start your free 3-day trial today.
           </p>
           <Link to="/book/demo-business">
