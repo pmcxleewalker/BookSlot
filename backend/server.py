@@ -786,6 +786,133 @@ async def delete_staff(staff_id: str, request: Request):
 
 
 # =====================
+# Holidays & Exception Dates
+# =====================
+
+class HolidayCreate(BaseModel):
+    date: str  # YYYY-MM-DD format
+    name: str
+    is_closed: bool = True
+    open_time: Optional[str] = None  # If not fully closed
+    close_time: Optional[str] = None
+
+
+@api_router.get("/holidays")
+async def list_holidays(request: Request, year: Optional[int] = Query(None)):
+    """List all holidays/exception dates"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    query = {"tenant_id": user.tenant_id}
+    if year:
+        query["date"] = {"$regex": f"^{year}-"}
+    
+    holidays = await db.holidays.find(
+        query,
+        {"_id": 0}
+    ).sort("date", 1).to_list(100)
+    
+    return holidays
+
+
+@api_router.post("/holidays")
+async def create_holiday(data: HolidayCreate, request: Request):
+    """Create a holiday/exception date"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.SETTINGS_EDIT):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    # Validate date format
+    try:
+        datetime.strptime(data.date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    
+    # Check if already exists
+    existing = await db.holidays.find_one({
+        "tenant_id": user.tenant_id,
+        "date": data.date
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="A holiday already exists for this date")
+    
+    holiday = {
+        "holiday_id": generate_id("hol_"),
+        "tenant_id": user.tenant_id,
+        "date": data.date,
+        "name": data.name,
+        "is_closed": data.is_closed,
+        "open_time": data.open_time,
+        "close_time": data.close_time,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.holidays.insert_one(holiday)
+    
+    return {"holiday_id": holiday["holiday_id"], "message": "Holiday created"}
+
+
+@api_router.put("/holidays/{holiday_id}")
+async def update_holiday(holiday_id: str, data: HolidayCreate, request: Request):
+    """Update a holiday/exception date"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.SETTINGS_EDIT):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    result = await db.holidays.update_one(
+        {"holiday_id": holiday_id, "tenant_id": user.tenant_id},
+        {"$set": {
+            "date": data.date,
+            "name": data.name,
+            "is_closed": data.is_closed,
+            "open_time": data.open_time,
+            "close_time": data.close_time,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    
+    return {"message": "Holiday updated"}
+
+
+@api_router.delete("/holidays/{holiday_id}")
+async def delete_holiday(holiday_id: str, request: Request):
+    """Delete a holiday/exception date"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.SETTINGS_EDIT):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    result = await db.holidays.delete_one({
+        "holiday_id": holiday_id,
+        "tenant_id": user.tenant_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    
+    return {"message": "Holiday deleted"}
+
+
+# =====================
 # Services Management
 # =====================
 

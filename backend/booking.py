@@ -37,9 +37,29 @@ async def get_business_hours(
     tenant_id: str,
     date: datetime
 ) -> Optional[Dict[str, Any]]:
-    """Get business operating hours for a specific day"""
+    """Get business operating hours for a specific day, accounting for holidays"""
+    date_str = date.strftime("%Y-%m-%d")
     day_name = DAY_NAMES[date.weekday()]
     
+    # Check for holiday/exception date first
+    holiday = await db.holidays.find_one(
+        {"tenant_id": tenant_id, "date": date_str},
+        {"_id": 0}
+    )
+    
+    if holiday:
+        if holiday.get("is_closed", True):
+            return {"open": "00:00", "close": "00:00", "is_open": False, "holiday": holiday.get("name")}
+        else:
+            # Exception with modified hours
+            return {
+                "open": holiday.get("open_time", "09:00"),
+                "close": holiday.get("close_time", "17:00"),
+                "is_open": True,
+                "holiday": holiday.get("name")
+            }
+    
+    # Get regular business hours
     tenant = await db.tenants.find_one(
         {"tenant_id": tenant_id},
         {"_id": 0, "business_hours": 1}

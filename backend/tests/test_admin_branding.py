@@ -11,7 +11,7 @@ import time
 import random
 import string
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://timeslot-pro-launch.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://booking-dash-7.preview.emergentagent.com')
 
 # Test credentials from requirements
 SUPER_ADMIN_SECRET = "timeslot_franchise_2024"

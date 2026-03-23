@@ -9,6 +9,7 @@ import { settingsAPI, subscriptionAPI } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 import BusinessHoursSettings from './BusinessHoursSettings';
+import HolidaysSettings from './HolidaysSettings';
 
 const timezones = [
   { value: 'Europe/London', label: 'London (GMT/BST)' },
@@ -218,6 +219,11 @@ export default function Settings() {
         {/* Business Hours */}
         <div className="bg-white rounded-2xl border border-[#E5E5E0] overflow-hidden p-6">
           <BusinessHoursSettings />
+        </div>
+
+        {/* Holidays & Closures */}
+        <div className="bg-white rounded-2xl border border-[#E5E5E0] overflow-hidden p-6">
+          <HolidaysSettings />
         </div>
 
         {/* Subscription */}

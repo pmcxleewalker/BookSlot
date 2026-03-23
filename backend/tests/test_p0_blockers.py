@@ -291,7 +291,7 @@ class TestBillingIntegration:
         """Test billing checkout creates Stripe session with correct amount"""
         checkout_data = {
             "plan_id": "pro",
-            "origin_url": "https://timeslot-pro-launch.preview.emergentagent.com"
+            "origin_url": "https://booking-dash-7.preview.emergentagent.com"
         }
         
         response = owner_session.post(f"{BASE_URL}/api/billing/checkout", json=checkout_data)

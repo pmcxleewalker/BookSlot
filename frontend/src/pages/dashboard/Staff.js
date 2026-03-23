@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MoreHorizontal, Mail, Phone, Edit, Trash2 } from 'lucide-react';
+import { Plus, MoreHorizontal, Mail, Phone, Edit, Trash2, Clock } from 'lucide-react';
 import { DashboardLayout } from './DashboardLayout';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -11,6 +11,7 @@ import {
 } from '../../components/ui/dropdown-menu';
 import { staffAPI } from '../../lib/api';
 import { toast } from 'sonner';
+import StaffScheduleModal from './StaffScheduleModal';
 
 const colors = [
   '#2E473B', '#C26A58', '#3E6653', '#E6B861', '#6B6B6B',
@@ -22,6 +23,7 @@ export default function Staff() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
+  const [scheduleModalStaff, setScheduleModalStaff] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -170,6 +172,10 @@ export default function Staff() {
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setScheduleModalStaff(member)}>
+                        <Clock className="w-4 h-4 mr-2" />
+                        Schedule
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         onClick={() => handleDelete(member.staff_id)}
@@ -294,6 +300,14 @@ export default function Staff() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Staff Schedule Modal */}
+      <StaffScheduleModal
+        staff={scheduleModalStaff}
+        isOpen={!!scheduleModalStaff}
+        onClose={() => setScheduleModalStaff(null)}
+        onSaved={() => loadStaff()}
+      />
     </DashboardLayout>
   );
 }
