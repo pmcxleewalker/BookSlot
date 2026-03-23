@@ -808,9 +808,9 @@ async def admin_update_invoice_status(invoice_id: str, request: Request):
 
 @admin_router.get("/invoices/{invoice_id}/pdf")
 async def admin_get_invoice_pdf(invoice_id: str, request: Request):
-    """Generate and return invoice PDF HTML (super admin only)"""
+    """Generate and return invoice PDF (super admin only)"""
     from invoices import generate_invoice_pdf_html
-    from starlette.responses import HTMLResponse
+    from starlette.responses import Response
     
     await require_super_admin(request)
     db = get_db()
@@ -830,12 +830,27 @@ async def admin_get_invoice_pdf(invoice_id: str, request: Request):
     
     html_content = generate_invoice_pdf_html(invoice, tenant)
     
-    return HTMLResponse(
-        content=html_content,
-        headers={
-            "Content-Disposition": f"inline; filename=invoice-{invoice['invoice_number']}.html"
-        }
-    )
+    # Convert to PDF using WeasyPrint
+    try:
+        from weasyprint import HTML
+        pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
+        
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=invoice-{invoice['invoice_number']}.pdf"
+            }
+        )
+    except Exception as e:
+        # Fallback to HTML if PDF generation fails
+        return Response(
+            content=html_content,
+            media_type="text/html",
+            headers={
+                "Content-Disposition": f"inline; filename=invoice-{invoice['invoice_number']}.html"
+            }
+        )
 
 
 @admin_router.delete("/invoices/{invoice_id}")
