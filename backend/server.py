@@ -49,11 +49,15 @@ from email_service import (
     send_email, generate_booking_confirmation_email,
     generate_reminder_email, generate_cancellation_email
 )
+from admin import admin_router, set_admin_db
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# Initialize admin module with db reference
+set_admin_db(db)
 
 # Create the main app
 app = FastAPI(
@@ -1190,11 +1194,29 @@ async def get_public_services(tenant_slug: str):
         {"_id": 0}
     ).to_list(100)
     
+    # Default branding
+    default_branding = {
+        "primary_color": "#2E473B",
+        "secondary_color": "#C26A58",
+        "accent_color": "#E6B861",
+        "background_color": "#FAF9F6",
+        "text_color": "#1C1C1C",
+        "font_family": "Inter",
+        "logo_position": "left",
+        "show_powered_by": True
+    }
+    
     return {
         "tenant": {
             "name": tenant["name"],
             "slug": tenant["slug"],
-            "industry": tenant.get("industry")
+            "industry": tenant.get("industry"),
+            "logo_url": tenant.get("logo_url"),
+            "email": tenant.get("email"),
+            "phone": tenant.get("phone"),
+            "address": tenant.get("address"),
+            "city": tenant.get("city"),
+            "branding": {**default_branding, **(tenant.get("branding") or {})}
         },
         "services": services
     }
@@ -1765,6 +1787,73 @@ async def update_business_settings(request: Request):
     return {"message": "Settings updated"}
 
 
+@api_router.get("/settings/branding")
+async def get_branding_settings(request: Request):
+    """Get branding settings"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    tenant = await db.tenants.find_one(
+        {"tenant_id": user.tenant_id},
+        {"_id": 0, "branding": 1, "logo_url": 1, "name": 1}
+    )
+    
+    default_branding = {
+        "primary_color": "#2E473B",
+        "secondary_color": "#C26A58",
+        "accent_color": "#E6B861",
+        "background_color": "#FAF9F6",
+        "text_color": "#1C1C1C",
+        "font_family": "Inter",
+        "logo_position": "left",
+        "show_powered_by": True,
+        "custom_css": ""
+    }
+    
+    return {
+        "name": tenant.get("name"),
+        "logo_url": tenant.get("logo_url"),
+        "branding": {**default_branding, **(tenant.get("branding") or {})}
+    }
+
+
+@api_router.put("/settings/branding")
+async def update_branding_settings(request: Request):
+    """Update branding settings"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    body = await request.json()
+    
+    # Validate color format (basic hex check)
+    color_fields = ["primary_color", "secondary_color", "accent_color", "background_color", "text_color"]
+    for field in color_fields:
+        if field in body:
+            color = body[field]
+            if not (color.startswith("#") and len(color) in [4, 7]):
+                raise HTTPException(status_code=400, detail=f"Invalid color format for {field}")
+    
+    update_data = {
+        "branding": body,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Also update logo_url if provided at root level
+    if "logo_url" in body:
+        update_data["logo_url"] = body.pop("logo_url")
+    
+    await db.tenants.update_one(
+        {"tenant_id": user.tenant_id},
+        {"$set": update_data}
+    )
+    
+    await log_audit(user.tenant_id, user.user_id, "update", "branding", user.tenant_id, body)
+    
+    return {"message": "Branding updated"}
+
+
 # =====================
 # Subscription (Mock)
 # =====================
@@ -1823,6 +1912,7 @@ async def upgrade_subscription(request: Request):
 
 # Include router
 app.include_router(api_router)
+app.include_router(admin_router)
 
 # CORS middleware
 app.add_middleware(

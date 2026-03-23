@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AdminAuthProvider, useAdminAuth } from './contexts/AdminAuthContext';
 import './App.css';
 
 // Pages - Public
@@ -23,8 +24,17 @@ import Services from './pages/dashboard/Services';
 import Resources from './pages/dashboard/Resources';
 import Clients from './pages/dashboard/Clients';
 import Settings from './pages/dashboard/Settings';
+import Branding from './pages/dashboard/Branding';
 import Integrations from './pages/dashboard/Integrations';
 import Onboarding from './pages/Onboarding';
+
+// Pages - Admin (Franchise Control Center)
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminSetup from './pages/admin/AdminSetup';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminTenants from './pages/admin/AdminTenants';
+import AdminCreateTenant from './pages/admin/AdminCreateTenant';
+import AdminTenantDetail from './pages/admin/AdminTenantDetail';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -48,6 +58,28 @@ const ProtectedRoute = ({ children }) => {
   // Redirect to onboarding if no tenant
   if (user && !user.tenant_id && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  return children;
+};
+
+// Protected Admin Route Component
+const ProtectedAdminRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAdminAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="animate-pulse">
+          <div className="w-12 h-12 rounded-full bg-emerald-500/20"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
   return children;
@@ -150,11 +182,55 @@ const AppRouter = () => {
         }
       />
       <Route
+        path="/dashboard/branding"
+        element={
+          <ProtectedRoute>
+            <Branding />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/dashboard/integrations"
         element={
           <ProtectedRoute>
             <Integrations />
           </ProtectedRoute>
+        }
+      />
+
+      {/* Admin Routes (Franchise Control Center) */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/setup" element={<AdminSetup />} />
+      <Route
+        path="/admin/dashboard"
+        element={
+          <ProtectedAdminRoute>
+            <AdminDashboard />
+          </ProtectedAdminRoute>
+        }
+      />
+      <Route
+        path="/admin/tenants"
+        element={
+          <ProtectedAdminRoute>
+            <AdminTenants />
+          </ProtectedAdminRoute>
+        }
+      />
+      <Route
+        path="/admin/tenants/new"
+        element={
+          <ProtectedAdminRoute>
+            <AdminCreateTenant />
+          </ProtectedAdminRoute>
+        }
+      />
+      <Route
+        path="/admin/tenants/:tenantId"
+        element={
+          <ProtectedAdminRoute>
+            <AdminTenantDetail />
+          </ProtectedAdminRoute>
         }
       />
 
@@ -168,19 +244,21 @@ function App() {
   return (
     <div className="App">
       <AuthProvider>
-        <BrowserRouter>
-          <AppRouter />
-        </BrowserRouter>
-        <Toaster 
-          position="top-right" 
-          toastOptions={{
-            style: {
-              background: '#FFFFFF',
-              border: '1px solid #E5E5E0',
-              borderRadius: '12px',
-            },
-          }}
-        />
+        <AdminAuthProvider>
+          <BrowserRouter>
+            <AppRouter />
+          </BrowserRouter>
+          <Toaster 
+            position="top-right" 
+            toastOptions={{
+              style: {
+                background: '#FFFFFF',
+                border: '1px solid #E5E5E0',
+                borderRadius: '12px',
+              },
+            }}
+          />
+        </AdminAuthProvider>
       </AuthProvider>
     </div>
   );

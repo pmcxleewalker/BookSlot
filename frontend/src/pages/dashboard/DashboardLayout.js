@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, CalendarDays, Users, Briefcase, 
-  Box, UserCircle, Settings, Webhook, LogOut, Menu, X, ChevronRight
+  Box, UserCircle, Settings, Webhook, LogOut, Menu, X, ChevronRight, Palette
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/button';
@@ -15,6 +15,7 @@ const navItems = [
   { path: '/dashboard/services', label: 'Services', icon: Briefcase },
   { path: '/dashboard/resources', label: 'Resources', icon: Box },
   { path: '/dashboard/clients', label: 'Clients', icon: UserCircle },
+  { path: '/dashboard/branding', label: 'Branding', icon: Palette },
   { path: '/dashboard/settings', label: 'Settings', icon: Settings },
   { path: '/dashboard/integrations', label: 'Integrations', icon: Webhook },
 ];

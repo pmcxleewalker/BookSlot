@@ -139,30 +139,58 @@ export default function PublicBooking() {
     );
   }
 
+  // Get branding colors with defaults
+  const branding = tenant.branding || {};
+  const primaryColor = branding.primary_color || '#2E473B';
+  const secondaryColor = branding.secondary_color || '#C26A58';
+  const backgroundColor = branding.background_color || '#FAF9F6';
+  const textColor = branding.text_color || '#1C1C1C';
+  const fontFamily = branding.font_family || 'Inter';
+  const showPoweredBy = branding.show_powered_by !== false;
+
   return (
-    <div className="min-h-screen bg-[#FAF9F6]">
+    <div className="min-h-screen" style={{ backgroundColor, fontFamily }}>
       {/* Header */}
       <header className="bg-white border-b border-[#E5E5E0] sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-[#1C1C1C]" style={{ fontFamily: 'Outfit' }}>
-                {tenant.name}
-              </h1>
-              <p className="text-sm text-[#6B6B6B]">Book an appointment</p>
+            <div className="flex items-center gap-3">
+              {tenant.logo_url ? (
+                <img src={tenant.logo_url} alt={tenant.name} className="w-10 h-10 rounded-xl object-cover" />
+              ) : (
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {tenant.name?.charAt(0)}
+                </div>
+              )}
+              <div>
+                <h1 className="text-xl font-bold" style={{ fontFamily: 'Outfit', color: textColor }}>
+                  {tenant.name}
+                </h1>
+                <p className="text-sm text-[#6B6B6B]">Book an appointment</p>
+              </div>
             </div>
             {/* Progress */}
             <div className="hidden sm:flex items-center gap-1">
               {['Service', 'Date', 'Time', 'Details'].map((label, i) => (
                 <div key={label} className="flex items-center">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                    i + 1 < step ? 'bg-[#3E6653] text-white' :
-                    i + 1 === step ? 'bg-[#2E473B] text-white' :
-                    'bg-[#E5E5E0] text-[#6B6B6B]'
-                  }`}>
+                  <div 
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium"
+                    style={{
+                      backgroundColor: i + 1 <= step ? primaryColor : '#E5E5E0',
+                      color: i + 1 <= step ? 'white' : '#6B6B6B'
+                    }}
+                  >
                     {i + 1 < step ? <Check className="w-3 h-3" /> : i + 1}
                   </div>
-                  {i < 3 && <div className={`w-8 h-0.5 ${i + 1 < step ? 'bg-[#3E6653]' : 'bg-[#E5E5E0]'}`} />}
+                  {i < 3 && (
+                    <div 
+                      className="w-8 h-0.5"
+                      style={{ backgroundColor: i + 1 < step ? primaryColor : '#E5E5E0' }}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -475,7 +503,8 @@ export default function PublicBooking() {
             <Button
               onClick={handleSubmit}
               disabled={!booking.clientName || !booking.clientEmail || submitting}
-              className="w-full h-12 rounded-xl bg-[#2E473B] hover:bg-[#243A2F] text-white mt-6"
+              className="w-full h-12 rounded-xl text-white mt-6"
+              style={{ backgroundColor: primaryColor }}
               data-testid="confirm-booking-btn"
             >
               {submitting ? (
@@ -498,10 +527,13 @@ export default function PublicBooking() {
             className="text-center"
           >
             <div className="booking-confirmation">
-              <div className="w-16 h-16 rounded-full bg-[#3E6653] flex items-center justify-center mx-auto mb-6">
+              <div 
+                className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
+                style={{ backgroundColor: primaryColor }}
+              >
                 <Check className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-[#1C1C1C] mb-2" style={{ fontFamily: 'Outfit' }}>
+              <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Outfit', color: textColor }}>
                 Booking Confirmed!
               </h2>
               <p className="text-[#6B6B6B] mb-6">
@@ -512,22 +544,22 @@ export default function PublicBooking() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-[#6B6B6B]">Service</span>
-                    <span className="font-medium text-[#1C1C1C]">{confirmation.service_name}</span>
+                    <span className="font-medium" style={{ color: textColor }}>{confirmation.service_name}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#6B6B6B]">With</span>
-                    <span className="font-medium text-[#1C1C1C]">{confirmation.staff_name}</span>
+                    <span className="font-medium" style={{ color: textColor }}>{confirmation.staff_name}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#6B6B6B]">Date & Time</span>
-                    <span className="font-medium text-[#1C1C1C]">
+                    <span className="font-medium" style={{ color: textColor }}>
                       {format(new Date(confirmation.start_time), 'EEE, MMM d @ h:mm a')}
                     </span>
                   </div>
                   <div className="border-t border-[#E5E5E0] pt-3 mt-3">
                     <div className="flex justify-between">
                       <span className="text-[#6B6B6B]">Confirmation Code</span>
-                      <span className="font-mono font-bold text-[#2E473B]">
+                      <span className="font-mono font-bold" style={{ color: primaryColor }}>
                         {confirmation.confirmation_code}
                       </span>
                     </div>
@@ -540,10 +572,21 @@ export default function PublicBooking() {
                   Manage Booking
                 </Button>
               </Link>
+              
+              {showPoweredBy && (
+                <p className="text-xs text-[#6B6B6B] mt-6">Powered by TimeSlot Pro</p>
+              )}
             </div>
           </motion.div>
         )}
       </main>
+      
+      {/* Footer with Powered By */}
+      {showPoweredBy && step !== 5 && (
+        <footer className="py-4 text-center">
+          <p className="text-xs text-[#6B6B6B]">Powered by TimeSlot Pro</p>
+        </footer>
+      )}
     </div>
   );
 }

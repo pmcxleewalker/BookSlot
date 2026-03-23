@@ -69,6 +69,18 @@ class Tenant(TimestampMixin):
     booking_url: Optional[str] = None
     settings: Dict[str, Any] = Field(default_factory=dict)
     is_active: bool = True
+    # Branding customization
+    branding: Dict[str, Any] = Field(default_factory=lambda: {
+        "primary_color": "#2E473B",
+        "secondary_color": "#C26A58",
+        "accent_color": "#E6B861",
+        "background_color": "#FAF9F6",
+        "text_color": "#1C1C1C",
+        "font_family": "Inter",
+        "logo_position": "left",
+        "show_powered_by": True,
+        "custom_css": ""
+    })
 
 
 class TenantCreate(BaseModel):

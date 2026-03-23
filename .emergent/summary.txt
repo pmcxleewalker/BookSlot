@@ -1,0 +1,107 @@
+<analysis>**original_problem_statement**: Upgrade the existing TimeSlot Pro multi-tenant SaaS booking platform. Make the architecture cleaner, safer, and MoltBot/OpenClaw-ready (AI Receptionist). The booking platform must remain the system of record. MoltBot must act as an external layer and only interact via secure APIs and Webhooks. Core feature upgrades requested: Receptionist Inbox/Conversations UI, API-first receptionist endpoints (v1), Booking Safety (atomic creation, idempotency, slot locking), Webhook layer, Human handoff rules, Message templates, Receptionist analytics, Strict plan enforcement (Starter, Growth, Pro), Demo tenant seeding, UX improvements, and a Real-time notification system using WebSockets.
+
+**User's preferred language**: English (INSTRUCT next agent to respond in English only)
+
+**what currently exists?**: A functional Phase 1 MVP of TimeSlot Pro. It features a FastAPI backend with MongoDB and a React frontend using Shadcn/Tailwind. Core entities (tenants, users, services, resources, basic appointments) and JWT+Google Auth are implemented. The app successfully passed automated E2E testing in the previous workflow.
+
+**Last working item**: 
+    - Last item agent was working: Defining extended backend database models () for the new AI receptionist features, webhooks, and messaging capabilities.
+    - Status: IN PROGRESS
+    - Agent Testing Done: N
+    - Which testing method agent to use?: Both (backend testing agent for new API endpoints + frontend testing agent / screenshots for the new Inbox UI)
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:  
+  No bugs currently. All items are feature additions under tasks.
+
+**In progress Task List**: 
+  - Task 1: Extend database models for AI Receptionist Upgrade
+     - Where to resume: Review  and properly integrate it with the existing ,  and the MongoDB connection.
+     - What will be achieved with this?: Base schema readiness for conversations, webhooks, idempotency keys, and analytics.
+     - Status: IN PROGRESS
+     - Should Test frontend/backend/both after fix?: backend
+     - Blocked on something: None
+
+**Upcoming and Future Tasks**
+  Upcoming Tasks:
+  - Task 1: API-First Receptionist Endpoints (P0) - Create tenant-scoped, versioned (), authenticated, and rate-limited endpoints for availability, booking, and rescheduling.
+  - Task 2: Booking Safety / Conflict Protection (P0) - Implement atomic booking creation, slot locking, and idempotency keys.
+  - Task 3: Receptionist Inbox / Conversations (P0) - Build backend logic and frontend Dashboard UI for staff to view AI convos and manually intervene.
+  - Task 4: Webhook Layer for AI Receptionist (P0) - Build signed, retryable webhook event emission (e.g., , ).
+  - Task 5: Plan Enforcement (P0) - Gate features securely based on tenant plan (Starter, Growth, Pro).
+  
+  Future Tasks:
+  - Task 6: Human Handoff + Approval Rules (P1) - Workflow to flag uncertain requests and enforce manual approval for risky changes.
+  - Task 7: Messages / Channel Design (P1) - Setup templates for reminders, cancellations, and logs with delivery status.
+  - Task 8: WebSockets Real-time Notifications (P1) - Implement WebSockets in FastAPI and React for instant inbox and booking updates.
+  - Task 9: Receptionist Analytics (P1) - Build reports on conversion rates, handoff rates, and average response times.
+  - Task 10: Demo Tenant Improvement (P2) - Seed the database with realistic sample data for salon, clinic, and consultant.
+
+**Completed work in this session**
+- Created  to start defining schemas for the architectural upgrade.
+
+**Earlier issues found/mentioned but not fixed**
+None.
+
+**Known issue recurrence from previous fork**
+- Issue recurrence in previous fork: N/A
+- Recurrence count: 0
+- Status: NOT STARTED
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+FastAPI, React.js, MongoDB, Multi-tenant Architecture, JWT + OAuth (Google), Shadcn UI, Tailwind CSS, WebSockets (planned), Webhooks (planned).
+
+**key DB schema**
+  - Existing: , , , , , , , , 
+  - Planned (in progress): , , , 
+
+**changes in tech stack**
+  - Introduction of WebSockets (FastAPI + React) for real-time dashboard notifications.
+
+**All files of reference** 
+  -  (Created in this session to hold new DB models for the upgrade)
+  -  (Viewed, needs integration with new models and endpoints)
+  -  (Viewed, needs new sidebar links for Inbox/Analytics)
+
+**Areas that need refactoring**: 
+- : Ensure these new Pydantic models align seamlessly with  without redundancy. Consider merging them into  or handling imports cleanly in  to prevent circular dependencies.
+
+**key api endpoints**
+- Existing standard REST APIs (, , etc.)
+- Next up: Versioned Receptionist APIs ()
+
+**Critical Info for New Agent** 
+- **DO NOT REBUILD FROM SCRATCH**. You are upgrading an existing, working SaaS platform.
+- **Architectural Constraint**: MoltBot/OpenClaw is an *external* AI receptionist. **Do NOT** embed AI logic/prompts directly into the booking engine. Treat the AI as an API client.
+- All webhook events must be tenant-aware.
+- Maximize parallel tool calling when writing or updating multiple endpoints and frontend components for this massive upgrade.
+
+**documents and test reports created in this job**
+  -  (Generated in previous phase, needs update for AI Receptionist spec)
+  -  (Phase 1 testing report)
+
+**Last 10 User Messages and any pending HUMAN messages** 
+ - Continue (Completed)
+ - Continue building on the existing booking SaaS codebase and architecture already created. Do NOT rebuild from scratch... (In Progress - Initiated file creation for new backend models)
+
+**Project Health Check:**
+- Base platform is functional locally. Preview URL was failing initially in Phase 1 due to infrastructure timeout but core app works. Upgrades are currently being scaffolded.
+
+**3rd Party Integrations** 
+ - Emergent-managed Google Auth (Present)
+ - Note: Any LLM / AI receptionist logic operates externally; the current app acts strictly as the secure backend API for the external bot.
+
+**Testing status**
+  - Testing agent used after significant changes: NO (Upgrade just started)
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: None yet
+  - Known regressions: None yet
+
+**Credentials to test flow:**
+Use standard environment configurations available in  and .
+
+**What agent forgot to execute**
+Nothing forgotten. The agent was actively creating backend models when the conversation reached its limit. Ensure the new backend schema fully supports idempotency keys, atomic locks, and conversation threading as requested.</analysis>

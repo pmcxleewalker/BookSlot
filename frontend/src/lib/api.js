@@ -192,6 +192,61 @@ export const apiKeysAPI = {
     fetchAPI(`/api/api-keys/${apiKeyId}`, { method: 'DELETE' }),
 };
 
+// Super Admin / Franchise Control APIs
+export const adminAPI = {
+  // Auth
+  login: (email, password) =>
+    fetchAPI('/api/admin/auth/login', { method: 'POST', body: { email, password } }),
+  
+  register: (email, password, name, adminSecret) =>
+    fetchAPI('/api/admin/auth/register', { method: 'POST', body: { email, password, name, admin_secret: adminSecret } }),
+  
+  logout: () =>
+    fetchAPI('/api/admin/auth/logout', { method: 'POST' }),
+  
+  me: () =>
+    fetchAPI('/api/admin/auth/me'),
+  
+  // Stats
+  getStats: () =>
+    fetchAPI('/api/admin/stats'),
+  
+  // Tenants
+  listTenants: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return fetchAPI(`/api/admin/tenants${queryParams ? `?${queryParams}` : ''}`);
+  },
+  
+  getTenant: (tenantId) =>
+    fetchAPI(`/api/admin/tenants/${tenantId}`),
+  
+  createTenant: (data) =>
+    fetchAPI('/api/admin/tenants', { method: 'POST', body: data }),
+  
+  updateTenant: (tenantId, data) =>
+    fetchAPI(`/api/admin/tenants/${tenantId}`, { method: 'PUT', body: data }),
+  
+  suspendTenant: (tenantId) =>
+    fetchAPI(`/api/admin/tenants/${tenantId}/suspend`, { method: 'POST' }),
+  
+  activateTenant: (tenantId) =>
+    fetchAPI(`/api/admin/tenants/${tenantId}/activate`, { method: 'POST' }),
+  
+  updateTenantPlan: (tenantId, plan) =>
+    fetchAPI(`/api/admin/tenants/${tenantId}/subscription`, { method: 'PUT', body: { plan } }),
+  
+  deleteTenant: (tenantId) =>
+    fetchAPI(`/api/admin/tenants/${tenantId}`, { method: 'DELETE' }),
+};
+
+// Branding APIs
+export const brandingAPI = {
+  get: () => fetchAPI('/api/settings/branding'),
+  
+  update: (data) =>
+    fetchAPI('/api/settings/branding', { method: 'PUT', body: data }),
+};
+
 // Public booking APIs (no auth required)
 export const publicAPI = {
   getServices: (tenantSlug) => 
