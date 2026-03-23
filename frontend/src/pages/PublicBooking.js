@@ -209,43 +209,65 @@ export default function PublicBooking() {
             <h2 className="text-2xl font-bold text-[#1C1C1C] mb-6" style={{ fontFamily: 'Outfit' }}>
               Select a service
             </h2>
-            <div className="space-y-3">
-              {services.map((service) => (
-                <button
-                  key={service.service_id}
-                  onClick={() => {
-                    setBooking({ ...booking, service });
-                    setStep(2);
-                  }}
-                  className={`w-full p-4 rounded-xl border text-left transition-all hover:border-[#2E473B]/30 ${
-                    booking.service?.service_id === service.service_id
-                      ? 'border-[#2E473B] bg-[#2E473B]/5'
-                      : 'border-[#E5E5E0] bg-white'
-                  }`}
-                  data-testid={`service-${service.service_id}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-[#1C1C1C]">{service.name}</h3>
-                      {service.description && (
-                        <p className="text-sm text-[#6B6B6B] mt-1">{service.description}</p>
-                      )}
-                      <div className="flex items-center gap-4 mt-2 text-sm text-[#6B6B6B]">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {service.duration} min
+            
+            {services.length === 0 ? (
+              <div className="text-center py-12 px-6 bg-gray-50 rounded-xl border border-gray-200">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CalendarIcon className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No services available yet</h3>
+                <p className="text-gray-500 text-sm max-w-sm mx-auto">
+                  This business is still setting up their booking page. Please check back soon or contact them directly.
+                </p>
+                {tenant?.email && (
+                  <a 
+                    href={`mailto:${tenant.email}`}
+                    className="inline-flex items-center gap-2 mt-4 text-sm text-gray-700 hover:text-gray-900"
+                  >
+                    <Mail className="w-4 h-4" />
+                    {tenant.email}
+                  </a>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {services.map((service) => (
+                  <button
+                    key={service.service_id}
+                    onClick={() => {
+                      setBooking({ ...booking, service });
+                      setStep(2);
+                    }}
+                    className={`w-full p-4 rounded-xl border text-left transition-all hover:border-[#2E473B]/30 ${
+                      booking.service?.service_id === service.service_id
+                        ? 'border-[#2E473B] bg-[#2E473B]/5'
+                        : 'border-[#E5E5E0] bg-white'
+                    }`}
+                    data-testid={`service-${service.service_id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-[#1C1C1C]">{service.name}</h3>
+                        {service.description && (
+                          <p className="text-sm text-[#6B6B6B] mt-1">{service.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-2 text-sm text-[#6B6B6B]">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            {service.duration} min
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-lg font-semibold text-[#1C1C1C]">
+                          €{service.price}
                         </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-lg font-semibold text-[#1C1C1C]">
-                        €{service.price}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 
