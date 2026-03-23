@@ -49,6 +49,30 @@ Build a multi-tenant SaaS booking platform with a Franchise Control Center (Supe
    - Background scheduler (runs every 5 min)
    - File: `/app/backend/reminders.py`
 
+### Phase 3.5: Staff & Holiday Management (March 23, 2026)
+1. **Staff Schedule UI**
+   - Per-staff working hours configuration
+   - 7-day schedule with toggle switches
+   - Time bounded by business operating hours
+   - Saturday/Sunday show "Business closed" when business is closed
+   - File: `/app/frontend/src/pages/dashboard/StaffScheduleModal.js`
+   - Wired in: `/app/frontend/src/pages/dashboard/Staff.js`
+
+2. **Holidays & Closures**
+   - Holiday/exception date management
+   - Preset quick-add for Irish holidays (St. Patrick's Day, Good Friday, etc.)
+   - Full or partial day closure options
+   - CRUD operations with proper validation
+   - File: `/app/frontend/src/pages/dashboard/HolidaysSettings.js`
+   - Wired in: `/app/frontend/src/pages/dashboard/Settings.js`
+
+3. **Backend APIs**
+   - `PUT /api/staff/{staff_id}/schedule` - Update staff working hours
+   - `GET /api/holidays` - List holidays
+   - `POST /api/holidays` - Create holiday
+   - `PUT /api/holidays/{holiday_id}` - Update holiday
+   - `DELETE /api/holidays/{holiday_id}` - Delete holiday
+
 ### Phase 3: P0 Launch Blockers (March 23, 2026)
 1. **Idempotency System**
    - Prevents duplicate operations from network retries
@@ -163,6 +187,8 @@ Tenant (Elite Dental Care):
 - `audit_logs` - Change tracking
 - `webhooks` - Registered webhooks
 - `api_keys` - API keys
+- `staff_schedules` - Staff working hours by day
+- `holidays` - Business holidays and closures
 
 ---
 
@@ -173,6 +199,7 @@ Tenant (Elite Dental Care):
 | Phase 1 | 26 | 100% |
 | Phase 2 | 18 | 100% |
 | Phase 3 (P0) | 19 | 100% |
+| Phase 3.5 (Staff/Holidays) | 11 Backend + 9 Frontend | 100% |
 
 ---
 
@@ -182,6 +209,8 @@ Tenant (Elite Dental Care):
 - Booking flow with idempotency
 - Slot locking (race condition prevention)
 - RBAC enforcement on all endpoints
+- Staff schedule management (per-staff working hours)
+- Holidays & closures management
 - Plan feature gating
 - Plan resource limits
 - Tenant branding
