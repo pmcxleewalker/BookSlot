@@ -1,15 +1,35 @@
 """
 Pydantic models for TimeSlot Pro - Multi-tenant SaaS Booking Platform
 """
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, time
 from enum import Enum
 import uuid
 
 
+# =====================
+# Input Length Constraints
+# =====================
+MAX_NAME_LENGTH = 100
+MAX_EMAIL_LENGTH = 255
+MAX_PHONE_LENGTH = 30
+MAX_SHORT_TEXT = 200
+MAX_DESCRIPTION_LENGTH = 1000
+MAX_NOTES_LENGTH = 2000
+MAX_ADDRESS_LENGTH = 500
+MAX_URL_LENGTH = 2048
+
+
 def generate_id(prefix: str = "") -> str:
     return f"{prefix}{uuid.uuid4().hex[:12]}"
+
+
+def validate_length(value: Optional[str], max_length: int, field_name: str) -> Optional[str]:
+    """Helper to validate string length"""
+    if value is not None and len(value) > max_length:
+        raise ValueError(f"{field_name} exceeds maximum length of {max_length} characters")
+    return value
 
 
 # Enums
@@ -72,12 +92,12 @@ class Tenant(TimestampMixin):
 
 
 class TenantCreate(BaseModel):
-    name: str
+    name: str = Field(..., max_length=MAX_NAME_LENGTH)
     industry: IndustryType
-    email: str
-    phone: Optional[str] = None
-    timezone: str = "Europe/London"
-    currency: str = "EUR"
+    email: str = Field(..., max_length=MAX_EMAIL_LENGTH)
+    phone: Optional[str] = Field(None, max_length=MAX_PHONE_LENGTH)
+    timezone: str = Field("Europe/London", max_length=50)
+    currency: str = Field("EUR", max_length=10)
 
 
 # Subscription
@@ -112,14 +132,14 @@ class User(TimestampMixin):
 
 
 class UserCreate(BaseModel):
-    email: EmailStr
-    name: str
-    password: Optional[str] = None
+    email: EmailStr = Field(..., max_length=MAX_EMAIL_LENGTH)
+    name: str = Field(..., max_length=MAX_NAME_LENGTH)
+    password: Optional[str] = Field(None, min_length=8, max_length=128)
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+    email: EmailStr = Field(..., max_length=MAX_EMAIL_LENGTH)
+    password: str = Field(..., max_length=128)
 
 
 # Session for auth
@@ -149,11 +169,11 @@ class Location(TimestampMixin):
 
 
 class LocationCreate(BaseModel):
-    name: str
-    address: str
-    city: Optional[str] = None
-    phone: Optional[str] = None
-    timezone: str = "Europe/London"
+    name: str = Field(..., max_length=MAX_NAME_LENGTH)
+    address: str = Field(..., max_length=MAX_ADDRESS_LENGTH)
+    city: Optional[str] = Field(None, max_length=MAX_NAME_LENGTH)
+    phone: Optional[str] = Field(None, max_length=MAX_PHONE_LENGTH)
+    timezone: str = Field("Europe/London", max_length=50)
 
 
 # Staff Member
@@ -175,12 +195,12 @@ class StaffMember(TimestampMixin):
 
 
 class StaffCreate(BaseModel):
-    name: str
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    title: Optional[str] = None
-    color: str = "#2E473B"
-    services: List[str] = Field(default_factory=list)
+    name: str = Field(..., max_length=MAX_NAME_LENGTH)
+    email: Optional[EmailStr] = Field(None, max_length=MAX_EMAIL_LENGTH)
+    phone: Optional[str] = Field(None, max_length=MAX_PHONE_LENGTH)
+    title: Optional[str] = Field(None, max_length=MAX_SHORT_TEXT)
+    color: str = Field("#2E473B", max_length=20)
+    services: List[str] = Field(default_factory=list, max_length=50)
 
 
 # Working Hours
@@ -213,8 +233,8 @@ class ServiceCategory(TimestampMixin):
 
 
 class ServiceCategoryCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., max_length=MAX_NAME_LENGTH)
+    description: Optional[str] = Field(None, max_length=MAX_DESCRIPTION_LENGTH)
 
 
 # Service
@@ -237,16 +257,16 @@ class Service(TimestampMixin):
 
 
 class ServiceCreate(BaseModel):
-    name: str
-    category_id: Optional[str] = None
-    description: Optional[str] = None
-    duration: int = 30
-    buffer_before: int = 0
-    buffer_after: int = 0
-    price: float = 0.0
+    name: str = Field(..., max_length=MAX_NAME_LENGTH)
+    category_id: Optional[str] = Field(None, max_length=50)
+    description: Optional[str] = Field(None, max_length=MAX_DESCRIPTION_LENGTH)
+    duration: int = Field(30, ge=5, le=480)  # 5 min to 8 hours
+    buffer_before: int = Field(0, ge=0, le=120)
+    buffer_after: int = Field(0, ge=0, le=120)
+    price: float = Field(0.0, ge=0, le=100000)
     deposit_required: bool = False
-    deposit_amount: Optional[float] = None
-    color: str = "#2E473B"
+    deposit_amount: Optional[float] = Field(None, ge=0, le=100000)
+    color: str = Field("#2E473B", max_length=20)
 
 
 # Resource (rooms, equipment)
@@ -264,11 +284,11 @@ class Resource(TimestampMixin):
 
 
 class ResourceCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    resource_type: str = "room"
-    capacity: int = 1
-    services: List[str] = Field(default_factory=list)
+    name: str = Field(..., max_length=MAX_NAME_LENGTH)
+    description: Optional[str] = Field(None, max_length=MAX_DESCRIPTION_LENGTH)
+    resource_type: str = Field("room", max_length=50)
+    capacity: int = Field(1, ge=1, le=1000)
+    services: List[str] = Field(default_factory=list, max_length=100)
 
 
 # Client (customers)
@@ -289,10 +309,10 @@ class Client(TimestampMixin):
 
 
 class ClientCreate(BaseModel):
-    name: str
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    notes: Optional[str] = None
+    name: str = Field(..., max_length=MAX_NAME_LENGTH)
+    email: Optional[EmailStr] = Field(None, max_length=MAX_EMAIL_LENGTH)
+    phone: Optional[str] = Field(None, max_length=MAX_PHONE_LENGTH)
+    notes: Optional[str] = Field(None, max_length=MAX_NOTES_LENGTH)
     marketing_consent: bool = False
 
 
@@ -323,14 +343,14 @@ class Appointment(TimestampMixin):
 
 
 class AppointmentCreate(BaseModel):
-    staff_id: str
-    service_id: str
+    staff_id: str = Field(..., max_length=50)
+    service_id: str = Field(..., max_length=50)
     start_time: datetime
-    client_name: str
-    client_email: Optional[str] = None
-    client_phone: Optional[str] = None
-    notes: Optional[str] = None
-    resource_id: Optional[str] = None
+    client_name: str = Field(..., max_length=MAX_NAME_LENGTH)
+    client_email: Optional[EmailStr] = Field(None, max_length=MAX_EMAIL_LENGTH)
+    client_phone: Optional[str] = Field(None, max_length=MAX_PHONE_LENGTH)
+    notes: Optional[str] = Field(None, max_length=MAX_NOTES_LENGTH)
+    resource_id: Optional[str] = Field(None, max_length=50)
 
 
 class AppointmentUpdate(BaseModel):
@@ -405,8 +425,8 @@ class Webhook(TimestampMixin):
 
 
 class WebhookCreate(BaseModel):
-    url: str
-    events: List[str]
+    url: str = Field(..., max_length=MAX_URL_LENGTH)
+    events: List[str] = Field(..., max_length=20)  # Max 20 event types
 
 
 # API Key for integrations

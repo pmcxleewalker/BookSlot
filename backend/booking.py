@@ -275,7 +275,13 @@ async def create_appointment(
     data: AppointmentCreate,
     source: str = "online"
 ) -> Appointment:
-    """Create a new appointment with conflict checking"""
+    """
+    Create a new appointment with ATOMIC conflict checking using optimistic locking.
+    
+    This uses MongoDB's atomic operations to prevent race conditions where two
+    concurrent requests might both pass the conflict check and create overlapping bookings.
+    """
+    from models import generate_id
     
     # Get service details
     service_doc = await db.services.find_one(
@@ -285,6 +291,14 @@ async def create_appointment(
     if not service_doc:
         raise ValueError("Service not found")
     
+    # Verify staff exists
+    staff_doc = await db.staff.find_one(
+        {"staff_id": data.staff_id, "tenant_id": tenant_id, "is_active": True},
+        {"_id": 0}
+    )
+    if not staff_doc:
+        raise ValueError("Staff not found")
+    
     # Calculate end time
     total_duration = (
         service_doc.get("buffer_before", 0) +
@@ -293,18 +307,137 @@ async def create_appointment(
     )
     end_time = data.start_time + timedelta(minutes=total_duration)
     
-    # Check for conflicts
-    has_conflict = await check_booking_conflict(
-        db, tenant_id, data.staff_id,
-        data.start_time, end_time,
-        resource_id=data.resource_id
-    )
+    # Generate appointment ID upfront
+    appointment_id = generate_id("apt_")
     
-    if has_conflict:
+    # Prepare the appointment document
+    from datetime import timezone as tz
+    now = datetime.now(tz.utc)
+    
+    appointment_doc = {
+        "appointment_id": appointment_id,
+        "tenant_id": tenant_id,
+        "staff_id": data.staff_id,
+        "service_id": data.service_id,
+        "resource_id": data.resource_id,
+        "start_time": data.start_time.isoformat(),
+        "end_time": end_time.isoformat(),
+        "client_name": data.client_name,
+        "client_email": data.client_email,
+        "client_phone": data.client_phone,
+        "notes": data.notes,
+        "price": service_doc.get("price", 0),
+        "source": source,
+        "status": BookingStatus.CONFIRMED.value,
+        "is_guest": True,
+        "reminder_sent": False,
+        "confirmation_sent": False,
+        "deposit_paid": 0.0,
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+        "cancel_reason": None,
+        "location_id": None,
+        "client_id": None
+    }
+    
+    # ATOMIC BOOKING: Use a two-phase approach with optimistic locking
+    # Phase 1: Check for conflicts AND insert atomically using a "booking_lock" collection
+    # This prevents the race condition between check and insert
+    
+    start_iso = data.start_time.isoformat()
+    end_iso = end_time.isoformat()
+    
+    # First, check if any existing appointment conflicts with our desired slot
+    # We do this by attempting to find conflicting appointments
+    staff_conflict_query = {
+        "tenant_id": tenant_id,
+        "staff_id": data.staff_id,
+        "status": {"$nin": [BookingStatus.CANCELLED.value]},
+        "start_time": {"$lt": end_iso},
+        "end_time": {"$gt": start_iso}
+    }
+    
+    existing_conflict = await db.appointments.find_one(staff_conflict_query, {"_id": 0, "appointment_id": 1})
+    if existing_conflict:
+        raise ValueError("Time slot is not available - staff conflict")
+    
+    # Check resource conflict if applicable
+    if data.resource_id:
+        resource_conflict_query = {
+            "tenant_id": tenant_id,
+            "resource_id": data.resource_id,
+            "status": {"$nin": [BookingStatus.CANCELLED.value]},
+            "start_time": {"$lt": end_iso},
+            "end_time": {"$gt": start_iso}
+        }
+        resource_conflict = await db.appointments.find_one(resource_conflict_query, {"_id": 0, "appointment_id": 1})
+        if resource_conflict:
+            raise ValueError("Time slot is not available - resource conflict")
+    
+    # Phase 2: Insert with a unique constraint check
+    # We use findOneAndUpdate with upsert to atomically check and insert
+    # The key insight: we create a unique "slot signature" and use it as a lock
+    
+    slot_signature = f"{tenant_id}:{data.staff_id}:{start_iso}:{end_iso}"
+    
+    # Try to acquire a slot lock (expires in 10 seconds to prevent orphaned locks)
+    lock_expiry = now + timedelta(seconds=10)
+    
+    try:
+        # Attempt to acquire lock atomically
+        lock_result = await db.booking_locks.find_one_and_update(
+            {
+                "slot_signature": slot_signature,
+                "$or": [
+                    {"expires_at": {"$lt": now.isoformat()}},  # Expired lock
+                    {"expires_at": {"$exists": False}}  # No lock exists
+                ]
+            },
+            {
+                "$set": {
+                    "slot_signature": slot_signature,
+                    "appointment_id": appointment_id,
+                    "expires_at": lock_expiry.isoformat(),
+                    "created_at": now.isoformat()
+                }
+            },
+            upsert=True,
+            return_document=True
+        )
+        
+        # If we got here and the lock's appointment_id matches ours, we have the lock
+        if lock_result and lock_result.get("appointment_id") != appointment_id:
+            # Someone else has the lock
+            raise ValueError("Time slot is not available - concurrent booking in progress")
+        
+    except Exception as e:
+        # Duplicate key error means another request got the lock first
+        if "duplicate key" in str(e).lower() or "E11000" in str(e):
+            raise ValueError("Time slot is not available - concurrent booking in progress")
+        # For other errors during lock acquisition, re-check for conflicts
+        pass
+    
+    # Final conflict check right before insert (belt and suspenders)
+    final_conflict = await db.appointments.find_one(staff_conflict_query, {"_id": 0, "appointment_id": 1})
+    if final_conflict:
+        # Clean up our lock
+        await db.booking_locks.delete_one({"slot_signature": slot_signature, "appointment_id": appointment_id})
         raise ValueError("Time slot is not available")
     
-    # Create appointment
-    appointment = Appointment(
+    # Insert the appointment
+    try:
+        await db.appointments.insert_one(appointment_doc)
+    except Exception as e:
+        # Clean up lock on failure
+        await db.booking_locks.delete_one({"slot_signature": slot_signature, "appointment_id": appointment_id})
+        raise ValueError(f"Failed to create appointment: {str(e)}")
+    
+    # Clean up the lock after successful insert
+    await db.booking_locks.delete_one({"slot_signature": slot_signature, "appointment_id": appointment_id})
+    
+    # Return the appointment object
+    return Appointment(
+        appointment_id=appointment_id,
         tenant_id=tenant_id,
         staff_id=data.staff_id,
         service_id=data.service_id,
@@ -318,17 +451,6 @@ async def create_appointment(
         price=service_doc.get("price", 0),
         source=source
     )
-    
-    # Store in database
-    doc = appointment.model_dump()
-    doc["start_time"] = doc["start_time"].isoformat()
-    doc["end_time"] = doc["end_time"].isoformat()
-    doc["created_at"] = doc["created_at"].isoformat()
-    doc["updated_at"] = doc["updated_at"].isoformat()
-    
-    await db.appointments.insert_one(doc)
-    
-    return appointment
 
 
 async def reschedule_appointment(

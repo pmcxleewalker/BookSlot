@@ -46,7 +46,7 @@ from booking import (
     create_appointment, reschedule_appointment, cancel_appointment,
     get_dashboard_stats
 )
-from webhooks import trigger_booking_webhook, WEBHOOK_EVENTS
+from webhooks import trigger_booking_webhook, WEBHOOK_EVENTS, webhook_retry_worker, cleanup_old_retries
 from email_service import (
     send_email, generate_booking_confirmation_email,
     generate_reminder_email, generate_cancellation_email
@@ -61,6 +61,7 @@ from plan_gating import (
 )
 from reminders import create_appointment_reminders, cancel_appointment_reminders, send_cancellation_notification
 from waitlist import waitlist_router
+from rate_limiting import check_rate_limit, rate_limit_cleanup_task
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -127,7 +128,7 @@ async def check_plan_limits(tenant_id: str, resource_type: str) -> bool:
 
 
 async def log_audit(
-    tenant_id: str,
+    tenant_id: Optional[str],
     user_id: Optional[str],
     action: str,
     entity_type: str,
@@ -136,6 +137,10 @@ async def log_audit(
     ip_address: Optional[str] = None
 ):
     """Log an audit entry"""
+    # Skip logging if no tenant context (e.g., during registration)
+    if tenant_id is None:
+        return
+    
     log = AuditLog(
         tenant_id=tenant_id,
         user_id=user_id,
@@ -171,10 +176,16 @@ async def health_check():
 @api_router.post("/auth/register")
 async def register(data: UserCreate, request: Request, response: Response):
     """Register a new user with email/password"""
+    # Rate limit check - 3 registrations per minute per IP
+    await check_rate_limit(request, "auth_register")
+    
     # Check if email exists
     existing = await db.users.find_one({"email": data.email}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Note: Input validation (name length, email length, password min length) 
+    # is now enforced by Pydantic model constraints in models.py
     
     # Create user
     user = User(
@@ -199,17 +210,23 @@ async def register(data: UserCreate, request: Request, response: Response):
     
     set_session_cookie(response, session_token)
     
+    # Log audit
+    await log_audit(None, user.user_id, "create", "user", user.user_id)
+    
     return {
         "user_id": user.user_id,
         "email": user.email,
         "name": user.name,
-        "session_token": session_token
+        "session_token": session_token  # Needed for WebSocket
     }
 
 
 @api_router.post("/auth/login")
 async def login(data: UserLogin, request: Request, response: Response):
     """Login with email/password"""
+    # Rate limit check - 5 attempts per minute per IP+email
+    await check_rate_limit(request, "auth_login", data.email)
+    
     logger.info(f"Login attempt for: {data.email}")
     user_doc = await db.users.find_one({"email": data.email}, {"_id": 0})
     if not user_doc:
@@ -236,12 +253,14 @@ async def login(data: UserLogin, request: Request, response: Response):
     
     set_session_cookie(response, session_token)
     
+    # Note: session_token returned for WebSocket auth only - cookie is primary auth
     return {
         "user_id": user_doc["user_id"],
         "email": user_doc["email"],
         "name": user_doc["name"],
         "tenant_id": user_doc.get("tenant_id"),
-        "session_token": session_token
+        "role": user_doc.get("role"),
+        "session_token": session_token  # Needed for WebSocket connection
     }
 
 
@@ -718,6 +737,9 @@ async def create_service(data: ServiceCreate, request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
+    # Check plan limit for services
+    await check_resource_limit(db, user.tenant_id, "services")
+    
     service = Service(
         tenant_id=user.tenant_id,
         name=data.name,
@@ -914,6 +936,9 @@ async def create_client(data: ClientCreate, request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
+    # Check plan limit for clients
+    await check_resource_limit(db, user.tenant_id, "clients")
+    
     client = Client(
         tenant_id=user.tenant_id,
         name=data.name,
@@ -1023,6 +1048,9 @@ async def create_appointment_api(data: AppointmentCreate, request: Request):
     user = await require_auth(request, db)
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
+    
+    # Check monthly booking limit
+    await check_monthly_booking_limit(db, user.tenant_id)
     
     try:
         appointment = await create_appointment(db, user.tenant_id, data, source="admin")
@@ -1429,6 +1457,11 @@ async def create_webhook(data: WebhookCreate, request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
+    # Check feature access (webhooks are a Pro feature)
+    await check_feature_access(db, user.tenant_id, PlanFeature.WEBHOOKS)
+    # Check plan limit for webhooks
+    await check_resource_limit(db, user.tenant_id, "webhooks")
+    
     webhook = Webhook(
         tenant_id=user.tenant_id,
         url=data.url,
@@ -1491,6 +1524,11 @@ async def create_api_key_endpoint(request: Request):
     user = await require_auth(request, db)
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
+    
+    # Check feature access (API access is Growth+ feature)
+    await check_feature_access(db, user.tenant_id, PlanFeature.API_ACCESS)
+    # Check plan limit for API keys
+    await check_resource_limit(db, user.tenant_id, "api_keys")
     
     body = await request.json()
     name = body.get("name", "API Key")
@@ -1858,8 +1896,35 @@ async def get_subscription_usage(request: Request):
 
 
 @api_router.get("/admin/demo-accounts")
-async def get_demo_accounts():
-    """Get list of demo accounts for login"""
+async def get_demo_accounts(request: Request):
+    """Get list of demo accounts for login - requires authentication or development mode"""
+    # In production, this endpoint should be disabled or require admin auth
+    # For now, we'll make it accessible only when:
+    # 1. User is authenticated and is an admin/owner, OR
+    # 2. We're in development mode (localhost or .demo domain)
+    
+    # Check if this is a development/demo environment
+    # Check multiple headers as proxies may use different ones
+    host = request.headers.get("host", "")
+    x_forwarded_host = request.headers.get("x-forwarded-host", "")
+    origin = request.headers.get("origin", "")
+    
+    # Combine all possible host sources
+    all_hosts = f"{host} {x_forwarded_host} {origin}".lower()
+    
+    is_dev_environment = (
+        "localhost" in all_hosts or 
+        "127.0.0.1" in all_hosts or 
+        ".preview.emergentagent.com" in all_hosts or
+        "preview.emergentagent.com" in all_hosts
+    )
+    
+    if not is_dev_environment:
+        # In production, require authentication
+        user = await get_current_user(request, db)
+        if not user or user.role not in [UserRole.OWNER.value, UserRole.ADMIN.value]:
+            raise HTTPException(status_code=403, detail="Admin access required")
+    
     demo_tenants = await db.tenants.find(
         {"email": {"$regex": r"\.demo$"}},
         {"_id": 0, "tenant_id": 1, "name": 1, "slug": 1, "industry": 1}
@@ -2039,11 +2104,18 @@ async def websocket_endpoint(websocket: WebSocket):
             pass
 
 
-# CORS middleware
+# CORS middleware - CORS_ORIGINS must be set in .env, no wildcard fallback in production
+cors_origins_str = os.environ.get('CORS_ORIGINS', '')
+if not cors_origins_str:
+    raise ValueError("CORS_ORIGINS environment variable must be set")
+cors_origins = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
+if not cors_origins:
+    raise ValueError("CORS_ORIGINS must contain at least one valid origin")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -2052,3 +2124,41 @@ app.add_middleware(
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+
+# Background task references
+_background_tasks = []
+
+
+@app.on_event("startup")
+async def startup_db_setup():
+    """Create necessary indexes and start background workers on startup"""
+    # Create unique index for booking locks to prevent race conditions
+    try:
+        await db.booking_locks.create_index("slot_signature", unique=True)
+        logger.info("Created booking_locks index")
+    except Exception as e:
+        # Index might already exist
+        logger.debug(f"booking_locks index setup: {e}")
+    
+    # Create TTL index to auto-expire old locks (cleanup after 60 seconds)
+    try:
+        await db.booking_locks.create_index("created_at", expireAfterSeconds=60)
+        logger.info("Created booking_locks TTL index")
+    except Exception as e:
+        logger.debug(f"booking_locks TTL index setup: {e}")
+    
+    # Create index for webhook retries
+    try:
+        await db.webhook_retries.create_index([("status", 1), ("next_attempt_at", 1)])
+        logger.info("Created webhook_retries index")
+    except Exception as e:
+        logger.debug(f"webhook_retries index setup: {e}")
+    
+    # Start webhook retry worker as background task
+    task = asyncio.create_task(webhook_retry_worker(db, interval=30))
+    _background_tasks.append(task)
+    logger.info("Started webhook retry worker")
+    
+    # Clean up old retry records periodically (run once at startup)
+    asyncio.create_task(cleanup_old_retries(db, days=7))

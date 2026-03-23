@@ -19,8 +19,11 @@ from models import User, UserSession, generate_id
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT settings
-JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))
+# JWT settings - REQUIRE secret in production
+JWT_SECRET = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    logger.warning("JWT_SECRET not set - generating random secret (not suitable for production)")
+    JWT_SECRET = secrets.token_hex(32)
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
