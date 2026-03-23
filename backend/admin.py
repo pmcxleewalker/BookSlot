@@ -92,7 +92,8 @@ def get_db() -> AsyncIOMotorDatabase:
 # Super Admin Auth Helpers
 # =====================
 
-SUPER_ADMIN_SECRET = "timeslot_franchise_2024"  # In production, use env var
+import os
+SUPER_ADMIN_SECRET = os.environ.get("SUPER_ADMIN_SECRET", "")  # Must be set in production
 
 
 async def get_super_admin(request: Request) -> Optional[Dict]:
@@ -143,6 +144,9 @@ async def require_super_admin(request: Request) -> Dict:
 @admin_router.post("/auth/register")
 async def register_super_admin(data: SuperAdminCreate, request: Request):
     """Register a new super admin (requires secret key)"""
+    if not SUPER_ADMIN_SECRET:
+        raise HTTPException(status_code=500, detail="Admin registration not configured")
+    
     if data.admin_secret != SUPER_ADMIN_SECRET:
         raise HTTPException(status_code=403, detail="Invalid admin secret")
     
