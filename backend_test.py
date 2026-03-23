@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional
 
 class TimeSlotProAPITester:
-    def __init__(self, base_url: str = "https://timeslot-pro-6.preview.emergentagent.com"):
+    def __init__(self, base_url: str = "https://booking-safety-2.preview.emergentagent.com"):
         self.base_url = base_url
         self.session_token = None
         self.user_data = None

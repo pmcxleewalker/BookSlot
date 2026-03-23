@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [sessionToken, setSessionToken] = useState(null);
 
   const checkAuth = useCallback(async () => {
     // CRITICAL: If returning from OAuth callback, skip the /me check.
@@ -67,6 +68,9 @@ export const AuthProvider = ({ children }) => {
     const data = await response.json();
     setUser(data);
     setIsAuthenticated(true);
+    if (data.session_token) {
+      setSessionToken(data.session_token);
+    }
     return data;
   };
 
@@ -86,6 +90,9 @@ export const AuthProvider = ({ children }) => {
     const data = await response.json();
     setUser(data);
     setIsAuthenticated(true);
+    if (data.session_token) {
+      setSessionToken(data.session_token);
+    }
     return data;
   };
 
@@ -105,6 +112,9 @@ export const AuthProvider = ({ children }) => {
     const data = await response.json();
     setUser(data);
     setIsAuthenticated(true);
+    if (data.session_token) {
+      setSessionToken(data.session_token);
+    }
     return data;
   };
 
@@ -119,6 +129,7 @@ export const AuthProvider = ({ children }) => {
     }
     setUser(null);
     setIsAuthenticated(false);
+    setSessionToken(null);
   };
 
   const refreshUser = async () => {
@@ -129,6 +140,7 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     isAuthenticated,
+    sessionToken,
     login,
     register,
     logout,

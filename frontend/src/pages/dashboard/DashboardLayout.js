@@ -2,19 +2,22 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, CalendarDays, Users, Briefcase, 
-  Box, UserCircle, Settings, Webhook, LogOut, Menu, X, ChevronRight
+  Box, UserCircle, Settings, Webhook, LogOut, Menu, X, ChevronRight,
+  MessageSquare, BarChart3
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/button';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/dashboard/inbox', label: 'Inbox', icon: MessageSquare, badge: true },
   { path: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
   { path: '/dashboard/appointments', label: 'Appointments', icon: CalendarDays },
   { path: '/dashboard/staff', label: 'Staff', icon: Users },
   { path: '/dashboard/services', label: 'Services', icon: Briefcase },
   { path: '/dashboard/resources', label: 'Resources', icon: Box },
   { path: '/dashboard/clients', label: 'Clients', icon: UserCircle },
+  { path: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   { path: '/dashboard/settings', label: 'Settings', icon: Settings },
   { path: '/dashboard/integrations', label: 'Integrations', icon: Webhook },
 ];

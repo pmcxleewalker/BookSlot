@@ -1,8 +1,9 @@
 """
 TimeSlot Pro - Multi-tenant SaaS Booking Platform
 Main FastAPI Application
+V2: Enhanced with WebSockets, AI Receptionist API, and Real-time Notifications
 """
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, Query, WebSocket, WebSocketDisconnect
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -13,6 +14,7 @@ from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 import re
+import asyncio
 
 # Load environment variables
 ROOT_DIR = Path(__file__).parent
@@ -49,6 +51,9 @@ from email_service import (
     send_email, generate_booking_confirmation_email,
     generate_reminder_email, generate_cancellation_email
 )
+from websocket_manager import ws_manager
+from receptionist_api import receptionist_router
+from inbox_routes import inbox_router
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -58,8 +63,8 @@ db = client[os.environ['DB_NAME']]
 # Create the main app
 app = FastAPI(
     title="TimeSlot Pro API",
-    description="Multi-tenant SaaS Booking Platform API",
-    version="1.0.0"
+    description="Multi-tenant SaaS Booking Platform API with AI Receptionist Support",
+    version="2.0.0"
 )
 
 # Create router with /api prefix
@@ -1032,6 +1037,9 @@ async def create_appointment_api(data: AppointmentCreate, request: Request):
         apt_doc["end_time"] = apt_doc["end_time"].isoformat()
         await trigger_booking_webhook(db, user.tenant_id, "booking.created", apt_doc)
         
+        # Real-time notification via WebSocket
+        await ws_manager.notify_booking_created(user.tenant_id, apt_doc)
+        
         await log_audit(user.tenant_id, user.user_id, "create", "appointment", appointment.appointment_id)
         
         return {
@@ -1823,6 +1831,153 @@ async def upgrade_subscription(request: Request):
 
 # Include router
 app.include_router(api_router)
+
+# Include versioned receptionist API router
+app.include_router(receptionist_router)
+
+# Include inbox routes
+app.include_router(inbox_router)
+
+
+# =====================
+# WebSocket Endpoint
+# =====================
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time notifications.
+    Clients must authenticate by sending a session token after connection.
+    """
+    # Accept connection first
+    await websocket.accept()
+    
+    try:
+        # Wait for authentication message
+        auth_data = await asyncio.wait_for(websocket.receive_json(), timeout=10.0)
+        session_token = auth_data.get("session_token")
+        
+        if not session_token:
+            await websocket.send_json({"type": "error", "message": "session_token required"})
+            await websocket.close(code=4001)
+            return
+        
+        # Validate session
+        session_doc = await db.user_sessions.find_one(
+            {"session_token": session_token},
+            {"_id": 0}
+        )
+        
+        if not session_doc:
+            await websocket.send_json({"type": "error", "message": "Invalid session"})
+            await websocket.close(code=4001)
+            return
+        
+        # Check expiration
+        expires_at = session_doc.get("expires_at")
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        if expires_at <= datetime.now(timezone.utc):
+            await websocket.send_json({"type": "error", "message": "Session expired"})
+            await websocket.close(code=4001)
+            return
+        
+        # Get user and tenant
+        user_doc = await db.users.find_one(
+            {"user_id": session_doc["user_id"]},
+            {"_id": 0}
+        )
+        
+        if not user_doc:
+            await websocket.send_json({"type": "error", "message": "User not found"})
+            await websocket.close(code=4001)
+            return
+        
+        user_id = user_doc["user_id"]
+        tenant_id = user_doc.get("tenant_id")
+        
+        # Create a new websocket wrapper for ws_manager
+        # Since we already accepted, we need to handle this differently
+        from dataclasses import dataclass, field
+        
+        @dataclass
+        class ConnectionInfo:
+            websocket: WebSocket
+            user_id: str
+            tenant_id: Optional[str]
+            connected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+        
+        conn = ConnectionInfo(
+            websocket=websocket,
+            user_id=user_id,
+            tenant_id=tenant_id
+        )
+        
+        # Register with manager manually
+        async with ws_manager._lock:
+            if user_id not in ws_manager._user_connections:
+                ws_manager._user_connections[user_id] = set()
+            ws_manager._user_connections[user_id].add(conn)
+            
+            if tenant_id:
+                if tenant_id not in ws_manager._tenant_users:
+                    ws_manager._tenant_users[tenant_id] = set()
+                ws_manager._tenant_users[tenant_id].add(user_id)
+        
+        logger.info(f"WebSocket authenticated: user={user_id}, tenant={tenant_id}")
+        
+        # Send success acknowledgment
+        await websocket.send_json({
+            "type": "connection_ack",
+            "user_id": user_id,
+            "tenant_id": tenant_id,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Keep connection alive and handle incoming messages
+        try:
+            while True:
+                data = await websocket.receive_json()
+                
+                # Handle ping/pong for keepalive
+                if data.get("type") == "ping":
+                    await websocket.send_json({
+                        "type": "pong",
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    })
+                
+                # Handle subscription changes
+                elif data.get("type") == "subscribe":
+                    # Future: handle topic subscriptions
+                    pass
+        
+        except WebSocketDisconnect:
+            logger.info(f"WebSocket disconnected: user={user_id}")
+        finally:
+            # Clean up connection
+            async with ws_manager._lock:
+                if user_id in ws_manager._user_connections:
+                    ws_manager._user_connections[user_id].discard(conn)
+                    if not ws_manager._user_connections[user_id]:
+                        del ws_manager._user_connections[user_id]
+                        if tenant_id and tenant_id in ws_manager._tenant_users:
+                            ws_manager._tenant_users[tenant_id].discard(user_id)
+                            if not ws_manager._tenant_users[tenant_id]:
+                                del ws_manager._tenant_users[tenant_id]
+    
+    except asyncio.TimeoutError:
+        await websocket.send_json({"type": "error", "message": "Authentication timeout"})
+        await websocket.close(code=4000)
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        try:
+            await websocket.close(code=4000)
+        except Exception:
+            pass
+
 
 # CORS middleware
 app.add_middleware(

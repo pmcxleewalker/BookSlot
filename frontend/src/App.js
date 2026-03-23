@@ -24,6 +24,7 @@ import Resources from './pages/dashboard/Resources';
 import Clients from './pages/dashboard/Clients';
 import Settings from './pages/dashboard/Settings';
 import Integrations from './pages/dashboard/Integrations';
+import Inbox from './pages/dashboard/Inbox';
 import Onboarding from './pages/Onboarding';
 
 // Protected Route Component
@@ -154,6 +155,14 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <Integrations />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/inbox"
+        element={
+          <ProtectedRoute>
+            <Inbox />
           </ProtectedRoute>
         }
       />

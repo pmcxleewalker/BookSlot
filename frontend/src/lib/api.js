@@ -192,6 +192,34 @@ export const apiKeysAPI = {
     fetchAPI(`/api/api-keys/${apiKeyId}`, { method: 'DELETE' }),
 };
 
+// Inbox APIs (for Receptionist Inbox)
+export const inboxAPI = {
+  getStats: () => fetchAPI('/api/inbox/stats'),
+  
+  getConversations: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return fetchAPI(`/api/inbox/conversations${queryParams ? `?${queryParams}` : ''}`);
+  },
+  
+  getConversation: (conversationId) => 
+    fetchAPI(`/api/inbox/conversations/${conversationId}`),
+  
+  assignConversation: (conversationId) => 
+    fetchAPI(`/api/inbox/conversations/${conversationId}/assign`, { method: 'POST' }),
+  
+  sendMessage: (conversationId, content) => 
+    fetchAPI(`/api/inbox/conversations/${conversationId}/messages`, { 
+      method: 'POST', 
+      body: { content } 
+    }),
+  
+  resolveConversation: (conversationId, data = {}) => 
+    fetchAPI(`/api/inbox/conversations/${conversationId}/resolve`, { 
+      method: 'POST', 
+      body: data 
+    }),
+};
+
 // Public booking APIs (no auth required)
 export const publicAPI = {
   getServices: (tenantSlug) => 
@@ -231,5 +259,6 @@ export default {
   subscription: subscriptionAPI,
   webhooks: webhooksAPI,
   apiKeys: apiKeysAPI,
+  inbox: inboxAPI,
   public: publicAPI,
 };
