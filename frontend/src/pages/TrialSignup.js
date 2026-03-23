@@ -5,7 +5,8 @@ import { Calendar, ArrowRight, Check, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import api from '../lib/api';
+
+const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const benefits = [
   "Full access to all Growth features",
@@ -58,22 +59,33 @@ export default function TrialSignup() {
     }
 
     try {
-      const response = await api.post('/trial/signup', formData);
+      const response = await fetch(`${API_URL}/api/trial/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(formData)
+      });
       
-      if (response.data.session_token) {
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to create trial');
+      }
+      
+      if (data.session_token) {
         // Store session info
         localStorage.setItem('trialInfo', JSON.stringify({
-          tenant_id: response.data.tenant_id,
-          booking_url: response.data.booking_url,
-          trial_end_date: response.data.trial_end_date,
-          days_remaining: response.data.days_remaining
+          tenant_id: data.tenant_id,
+          booking_url: data.booking_url,
+          trial_end_date: data.trial_end_date,
+          days_remaining: data.days_remaining
         }));
         
-        // Redirect to dashboard
-        navigate('/dashboard');
+        // Force full page reload to pick up the session cookie
+        window.location.href = '/dashboard';
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create trial. Please try again.');
+      setError(err.message || 'Failed to create trial. Please try again.');
     } finally {
       setLoading(false);
     }

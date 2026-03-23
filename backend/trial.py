@@ -7,9 +7,9 @@ from typing import Dict, Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from fastapi import HTTPException
 import secrets
-import hashlib
 
 from models import generate_id
+from auth import hash_password  # Use the same password hashing as auth module
 
 # Trial configuration
 TRIAL_DURATION_DAYS = 3
@@ -43,11 +43,6 @@ def generate_slug(business_name: str) -> str:
     # Add random suffix to ensure uniqueness
     slug = f"{slug}-{secrets.token_hex(3)}"
     return slug
-
-
-def hash_password(password: str) -> str:
-    """Hash password for storage"""
-    return hashlib.sha256(password.encode()).hexdigest()
 
 
 async def create_trial_tenant(
