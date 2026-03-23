@@ -2,48 +2,86 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
-  Calendar, Building2, Users, BarChart3, Shield, Globe,
-  ArrowRight, Check, Menu, X, Zap, TrendingUp, Settings
+  Calendar, Clock, Users, Star, ArrowRight, Check, 
+  Menu, X, Play, ChevronRight, Sparkles
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
-const stats = [
-  { value: '500+', label: 'Businesses Managed' },
-  { value: '€2.4M', label: 'Revenue Processed' },
-  { value: '99.9%', label: 'Uptime Guarantee' },
-  { value: '24/7', label: 'Support Available' },
+// Business showcase images
+const businessImages = [
+  {
+    url: "https://images.pexels.com/photos/3993308/pexels-photo-3993308.jpeg?auto=compress&cs=tinysrgb&w=800",
+    title: "Hair Salons",
+    description: "Modern styling stations"
+  },
+  {
+    url: "https://images.pexels.com/photos/4269276/pexels-photo-4269276.jpeg?auto=compress&cs=tinysrgb&w=800",
+    title: "Dental Clinics",
+    description: "State-of-the-art equipment"
+  },
+  {
+    url: "https://images.unsplash.com/photo-1759134198561-e2041049419c?w=800",
+    title: "Barber Shops",
+    description: "Classic & contemporary"
+  },
+  {
+    url: "https://images.pexels.com/photos/7195799/pexels-photo-7195799.jpeg?auto=compress&cs=tinysrgb&w=800",
+    title: "Beauty Studios",
+    description: "Luxurious experiences"
+  },
 ];
 
 const features = [
-  { 
-    icon: Building2, 
-    title: 'Multi-Tenant Architecture', 
-    description: 'Manage unlimited businesses from a single command center. Each tenant operates independently with their own branding.' 
+  {
+    title: "Online Booking 24/7",
+    description: "Let clients book appointments anytime, from any device. No phone tag required.",
+    icon: Calendar
   },
-  { 
-    icon: Users, 
-    title: 'Automated Onboarding', 
-    description: 'Create new business accounts in seconds. Auto-configure plans, features, and billing from your dashboard.' 
+  {
+    title: "Automated Reminders",
+    description: "Reduce no-shows by 60% with SMS and email reminders sent automatically.",
+    icon: Clock
   },
-  { 
-    icon: BarChart3, 
-    title: 'Revenue Analytics', 
-    description: 'Track MRR, churn, and growth across your entire portfolio. Export reports for stakeholders.' 
+  {
+    title: "Staff Management",
+    description: "Manage schedules, assign services, and track performance across your team.",
+    icon: Users
   },
-  { 
-    icon: Shield, 
-    title: 'Enterprise Security', 
-    description: 'Role-based access control, audit logs, and GDPR compliance built-in. Your data stays in EU data centers.' 
+  {
+    title: "AI Receptionist",
+    description: "Let AI handle booking inquiries while you focus on your clients.",
+    icon: Sparkles
   },
-  { 
-    icon: Zap, 
-    title: 'Instant Provisioning', 
-    description: 'New tenants get their booking page live within minutes. Zero manual setup required.' 
+];
+
+const testimonials = [
+  {
+    quote: "TimeSlot Pro transformed our clinic. Bookings are up 40% and no-shows are down to almost zero.",
+    author: "Dr. Sarah Mitchell",
+    role: "Dental Clinic Owner, Dublin",
+    avatar: "SM",
+    rating: 5
   },
-  { 
-    icon: Globe, 
-    title: 'White-Label Ready', 
-    description: 'Full branding control per tenant. Custom domains, colors, logos—make it their own.' 
+  {
+    quote: "The easiest booking system I've ever used. My clients love being able to book online at midnight!",
+    author: "James O'Connor",
+    role: "Barber Shop Owner, Cork",
+    avatar: "JO",
+    rating: 5
+  },
+  {
+    quote: "We tried 5 different systems before TimeSlot Pro. Nothing else comes close for the price.",
+    author: "Maria Santos",
+    role: "Spa Director, Galway",
+    avatar: "MS",
+    rating: 5
+  },
+  {
+    quote: "Setup took 10 minutes. Now we save 15+ hours per week on scheduling and phone calls.",
+    author: "Emma Walsh",
+    role: "Salon Manager, Limerick",
+    avatar: "EW",
+    rating: 5
   },
 ];
 
@@ -51,58 +89,89 @@ const plans = [
   {
     name: 'Starter',
     price: 90,
-    features: ['2 staff', '1 location', '10 services', 'Email confirmations', 'Calendar sync'],
+    description: 'For solo practitioners',
+    features: [
+      '1 location',
+      'Up to 2 staff',
+      'Online booking page',
+      'Email confirmations',
+      'Calendar sync',
+    ],
+    cta: 'Start Free Trial',
   },
   {
     name: 'Growth',
     price: 145,
+    description: 'For growing businesses',
     popular: true,
-    features: ['8 staff', '1 location', '50 services', 'SMS & AI receptionist', 'Reports'],
+    features: [
+      '1 location',
+      'Up to 8 staff',
+      'Everything in Starter',
+      'SMS notifications',
+      'AI receptionist',
+      'Waitlist & packages',
+      'Reports & analytics',
+    ],
+    cta: 'Start Free Trial',
   },
   {
     name: 'Pro',
     price: 299,
-    features: ['50 staff', '10 locations', 'Unlimited services', 'API & webhooks', 'White-label'],
+    description: 'For established businesses',
+    features: [
+      'Up to 10 locations',
+      'Up to 50 staff',
+      'Everything in Growth',
+      'Multi-location',
+      'API & webhooks',
+      'White-label branding',
+      'Dedicated support',
+    ],
+    cta: 'Start Free Trial',
   },
+];
+
+const stats = [
+  { value: '2,000+', label: 'Businesses' },
+  { value: '500K+', label: 'Bookings/month' },
+  { value: '60%', label: 'Less no-shows' },
+  { value: '4.9', label: 'Star rating' },
 ];
 
 export default function FranchiseLanding() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-white">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-black flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-white" style={{ fontFamily: 'Outfit' }}>
+              <span className="text-xl font-bold text-black tracking-tight" style={{ fontFamily: 'Outfit' }}>
                 TimeSlot Pro
-              </span>
-              <span className="text-xs text-emerald-400 font-medium ml-2 px-2 py-0.5 bg-emerald-500/10 rounded">
-                FRANCHISE
               </span>
             </Link>
 
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center gap-8">
-              <Link to="/pricing" className="text-slate-400 hover:text-white transition-colors" data-testid="nav-pricing">
+              <a href="#pricing" className="text-gray-600 hover:text-black transition-colors font-medium" data-testid="nav-pricing">
                 Pricing
-              </Link>
-              <Link to="/features" className="text-slate-400 hover:text-white transition-colors" data-testid="nav-features">
-                Features
-              </Link>
-              <Link to="/admin/login" className="text-slate-400 hover:text-white transition-colors" data-testid="nav-director-login">
-                Director Login
+              </a>
+              <Link to="/book/demo-business">
+                <Button className="bg-black hover:bg-gray-800 text-white rounded-full px-6 h-10" data-testid="nav-try-demo">
+                  Try 3-Day Demo
+                </Button>
               </Link>
             </div>
 
             {/* Mobile Menu Button */}
             <button 
-              className="md:hidden p-2 text-white"
+              className="md:hidden p-2"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               data-testid="mobile-menu-btn"
             >
@@ -113,13 +182,12 @@ export default function FranchiseLanding() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-slate-800 border-t border-slate-700 py-4 px-4">
+          <div className="md:hidden bg-white border-t border-gray-100 py-4 px-4">
             <div className="flex flex-col gap-4">
-              <Link to="/pricing" className="py-2 text-white">Pricing</Link>
-              <Link to="/features" className="py-2 text-white">Features</Link>
-              <Link to="/admin/login">
-                <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg">
-                  Director Login
+              <a href="#pricing" className="py-2 text-black font-medium">Pricing</a>
+              <Link to="/book/demo-business">
+                <Button className="w-full bg-black hover:bg-gray-800 text-white rounded-full">
+                  Try 3-Day Demo
                 </Button>
               </Link>
             </div>
@@ -128,103 +196,91 @@ export default function FranchiseLanding() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
+      <section className="pt-28 pb-16 px-4 overflow-hidden">
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="text-center max-w-4xl mx-auto">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-400 text-sm font-medium mb-6">
-                <Building2 className="w-4 h-4" />
-                Franchise Control Center
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-700 text-sm font-medium mb-6">
+                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                Trusted by 2,000+ Irish businesses
               </span>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6" style={{ fontFamily: 'Outfit' }}>
-                Manage your
-                <span className="text-emerald-400"> booking empire</span>
+              
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-black leading-tight mb-6" style={{ fontFamily: 'Outfit' }}>
+                The booking system your
+                <br />
+                <span className="text-gray-400">clients will love</span>
               </h1>
-              <p className="text-lg text-slate-400 mb-8 max-w-lg">
-                The command center for multi-location booking businesses. 
-                Create tenants, manage subscriptions, and track revenue—all from one dashboard.
+              
+              <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                Powerful, beautiful scheduling software for salons, clinics, barbers, and any appointment-based business. 
+                Set up in minutes, not days.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/admin/login">
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link to="/book/demo-business">
                   <Button 
                     size="lg" 
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg px-8 h-14 text-lg"
-                    data-testid="hero-director-login"
+                    className="bg-black hover:bg-gray-800 text-white rounded-full px-8 h-14 text-lg"
+                    data-testid="hero-demo"
                   >
-                    Director Login
+                    Try 3-Day Free Demo
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 </Link>
-                <Link to="/admin/setup">
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
-                    className="rounded-lg px-8 h-14 text-lg border-slate-700 text-white hover:bg-slate-800"
-                    data-testid="hero-register"
-                  >
-                    <Settings className="w-5 h-5 mr-2" />
-                    Register as Director
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="relative"
-            >
-              {/* Dashboard Preview */}
-              <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden shadow-2xl">
-                <div className="bg-slate-900 px-4 py-3 border-b border-slate-700 flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span className="text-slate-500 text-sm ml-2">Franchise Command Center</span>
-                </div>
-                <div className="p-6">
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    {stats.map((stat, i) => (
-                      <div key={i} className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
-                        <div className="text-2xl font-bold text-emerald-400">{stat.value}</div>
-                        <div className="text-sm text-slate-500">{stat.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-white font-medium">Recent Tenants</span>
-                      <TrendingUp className="w-4 h-4 text-emerald-400" />
-                    </div>
-                    <div className="space-y-2">
-                      {['Elite Dental Care', 'Glow Beauty Salon', 'City Physio Clinic'].map((name, i) => (
-                        <div key={i} className="flex items-center justify-between py-2 border-b border-slate-700 last:border-0">
-                          <span className="text-slate-400 text-sm">{name}</span>
-                          <span className="text-emerald-400 text-xs">Active</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="rounded-full px-8 h-14 text-lg border-gray-300 text-black hover:bg-gray-50"
+                  data-testid="hero-watch"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  Watch Demo
+                </Button>
               </div>
             </motion.div>
           </div>
+
+          {/* Business Images Grid */}
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="mt-16"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {businessImages.map((img, index) => (
+                <div key={index} className="relative group overflow-hidden rounded-2xl aspect-[4/3]">
+                  <img 
+                    src={img.url} 
+                    alt={img.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-transparent" />
+                  <div className="absolute bottom-4 left-4 text-white">
+                    <p className="font-semibold">{img.title}</p>
+                    <p className="text-sm text-white/80">{img.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Stats Bar */}
-      <section className="py-8 px-4 border-y border-slate-800 bg-slate-800/50">
+      <section className="py-12 px-4 border-y border-gray-100 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="text-3xl font-bold text-emerald-400 mb-1">{stat.value}</div>
-                <div className="text-slate-500 text-sm">{stat.label}</div>
+                <div className="text-3xl sm:text-4xl font-bold text-black mb-1" style={{ fontFamily: 'Outfit' }}>
+                  {stat.value}
+                </div>
+                <div className="text-gray-500">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -232,18 +288,19 @@ export default function FranchiseLanding() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4" id="features">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <span className="text-sm font-medium text-emerald-400 uppercase tracking-wider">Platform Features</span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mt-3 mb-4" style={{ fontFamily: 'Outfit' }}>
-              Built for franchise operators
+            <span className="text-sm font-medium text-gray-500 uppercase tracking-wider">Why TimeSlot Pro</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-black mt-3 mb-4" style={{ fontFamily: 'Outfit' }}>
+              Everything you need to grow
             </h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Everything you need to manage a portfolio of appointment-based businesses.
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              From online booking to AI automation, we've built every feature your business needs.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={feature.title}
@@ -251,15 +308,56 @@ export default function FranchiseLanding() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-slate-800/50 rounded-xl border border-slate-700 p-8 hover:border-emerald-500/50 transition-colors"
+                className="text-center p-6"
               >
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-6">
-                  <feature.icon className="w-6 h-6 text-emerald-400" />
+                <div className="w-14 h-14 rounded-2xl bg-black flex items-center justify-center mx-auto mb-5">
+                  <feature.icon className="w-7 h-7 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-3" style={{ fontFamily: 'Outfit' }}>
+                <h3 className="text-xl font-semibold text-black mb-3" style={{ fontFamily: 'Outfit' }}>
                   {feature.title}
                 </h3>
-                <p className="text-slate-400">{feature.description}</p>
+                <p className="text-gray-600">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-20 px-4 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="text-sm font-medium text-gray-500 uppercase tracking-wider">Testimonials</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-black mt-3" style={{ fontFamily: 'Outfit' }}>
+              Loved by businesses across Ireland
+            </h2>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {testimonials.map((testimonial, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm"
+              >
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-gray-700 mb-6 text-sm leading-relaxed">"{testimonial.quote}"</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white text-sm font-semibold">
+                    {testimonial.avatar}
+                  </div>
+                  <div>
+                    <p className="font-medium text-black text-sm">{testimonial.author}</p>
+                    <p className="text-gray-500 text-xs">{testimonial.role}</p>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -267,17 +365,18 @@ export default function FranchiseLanding() {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 px-4 bg-slate-800/30">
+      <section className="py-20 px-4" id="pricing">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <span className="text-sm font-medium text-emerald-400 uppercase tracking-wider">Tenant Plans</span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mt-3 mb-4" style={{ fontFamily: 'Outfit' }}>
-              Flexible pricing for every tenant
+            <span className="text-sm font-medium text-gray-500 uppercase tracking-wider">Pricing</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-black mt-3 mb-4" style={{ fontFamily: 'Outfit' }}>
+              Simple, transparent pricing
             </h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Assign plans when creating new tenants. Upgrade or downgrade anytime.
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              Choose the plan that fits your business. All plans include a 3-day free trial.
             </p>
           </div>
+          
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {plans.map((plan, index) => (
               <motion.div
@@ -286,27 +385,49 @@ export default function FranchiseLanding() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className={`rounded-xl border p-6 ${
+                className={`rounded-2xl p-8 ${
                   plan.popular 
-                    ? 'bg-emerald-500/10 border-emerald-500' 
-                    : 'bg-slate-800/50 border-slate-700'
+                    ? 'bg-black text-white ring-4 ring-black/5' 
+                    : 'bg-white border border-gray-200'
                 }`}
+                data-testid={`plan-${plan.name.toLowerCase()}`}
               >
                 {plan.popular && (
-                  <span className="text-emerald-400 text-xs font-medium uppercase tracking-wider">Most Popular</span>
+                  <span className="inline-block text-xs font-medium text-white/80 uppercase tracking-wider mb-2">
+                    Most Popular
+                  </span>
                 )}
-                <h3 className="text-xl font-bold text-white mt-2" style={{ fontFamily: 'Outfit' }}>
+                <h3 className={`text-2xl font-bold mb-1 ${plan.popular ? 'text-white' : 'text-black'}`} style={{ fontFamily: 'Outfit' }}>
                   {plan.name}
                 </h3>
-                <div className="flex items-baseline gap-1 my-4">
-                  <span className="text-3xl font-bold text-white">€{plan.price}</span>
-                  <span className="text-slate-500">/month</span>
+                <p className={`text-sm mb-4 ${plan.popular ? 'text-white/70' : 'text-gray-500'}`}>
+                  {plan.description}
+                </p>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className={`text-4xl font-bold ${plan.popular ? 'text-white' : 'text-black'}`} style={{ fontFamily: 'Outfit' }}>
+                    €{plan.price}
+                  </span>
+                  <span className={plan.popular ? 'text-white/70' : 'text-gray-500'}>/month</span>
                 </div>
+                
+                <Link to="/book/demo-business">
+                  <Button 
+                    className={`w-full rounded-full h-12 mb-6 ${
+                      plan.popular 
+                        ? 'bg-white text-black hover:bg-gray-100' 
+                        : 'bg-black text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    {plan.cta}
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </Link>
+                
                 <ul className="space-y-3">
                   {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
-                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      {feature}
+                    <li key={i} className="flex items-center gap-3 text-sm">
+                      <Check className={`w-4 h-4 flex-shrink-0 ${plan.popular ? 'text-white/80' : 'text-black'}`} />
+                      <span className={plan.popular ? 'text-white/90' : 'text-gray-700'}>{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -317,58 +438,82 @@ export default function FranchiseLanding() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4 bg-black">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4" style={{ fontFamily: 'Outfit' }}>
-            Ready to scale your booking business?
+            Ready to simplify your scheduling?
           </h2>
-          <p className="text-slate-400 text-lg mb-8 max-w-xl mx-auto">
-            Access the Franchise Command Center and start managing your multi-tenant booking empire today.
+          <p className="text-white/70 text-lg mb-8 max-w-xl mx-auto">
+            Join thousands of Irish businesses that trust TimeSlot Pro. 
+            Start your free 3-day trial today.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/admin/login">
-              <Button 
-                size="lg" 
-                className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg px-8 h-14 text-lg"
-                data-testid="cta-director-login"
-              >
-                Director Login
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
-            <Link to="/admin/setup">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="rounded-lg px-8 h-14 text-lg border-slate-700 text-white hover:bg-slate-800"
-              >
-                Register New Account
-              </Button>
-            </Link>
-          </div>
+          <Link to="/book/demo-business">
+            <Button 
+              size="lg" 
+              className="bg-white text-black hover:bg-gray-100 rounded-full px-8 h-14 text-lg"
+              data-testid="cta-demo"
+            >
+              Start Free Trial
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </Link>
+          <p className="text-white/50 text-sm mt-4">No credit card required</p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 border-t border-slate-800">
+      <footer className="py-12 px-4 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-white" />
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-bold text-black" style={{ fontFamily: 'Outfit' }}>TimeSlot Pro</span>
               </div>
-              <span className="text-xl font-bold text-white" style={{ fontFamily: 'Outfit' }}>TimeSlot Pro</span>
-              <span className="text-xs text-emerald-400 font-medium ml-2">FRANCHISE</span>
+              <p className="text-gray-500 text-sm">
+                Powerful booking software for appointment-based businesses.
+              </p>
             </div>
-            <div className="flex items-center gap-6 text-slate-500 text-sm">
-              <Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link>
-              <Link to="/features" className="hover:text-white transition-colors">Features</Link>
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white transition-colors">Terms</a>
+            <div>
+              <h4 className="font-semibold text-black mb-4">Product</h4>
+              <ul className="space-y-2 text-gray-500 text-sm">
+                <li><a href="#features" className="hover:text-black transition-colors">Features</a></li>
+                <li><a href="#pricing" className="hover:text-black transition-colors">Pricing</a></li>
+                <li><Link to="/book/demo-business" className="hover:text-black transition-colors">Demo</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-black mb-4">Industries</h4>
+              <ul className="space-y-2 text-gray-500 text-sm">
+                <li><a href="#" className="hover:text-black transition-colors">Salons</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Clinics</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Barbers</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Spas</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-black mb-4">Support</h4>
+              <ul className="space-y-2 text-gray-500 text-sm">
+                <li><a href="#" className="hover:text-black transition-colors">Help Center</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Contact</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Privacy</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Terms</a></li>
+              </ul>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t border-slate-800 text-center text-slate-500 text-sm">
-            © {new Date().getFullYear()} TimeSlot Pro. All rights reserved.
+          <div className="border-t border-gray-100 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-gray-400 text-sm">
+              © {new Date().getFullYear()} TimeSlot Pro. All rights reserved.
+            </p>
+            <Link 
+              to="/admin/login" 
+              className="text-gray-400 text-sm hover:text-black transition-colors"
+              data-testid="footer-director-login"
+            >
+              Director Login
+            </Link>
           </div>
         </div>
       </footer>
