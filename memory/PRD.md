@@ -6,7 +6,7 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 ### User Choices
 - **Authentication**: Both JWT-based custom auth AND Emergent-managed Google OAuth
 - **Payment Integration**: Mock billing for V1 (skip Stripe)
-- **Reminders**: Email integration via Resend
+- **Reminders**: Email integration via Resend (WhatsApp-friendly logging for now)
 - **AI Receptionist**: API-only (no chat UI, endpoints for MoltBot to connect)
 - **Design**: Ultra premium and professional SaaS design, incredibly easy to use
 
@@ -35,9 +35,9 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 ### Plans & Pricing
 | Plan | Price | Features |
 |------|-------|----------|
-| Starter | €29/month | 1 location, 2 staff, online booking, reminders, deposits, calendar sync |
-| Growth | €79/month | 1 location, 8 staff, + waitlist, packages, AI assistant, SMS automations, reports |
-| Pro | €149/month | Multi-location, unlimited staff, + advanced permissions, resource booking, custom forms, white-label, API/webhooks |
+| Starter | €29/month | 1 location, 2 staff, 10 services, 100 bookings/mo, online booking, reminders, deposits, calendar sync |
+| Growth | €79/month | 1 location, 8 staff, 50 services, 500 bookings/mo, + waitlist, packages, AI assistant, SMS automations, reports |
+| Pro | €149/month | Multi-location, unlimited staff/services/bookings, + advanced permissions, resource booking, custom forms, white-label, API/webhooks |
 
 ### Required Features
 - 3-step onboarding wizard
@@ -162,6 +162,41 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - [x] Lock expiration (default 5 minutes)
 - [x] Lock conversion to booking
 - [x] Conflict-safe atomic booking creation
+
+### V3 Production-Readiness Hardening (March 23, 2026)
+
+#### Stage 1: Security Hardening
+- [x] Input validation with Pydantic Field constraints (max_length, min_length, ge, le)
+- [x] Password minimum 8 characters enforced at model level
+- [x] Service duration constrained to 5-480 minutes
+- [x] Name fields limited to 100 characters
+- [x] Notes/description fields limited to 1000-2000 characters
+- [x] Rate limiting on auth endpoints (login: 5/min, register: 3/min)
+- [x] JWT_SECRET required (no weak defaults)
+- [x] Demo accounts endpoint secured (dev-only access)
+- [x] CORS configured with explicit origins (no wildcard fallback)
+
+#### Stage 2: Booking Race Condition Fix
+- [x] Optimistic locking using `booking_locks` collection
+- [x] Atomic slot acquisition with MongoDB `findOneAndUpdate`
+- [x] Double-booking prevention with conflict queries
+- [x] Lock cleanup with TTL index (60 second expiry)
+- [x] Final conflict check before insert
+
+#### Stage 3: Plan Enforcement
+- [x] Resource limits on staff creation (Starter: 2, Growth: 8, Pro: unlimited)
+- [x] Resource limits on services creation (Starter: 10, Growth: 50, Pro: unlimited)
+- [x] Resource limits on clients (Starter: 200, Growth: 1000, Pro: unlimited)
+- [x] Webhooks gated to Pro plan only
+- [x] API keys gated to Pro plan only
+- [x] Monthly booking limits enforced (Starter: 100, Growth: 500, Pro: unlimited)
+
+#### Stage 4: Webhook Reliability
+- [x] Retry queue with exponential backoff (30s, 1m, 5m, 15m, 1h)
+- [x] Max 5 retry attempts per webhook delivery
+- [x] Background worker for processing retries
+- [x] Failure count tracking per webhook
+- [x] Old retry cleanup (7 day retention)
 
 ---
 
