@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
@@ -118,7 +118,7 @@ const ServicesPage = () => {
   };
 
   return (
-    <AdminLayout title="Services">
+    <TenantLayout title="Services">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <p className="text-[#666666]">{services.length} services</p>
@@ -341,7 +341,7 @@ const ServicesPage = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
@@ -69,7 +69,7 @@ const MessagesPage = () => {
   };
 
   return (
-    <AdminLayout title="Messages & Reminders">
+    <TenantLayout title="Messages & Reminders">
       <div className="mb-6">
         <p className="text-[#666666]">
           Configure automated messages sent to your clients. 
@@ -164,7 +164,7 @@ const MessagesPage = () => {
           )}
         </div>
       )}
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

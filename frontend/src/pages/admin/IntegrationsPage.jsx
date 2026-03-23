@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
@@ -115,7 +115,7 @@ const IntegrationsPage = () => {
   };
 
   return (
-    <AdminLayout title="Integrations">
+    <TenantLayout title="Integrations">
       {/* Available Integrations */}
       <div className="mb-8">
         <h2 className="font-semibold text-[#0A0A0A] mb-4">Available Integrations</h2>
@@ -288,7 +288,7 @@ const IntegrationsPage = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
@@ -104,7 +104,7 @@ const StaffPage = () => {
   };
 
   return (
-    <AdminLayout title="Staff">
+    <TenantLayout title="Staff">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -270,7 +270,7 @@ const StaffPage = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

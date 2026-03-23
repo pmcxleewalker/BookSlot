@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
@@ -85,7 +85,7 @@ const ClientsPage = () => {
   };
 
   return (
-    <AdminLayout title="Clients">
+    <TenantLayout title="Clients">
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
@@ -265,7 +265,7 @@ const ClientsPage = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

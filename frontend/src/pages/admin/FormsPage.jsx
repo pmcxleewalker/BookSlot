@@ -1,5 +1,5 @@
 import React from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth } from '../../App';
 import { Button } from '../../components/ui/button';
 import { FileText, Plus } from 'lucide-react';
@@ -9,7 +9,7 @@ const FormsPage = () => {
   const isPro = tenant?.plan === 'pro';
 
   return (
-    <AdminLayout title="Forms">
+    <TenantLayout title="Forms">
       {!isPro ? (
         <div className="card-flat py-12 text-center">
           <FileText className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
@@ -35,7 +35,7 @@ const FormsPage = () => {
           </div>
         </>
       )}
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

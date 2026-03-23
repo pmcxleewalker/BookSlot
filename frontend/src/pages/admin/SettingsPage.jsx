@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
@@ -47,7 +47,7 @@ const SettingsPage = () => {
   const currencies = ['EUR', 'GBP', 'USD', 'AUD', 'CAD'];
 
   return (
-    <AdminLayout title="Settings">
+    <TenantLayout title="Settings">
       <div className="max-w-2xl">
         {/* Business Details */}
         <div className="card-flat mb-6">
@@ -222,7 +222,7 @@ const SettingsPage = () => {
           {saving ? 'Saving...' : 'Save Settings'}
         </Button>
       </div>
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

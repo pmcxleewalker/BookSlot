@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
@@ -139,7 +139,7 @@ const CalendarPage = () => {
   };
 
   return (
-    <AdminLayout title="Calendar">
+    <TenantLayout title="Calendar">
       {/* Calendar Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
@@ -341,7 +341,7 @@ const CalendarPage = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

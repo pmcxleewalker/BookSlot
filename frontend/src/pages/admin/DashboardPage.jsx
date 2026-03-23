@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
@@ -69,7 +69,7 @@ const DashboardPage = () => {
   ];
 
   return (
-    <AdminLayout title="Dashboard">
+    <TenantLayout title="Dashboard">
       {/* Quick Actions */}
       <div className="card-flat mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -214,7 +214,7 @@ const DashboardPage = () => {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

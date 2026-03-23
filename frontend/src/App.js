@@ -27,6 +27,12 @@ import SettingsPage from './pages/admin/SettingsPage';
 import IntegrationsPage from './pages/admin/IntegrationsPage';
 import OnboardingPage from './pages/admin/OnboardingPage';
 
+// Pages - Super Admin
+import AdminLoginPage from './pages/superadmin/AdminLoginPage';
+import AdminDashboardPage from './pages/superadmin/AdminDashboardPage';
+import AdminTenantsPage from './pages/superadmin/AdminTenantsPage';
+import AdminTenantDetailPage from './pages/superadmin/AdminTenantDetailPage';
+
 // Components
 import AuthCallback from './components/auth/AuthCallback';
 import AIReceptionistWidget from './components/AIReceptionistWidget';
@@ -243,6 +249,12 @@ const AppRouter = () => {
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
+
+      {/* Super Admin Routes */}
+      <Route path="/admin" element={<AdminLoginPage />} />
+      <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+      <Route path="/admin/tenants" element={<AdminTenantsPage />} />
+      <Route path="/admin/tenants/:tenantId" element={<AdminTenantDetailPage />} />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />

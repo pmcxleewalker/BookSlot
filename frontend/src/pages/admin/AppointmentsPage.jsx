@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
@@ -77,7 +77,7 @@ const AppointmentsPage = () => {
   };
 
   return (
-    <AdminLayout title="Appointments">
+    <TenantLayout title="Appointments">
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
@@ -198,7 +198,7 @@ const AppointmentsPage = () => {
           </table>
         </div>
       </div>
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

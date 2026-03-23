@@ -1644,6 +1644,497 @@ async def seed_demo_data(user: Dict = Depends(get_current_user)):
     
     return {"message": "Demo data seeded successfully"}
 
+# ================== PLAN FEATURES CONFIG ==================
+
+PLAN_FEATURES = {
+    "starter": {
+        "name": "Starter",
+        "price": 29,
+        "max_locations": 1,
+        "max_staff": 2,
+        "online_booking": True,
+        "reminders": True,
+        "deposits": True,
+        "calendar_sync": True,
+        "basic_reports": True,
+        "waitlist": False,
+        "packages": False,
+        "ai_assistant": False,
+        "sms_automations": False,
+        "advanced_reports": False,
+        "multi_location": False,
+        "advanced_permissions": False,
+        "resource_booking": False,
+        "custom_forms": False,
+        "white_label": False,
+        "api_webhooks": False,
+    },
+    "growth": {
+        "name": "Growth",
+        "price": 79,
+        "max_locations": 1,
+        "max_staff": 8,
+        "online_booking": True,
+        "reminders": True,
+        "deposits": True,
+        "calendar_sync": True,
+        "basic_reports": True,
+        "waitlist": True,
+        "packages": True,
+        "ai_assistant": True,
+        "sms_automations": True,
+        "advanced_reports": True,
+        "multi_location": False,
+        "advanced_permissions": False,
+        "resource_booking": False,
+        "custom_forms": False,
+        "white_label": False,
+        "api_webhooks": False,
+    },
+    "pro": {
+        "name": "Pro",
+        "price": 149,
+        "max_locations": 999,
+        "max_staff": 999,
+        "online_booking": True,
+        "reminders": True,
+        "deposits": True,
+        "calendar_sync": True,
+        "basic_reports": True,
+        "waitlist": True,
+        "packages": True,
+        "ai_assistant": True,
+        "sms_automations": True,
+        "advanced_reports": True,
+        "multi_location": True,
+        "advanced_permissions": True,
+        "resource_booking": True,
+        "custom_forms": True,
+        "white_label": True,
+        "api_webhooks": True,
+    }
+}
+
+@api_router.get("/plans/features")
+async def get_plan_features():
+    """Get all plan features for reference"""
+    return {"plans": PLAN_FEATURES}
+
+@api_router.get("/tenants/me/features")
+async def get_my_features(user: Dict = Depends(get_current_user)):
+    """Get current tenant's enabled features based on plan"""
+    if not user.get("tenant_id"):
+        return {"features": PLAN_FEATURES["starter"]}
+    
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    plan = tenant.get("plan", "starter") if tenant else "starter"
+    
+    return {"features": PLAN_FEATURES.get(plan, PLAN_FEATURES["starter"]), "plan": plan}
+
+# ================== SUPER ADMIN ENDPOINTS ==================
+
+SUPER_ADMIN_SECRET = os.environ.get('SUPER_ADMIN_SECRET', 'superadmin-secret-key')
+
+async def get_super_admin(request: Request) -> Dict[str, Any]:
+    """Verify super admin authentication"""
+    session_token = request.cookies.get("admin_session_token")
+    
+    if not session_token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header.split(" ")[1]
+    
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Not authenticated as super admin")
+    
+    # Check admin session
+    session = await db.admin_sessions.find_one({"session_token": session_token}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid admin session")
+    
+    # Check expiry
+    expires_at = session.get("expires_at")
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=401, detail="Admin session expired")
+    
+    admin = await db.super_admins.find_one({"admin_id": session["admin_id"]}, {"_id": 0})
+    if not admin:
+        raise HTTPException(status_code=401, detail="Admin not found")
+    
+    return admin
+
+@api_router.post("/admin/login")
+async def admin_login(credentials: UserLogin, response: Response):
+    """Super admin login"""
+    admin = await db.super_admins.find_one({"email": credentials.email}, {"_id": 0})
+    if not admin:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not admin.get("password_hash"):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not verify_password(credentials.password, admin["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Create session
+    session_token = f"admin_session_{uuid.uuid4().hex}"
+    session = {
+        "admin_id": admin["admin_id"],
+        "session_token": session_token,
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.admin_sessions.delete_many({"admin_id": admin["admin_id"]})
+    await db.admin_sessions.insert_one({**session})
+    
+    response.set_cookie(
+        key="admin_session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        max_age=7 * 24 * 3600
+    )
+    
+    return {
+        "admin": {
+            "admin_id": admin["admin_id"],
+            "email": admin["email"],
+            "name": admin["name"]
+        },
+        "token": session_token
+    }
+
+@api_router.get("/admin/me")
+async def get_admin_me(admin: Dict = Depends(get_super_admin)):
+    """Get current super admin"""
+    return {
+        "admin_id": admin["admin_id"],
+        "email": admin["email"],
+        "name": admin["name"]
+    }
+
+@api_router.post("/admin/logout")
+async def admin_logout(request: Request, response: Response):
+    """Super admin logout"""
+    session_token = request.cookies.get("admin_session_token")
+    if session_token:
+        await db.admin_sessions.delete_many({"session_token": session_token})
+    
+    response.delete_cookie(key="admin_session_token", path="/")
+    return {"message": "Logged out"}
+
+@api_router.get("/admin/tenants")
+async def admin_get_tenants(
+    admin: Dict = Depends(get_super_admin),
+    search: Optional[str] = None,
+    plan: Optional[str] = None,
+    is_active: Optional[bool] = None
+):
+    """Get all tenants (super admin only)"""
+    query = {}
+    if search:
+        query["$or"] = [
+            {"name": {"$regex": search, "$options": "i"}},
+            {"email": {"$regex": search, "$options": "i"}}
+        ]
+    if plan:
+        query["plan"] = plan
+    if is_active is not None:
+        query["is_active"] = is_active
+    
+    tenants = await db.tenants.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Get stats for each tenant
+    for tenant in tenants:
+        tenant["staff_count"] = await db.staff.count_documents({"tenant_id": tenant["tenant_id"], "is_active": True})
+        tenant["client_count"] = await db.clients.count_documents({"tenant_id": tenant["tenant_id"]})
+        tenant["appointment_count"] = await db.appointments.count_documents({"tenant_id": tenant["tenant_id"]})
+    
+    return {"tenants": tenants}
+
+@api_router.get("/admin/tenants/{tenant_id}")
+async def admin_get_tenant(tenant_id: str, admin: Dict = Depends(get_super_admin)):
+    """Get specific tenant details (super admin only)"""
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Get related data
+    owner = await db.users.find_one({"tenant_id": tenant_id, "role": "owner"}, {"_id": 0, "password_hash": 0})
+    staff = await db.staff.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(100)
+    services = await db.services.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(100)
+    
+    # Get stats
+    stats = {
+        "staff_count": len(staff),
+        "services_count": len(services),
+        "client_count": await db.clients.count_documents({"tenant_id": tenant_id}),
+        "total_appointments": await db.appointments.count_documents({"tenant_id": tenant_id}),
+        "month_appointments": await db.appointments.count_documents({
+            "tenant_id": tenant_id,
+            "created_at": {"$gte": datetime.now(timezone.utc).replace(day=1).isoformat()}
+        })
+    }
+    
+    return {
+        "tenant": tenant,
+        "owner": owner,
+        "staff": staff,
+        "services": services,
+        "stats": stats,
+        "features": PLAN_FEATURES.get(tenant.get("plan", "starter"), PLAN_FEATURES["starter"])
+    }
+
+@api_router.post("/admin/tenants")
+async def admin_create_tenant(body: Dict[str, Any], admin: Dict = Depends(get_super_admin)):
+    """Create a new tenant with owner (super admin only)"""
+    # Validate required fields
+    required = ["business_name", "industry", "owner_name", "owner_email", "owner_password", "plan"]
+    for field in required:
+        if field not in body:
+            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+    
+    # Check if owner email exists
+    existing = await db.users.find_one({"email": body["owner_email"]}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create tenant
+    tenant_id = f"tenant_{uuid.uuid4().hex[:12]}"
+    slug = body["business_name"].lower().replace(" ", "-").replace("'", "")[:30] + "-" + tenant_id[-6:]
+    
+    tenant = {
+        "tenant_id": tenant_id,
+        "name": body["business_name"],
+        "industry": body["industry"],
+        "email": body.get("business_email", body["owner_email"]),
+        "phone": body.get("phone"),
+        "address": body.get("address"),
+        "timezone": body.get("timezone", "Europe/Dublin"),
+        "currency": body.get("currency", "EUR"),
+        "plan": body["plan"],
+        "logo_url": body.get("logo_url"),
+        "booking_url_slug": slug,
+        "is_active": body.get("is_active", True),
+        "onboarding_completed": True,
+        "settings": body.get("settings", {}),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.tenants.insert_one({**tenant})
+    
+    # Create owner user
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    user = {
+        "user_id": user_id,
+        "email": body["owner_email"],
+        "name": body["owner_name"],
+        "picture": None,
+        "tenant_id": tenant_id,
+        "role": "owner",
+        "is_active": True,
+        "password_hash": hash_password(body["owner_password"]),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one({**user})
+    
+    # Create default message templates
+    templates = [
+        {
+            "template_id": f"template_{uuid.uuid4().hex[:12]}",
+            "tenant_id": tenant_id,
+            "name": "Booking Confirmation",
+            "type": "email",
+            "trigger": "booking_confirmation",
+            "subject": "Your appointment is confirmed",
+            "content": "Hi {client_name}, your appointment for {service_name} on {date} at {time} has been confirmed.",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "template_id": f"template_{uuid.uuid4().hex[:12]}",
+            "tenant_id": tenant_id,
+            "name": "Appointment Reminder",
+            "type": "email",
+            "trigger": "reminder",
+            "subject": "Reminder: Your appointment is tomorrow",
+            "content": "Hi {client_name}, this is a reminder for your appointment tomorrow at {time}.",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+    ]
+    await db.message_templates.insert_many(templates)
+    
+    return {
+        "tenant": tenant,
+        "owner": {"user_id": user_id, "email": user["email"], "name": user["name"]},
+        "features": PLAN_FEATURES.get(body["plan"], PLAN_FEATURES["starter"])
+    }
+
+@api_router.put("/admin/tenants/{tenant_id}")
+async def admin_update_tenant(tenant_id: str, updates: Dict[str, Any], admin: Dict = Depends(get_super_admin)):
+    """Update tenant (super admin only)"""
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Handle plan change
+    old_plan = tenant.get("plan", "starter")
+    new_plan = updates.get("plan", old_plan)
+    
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Remove fields that shouldn't be updated directly
+    updates.pop("tenant_id", None)
+    updates.pop("created_at", None)
+    
+    await db.tenants.update_one(
+        {"tenant_id": tenant_id},
+        {"$set": updates}
+    )
+    
+    updated = await db.tenants.find_one({"tenant_id": tenant_id}, {"_id": 0})
+    
+    return {
+        "tenant": updated,
+        "features": PLAN_FEATURES.get(new_plan, PLAN_FEATURES["starter"]),
+        "plan_changed": old_plan != new_plan
+    }
+
+@api_router.delete("/admin/tenants/{tenant_id}")
+async def admin_delete_tenant(tenant_id: str, admin: Dict = Depends(get_super_admin)):
+    """Deactivate tenant (super admin only) - soft delete"""
+    result = await db.tenants.update_one(
+        {"tenant_id": tenant_id},
+        {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Also deactivate all users for this tenant
+    await db.users.update_many(
+        {"tenant_id": tenant_id},
+        {"$set": {"is_active": False}}
+    )
+    
+    return {"message": "Tenant deactivated"}
+
+@api_router.post("/admin/tenants/{tenant_id}/activate")
+async def admin_activate_tenant(tenant_id: str, admin: Dict = Depends(get_super_admin)):
+    """Reactivate tenant (super admin only)"""
+    result = await db.tenants.update_one(
+        {"tenant_id": tenant_id},
+        {"$set": {"is_active": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Also reactivate owner
+    await db.users.update_one(
+        {"tenant_id": tenant_id, "role": "owner"},
+        {"$set": {"is_active": True}}
+    )
+    
+    return {"message": "Tenant activated"}
+
+@api_router.get("/admin/stats")
+async def admin_get_stats(admin: Dict = Depends(get_super_admin)):
+    """Get platform-wide statistics (super admin only)"""
+    now = datetime.now(timezone.utc)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+    
+    # Tenant stats
+    total_tenants = await db.tenants.count_documents({})
+    active_tenants = await db.tenants.count_documents({"is_active": True})
+    
+    # Plan distribution
+    starter_count = await db.tenants.count_documents({"plan": "starter", "is_active": True})
+    growth_count = await db.tenants.count_documents({"plan": "growth", "is_active": True})
+    pro_count = await db.tenants.count_documents({"plan": "pro", "is_active": True})
+    
+    # Calculate MRR
+    mrr = (starter_count * 29) + (growth_count * 79) + (pro_count * 149)
+    
+    # User stats
+    total_users = await db.users.count_documents({})
+    
+    # Appointment stats
+    total_appointments = await db.appointments.count_documents({})
+    month_appointments = await db.appointments.count_documents({"created_at": {"$gte": month_start}})
+    
+    # New tenants this month
+    new_tenants = await db.tenants.count_documents({"created_at": {"$gte": month_start}})
+    
+    return {
+        "tenants": {
+            "total": total_tenants,
+            "active": active_tenants,
+            "inactive": total_tenants - active_tenants,
+            "new_this_month": new_tenants
+        },
+        "plans": {
+            "starter": starter_count,
+            "growth": growth_count,
+            "pro": pro_count
+        },
+        "revenue": {
+            "mrr": mrr,
+            "currency": "EUR"
+        },
+        "users": {
+            "total": total_users
+        },
+        "appointments": {
+            "total": total_appointments,
+            "this_month": month_appointments
+        }
+    }
+
+@api_router.post("/admin/impersonate/{user_id}")
+async def admin_impersonate_user(user_id: str, response: Response, admin: Dict = Depends(get_super_admin)):
+    """Impersonate a user (super admin only) - for support purposes"""
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Create a session for the user
+    token = create_jwt_token(user["user_id"], user.get("tenant_id"))
+    
+    # Store impersonation record for audit
+    await db.impersonation_logs.insert_one({
+        "admin_id": admin["admin_id"],
+        "user_id": user_id,
+        "tenant_id": user.get("tenant_id"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        max_age=JWT_EXPIRATION_HOURS * 3600
+    )
+    
+    return {
+        "user": {k: v for k, v in user.items() if k != "password_hash"},
+        "token": token,
+        "message": "Now impersonating user"
+    }
+
 # Include router
 app.include_router(api_router)
 

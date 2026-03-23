@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { BarChart3, TrendingUp, Users, Calendar, DollarSign } from 'lucide-react';
@@ -34,7 +34,7 @@ const ReportsPage = () => {
   ];
 
   return (
-    <AdminLayout title="Reports">
+    <TenantLayout title="Reports">
       {loading ? (
         <div className="py-12 text-center text-[#666666]">Loading...</div>
       ) : (
@@ -107,7 +107,7 @@ const ReportsPage = () => {
           </div>
         </>
       )}
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 

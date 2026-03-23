@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
+import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
@@ -99,7 +99,7 @@ const ResourcesPage = () => {
   const isPro = tenant?.plan === 'pro';
 
   return (
-    <AdminLayout title="Resources">
+    <TenantLayout title="Resources">
       {!isPro ? (
         <div className="card-flat py-12 text-center">
           <Box className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
@@ -237,7 +237,7 @@ const ResourcesPage = () => {
           </Dialog>
         </>
       )}
-    </AdminLayout>
+    </TenantLayout>
   );
 };
 
