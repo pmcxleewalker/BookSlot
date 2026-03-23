@@ -390,7 +390,7 @@ async def register(user_data: UserCreate, response: Response):
     if user_data.password:
         user_dict["password_hash"] = hash_password(user_data.password)
     
-    await db.users.insert_one(user_dict)
+    await db.users.insert_one({**user_dict})
     
     token = create_jwt_token(user.user_id)
     response.set_cookie(
@@ -403,8 +403,11 @@ async def register(user_data: UserCreate, response: Response):
         max_age=JWT_EXPIRATION_HOURS * 3600
     )
     
+    # Remove password_hash from response
+    user_response = {k: v for k, v in user_dict.items() if k != "password_hash"}
+    
     return {
-        "user": UserResponse(**user_dict).model_dump(),
+        "user": UserResponse(**user_response).model_dump(),
         "token": token
     }
 
@@ -550,7 +553,8 @@ async def create_tenant(tenant_data: TenantCreate, user: Dict = Depends(get_curr
     tenant_dict["created_at"] = tenant_dict["created_at"].isoformat()
     tenant_dict["updated_at"] = tenant_dict["updated_at"].isoformat()
     
-    await db.tenants.insert_one(tenant_dict)
+    # Use a copy for insert to avoid _id being added to tenant_dict
+    await db.tenants.insert_one({**tenant_dict})
     
     # Update user with tenant_id
     await db.users.update_one(
@@ -654,7 +658,7 @@ async def create_staff(staff_data: StaffCreate, user: Dict = Depends(get_current
     staff_dict = staff.model_dump()
     staff_dict["created_at"] = staff_dict["created_at"].isoformat()
     
-    await db.staff.insert_one(staff_dict)
+    await db.staff.insert_one({**staff_dict})
     return {"staff": staff_dict}
 
 @api_router.put("/staff/{staff_id}")
@@ -711,7 +715,7 @@ async def create_service(service_data: ServiceCreate, user: Dict = Depends(get_c
     service_dict = service.model_dump()
     service_dict["created_at"] = service_dict["created_at"].isoformat()
     
-    await db.services.insert_one(service_dict)
+    await db.services.insert_one({**service_dict})
     return {"service": service_dict}
 
 @api_router.put("/services/{service_id}")
@@ -768,7 +772,7 @@ async def create_resource(resource_data: ResourceCreate, user: Dict = Depends(ge
     resource_dict = resource.model_dump()
     resource_dict["created_at"] = resource_dict["created_at"].isoformat()
     
-    await db.resources.insert_one(resource_dict)
+    await db.resources.insert_one({**resource_dict})
     return {"resource": resource_dict}
 
 @api_router.put("/resources/{resource_id}")
@@ -835,7 +839,7 @@ async def create_client(client_data: ClientCreate, user: Dict = Depends(get_curr
     if client_dict.get("last_visit"):
         client_dict["last_visit"] = client_dict["last_visit"].isoformat()
     
-    await db.clients.insert_one(client_dict)
+    await db.clients.insert_one({**client_dict})
     return {"client": client_dict}
 
 @api_router.get("/clients/{client_id}")
@@ -934,7 +938,7 @@ async def create_appointment(appt_data: AppointmentCreate, user: Dict = Depends(
     appt_dict["created_at"] = appt_dict["created_at"].isoformat()
     appt_dict["updated_at"] = appt_dict["updated_at"].isoformat()
     
-    await db.appointments.insert_one(appt_dict)
+    await db.appointments.insert_one({**appt_dict})
     
     # Trigger webhook
     await trigger_webhook(user["tenant_id"], WebhookEvent.BOOKING_CREATED, appt_dict)
@@ -1137,7 +1141,7 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
     appt_dict["created_at"] = appt_dict["created_at"].isoformat()
     appt_dict["updated_at"] = appt_dict["updated_at"].isoformat()
     
-    await db.appointments.insert_one(appt_dict)
+    await db.appointments.insert_one({**appt_dict})
     
     await trigger_webhook(tenant["tenant_id"], WebhookEvent.BOOKING_CREATED, appt_dict)
     
@@ -1214,7 +1218,7 @@ async def create_form(form_data: FormCreate, user: Dict = Depends(get_current_us
     form_dict = form.model_dump()
     form_dict["created_at"] = form_dict["created_at"].isoformat()
     
-    await db.forms.insert_one(form_dict)
+    await db.forms.insert_one({**form_dict})
     return {"form": form_dict}
 
 # ================== MESSAGE TEMPLATES ==================
@@ -1325,7 +1329,7 @@ async def create_webhook(webhook_data: Dict[str, Any], user: Dict = Depends(get_
     webhook_dict = webhook.model_dump()
     webhook_dict["created_at"] = webhook_dict["created_at"].isoformat()
     
-    await db.webhooks.insert_one(webhook_dict)
+    await db.webhooks.insert_one({**webhook_dict})
     return {"webhook": webhook_dict}
 
 @api_router.delete("/webhooks/{webhook_id}")
@@ -1504,7 +1508,7 @@ async def receptionist_create_booking(tenant_id: str, booking: Dict[str, Any], a
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
-    await db.appointments.insert_one(appointment)
+    await db.appointments.insert_one({**appointment})
     
     await trigger_webhook(tenant_id, WebhookEvent.BOOKING_CREATED, appointment)
     
