@@ -75,7 +75,7 @@ const AIReceptionistWidget = () => {
       {/* Chat Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 w-14 h-14 bg-[#4F46E5] text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-xl z-50 ${isOpen ? 'scale-0' : 'scale-100'}`}
+        className={`fixed bottom-20 right-6 w-14 h-14 bg-[#4F46E5] text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-xl z-50 ${isOpen ? 'scale-0' : 'scale-100'}`}
         data-testid="ai-widget-button"
         aria-label="Open AI receptionist chat"
       >
@@ -84,7 +84,7 @@ const AIReceptionistWidget = () => {
 
       {/* Chat Window */}
       <div
-        className={`fixed bottom-6 right-6 w-[380px] max-w-[calc(100vw-48px)] glass-widget rounded-lg overflow-hidden z-50 transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}`}
+        className={`fixed bottom-20 right-6 w-[380px] max-w-[calc(100vw-48px)] glass-widget rounded-lg overflow-hidden z-50 transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}`}
         data-testid="ai-widget-window"
       >
         {/* Header */}
