@@ -3,72 +3,63 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Calendar, Check, ArrowRight, HelpCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { Switch } from '../components/ui/switch';
 
 const plans = [
   {
     name: 'Starter',
-    price: 90,
-    description: 'Perfect for solo practitioners and small teams',
+    price: 59,
+    description: 'For solo operators and very small teams',
     features: [
       '1 location',
-      'Up to 2 staff members',
+      'Up to 2 staff',
       'Online booking page',
       'Email confirmations',
-      'Calendar view',
-      'Client management',
-      'Calendar sync (Google/Outlook)',
+      'Automated reminders',
+      'Calendar sync',
+      'Basic customer records',
+      'Basic availability management',
+      'Basic reports',
     ],
-    notIncluded: [
-      'SMS notifications',
-      'AI receptionist',
-      'Waitlist & packages',
-      'Reports & analytics',
-    ],
+    inheritText: null,
     cta: 'Start Free Trial',
     popular: false,
   },
   {
     name: 'Growth',
-    price: 145,
-    description: 'For growing businesses that need more power',
+    price: 129,
+    description: 'For growing teams',
+    inheritText: 'Everything in Starter, plus:',
     features: [
-      '1 location',
-      'Up to 8 staff members',
-      'Everything in Starter, plus:',
-      'SMS notifications',
-      'Automated reminders',
-      'Waitlist management',
-      'Deposit collection',
-      'Service packages',
-      'AI receptionist (Moltbot)',
+      'Up to 8 staff',
+      'AI receptionist',
       'Reports & analytics',
-    ],
-    notIncluded: [
-      'Multi-location',
-      'API & webhooks',
-      'White-label',
+      'Deposits and no-show protection',
+      'Custom booking forms',
+      'Service add-ons / extras',
+      'Team performance insights',
+      'Branded booking page',
+      'Priority email support',
     ],
     cta: 'Start Free Trial',
     popular: true,
   },
   {
     name: 'Pro',
-    price: 299,
-    description: 'For established businesses with advanced needs',
+    price: 279,
+    description: 'For multi-location businesses',
+    inheritText: 'Everything in Growth, plus:',
     features: [
-      'Up to 10 locations',
-      'Up to 50 staff members',
-      'Everything in Growth, plus:',
-      'Multi-location management',
-      'Advanced permissions',
-      'Resource booking (rooms, equipment)',
-      'Custom intake forms',
-      'White-label booking page',
-      'API & webhooks',
-      'Dedicated support',
+      'Up to 5 locations',
+      'Up to 50 staff',
+      'API access',
+      'Webhooks',
+      'White-label option',
+      'Advanced roles and permissions',
+      'Multi-location reporting',
+      'Centralised admin dashboard',
+      'Custom onboarding support',
+      'Priority support',
     ],
-    notIncluded: [],
     cta: 'Start Free Trial',
     popular: false,
   },
@@ -77,7 +68,7 @@ const plans = [
 const faqs = [
   {
     question: 'Is there a free trial?',
-    answer: 'Yes! All plans come with a 14-day free trial. No credit card required to start.',
+    answer: 'Yes! All plans come with a 3-day free trial. No credit card required to start.',
   },
   {
     question: 'Can I change plans later?',
@@ -88,12 +79,8 @@ const faqs = [
     answer: 'We accept all major credit cards (Visa, Mastercard, American Express) and PayPal.',
   },
   {
-    question: 'Do you offer discounts for annual billing?',
-    answer: 'Yes! Save 20% when you choose annual billing. Thats 2 months free!',
-  },
-  {
     question: 'What is the AI receptionist?',
-    answer: 'Our AI receptionist (powered by Moltbot) can handle bookings, answer FAQs, and communicate with clients 24/7 via chat, WhatsApp, or other messaging platforms.',
+    answer: 'Our AI receptionist can handle bookings, answer FAQs, and communicate with clients 24/7 via chat, WhatsApp, or other messaging platforms.',
   },
   {
     question: 'Is my data secure?',
@@ -102,7 +89,6 @@ const faqs = [
 ];
 
 export default function PricingPage() {
-  const [annual, setAnnual] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
 
   return (
@@ -123,9 +109,9 @@ export default function PricingPage() {
               <Link to="/features" className="text-[#6B6B6B] hover:text-[#1C1C1C] transition-colors">Features</Link>
               <Link to="/pricing" className="text-[#2E473B] font-medium">Pricing</Link>
               <Link to="/login" className="text-[#6B6B6B] hover:text-[#1C1C1C] transition-colors">Login</Link>
-              <Link to="/signup">
+              <Link to="/trial">
                 <Button className="bg-[#2E473B] hover:bg-[#243A2F] text-white rounded-full px-6">
-                  Get Started Free
+                  Start Free Trial
                 </Button>
               </Link>
             </div>
@@ -144,30 +130,20 @@ export default function PricingPage() {
             <h1 className="text-4xl sm:text-5xl font-bold text-[#1C1C1C] mb-6" style={{ fontFamily: 'Outfit' }}>
               Simple, transparent pricing
             </h1>
-            <p className="text-lg text-[#6B6B6B] max-w-2xl mx-auto mb-8">
-              Choose the plan that fits your business. All plans include a 14-day free trial.
+            <p className="text-lg text-[#6B6B6B] max-w-2xl mx-auto mb-4">
+              Choose the plan that fits your business.
             </p>
-            
-            {/* Billing Toggle */}
-            <div className="flex items-center justify-center gap-4 mb-12">
-              <span className={`text-sm ${!annual ? 'text-[#1C1C1C] font-medium' : 'text-[#6B6B6B]'}`}>Monthly</span>
-              <Switch 
-                checked={annual} 
-                onCheckedChange={setAnnual}
-                data-testid="billing-toggle"
-              />
-              <span className={`text-sm ${annual ? 'text-[#1C1C1C] font-medium' : 'text-[#6B6B6B]'}`}>
-                Annual <span className="text-[#3E6653] font-medium">(Save 20%)</span>
-              </span>
-            </div>
+            <p className="text-sm text-[#3E6653] font-medium">
+              All plans include a 3-day free trial
+            </p>
           </motion.div>
         </div>
       </section>
 
       {/* Pricing Cards */}
       <section className="pb-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6">
             {plans.map((plan, index) => (
               <motion.div
                 key={plan.name}
@@ -175,44 +151,43 @@ export default function PricingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className={`pricing-card ${plan.popular ? 'pricing-card-featured' : ''}`}
+                className={`relative rounded-2xl p-6 ${
+                  plan.popular 
+                    ? 'bg-[#2E473B] text-white ring-2 ring-[#2E473B] ring-offset-2 ring-offset-[#FAF9F6]' 
+                    : 'bg-white border border-[#E5E5E0]'
+                }`}
                 data-testid={`plan-${plan.name.toLowerCase()}`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-[#2E473B] text-white text-xs font-medium px-3 py-1 rounded-full">
+                    <span className="bg-[#E6B861] text-[#1C1C1C] text-xs font-semibold px-4 py-1 rounded-full whitespace-nowrap">
                       Most Popular
                     </span>
                   </div>
                 )}
                 
                 <div className="mb-6">
-                  <h3 className="text-xl font-bold text-[#1C1C1C] mb-2" style={{ fontFamily: 'Outfit' }}>
+                  <h3 className={`text-xl font-bold mb-1 ${plan.popular ? 'text-white' : 'text-[#1C1C1C]'}`} style={{ fontFamily: 'Outfit' }}>
                     {plan.name}
                   </h3>
-                  <p className="text-sm text-[#6B6B6B]">{plan.description}</p>
+                  <p className={`text-sm ${plan.popular ? 'text-white/70' : 'text-[#6B6B6B]'}`}>{plan.description}</p>
                 </div>
                 
                 <div className="mb-6">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-[#1C1C1C]" style={{ fontFamily: 'Outfit' }}>
-                      €{annual ? Math.round(plan.price * 0.8) : plan.price}
+                    <span className={`text-4xl font-bold ${plan.popular ? 'text-white' : 'text-[#1C1C1C]'}`} style={{ fontFamily: 'Outfit' }}>
+                      €{plan.price}
                     </span>
-                    <span className="text-[#6B6B6B]">/month</span>
+                    <span className={plan.popular ? 'text-white/70' : 'text-[#6B6B6B]'}>/month</span>
                   </div>
-                  {annual && (
-                    <p className="text-sm text-[#3E6653] mt-1">
-                      Billed €{Math.round(plan.price * 0.8 * 12)} annually
-                    </p>
-                  )}
                 </div>
                 
-                <Link to="/signup">
+                <Link to="/trial">
                   <Button 
-                    className={`w-full rounded-xl h-12 mb-6 ${
+                    className={`w-full rounded-xl h-12 mb-6 font-medium ${
                       plan.popular 
-                        ? 'bg-[#2E473B] hover:bg-[#243A2F] text-white' 
-                        : 'bg-[#2E473B]/10 hover:bg-[#2E473B]/20 text-[#2E473B]'
+                        ? 'bg-white hover:bg-gray-100 text-[#2E473B]' 
+                        : 'bg-[#2E473B] hover:bg-[#243A2F] text-white'
                     }`}
                   >
                     {plan.cta}
@@ -220,16 +195,21 @@ export default function PricingPage() {
                 </Link>
                 
                 <ul className="space-y-3">
+                  {plan.inheritText && (
+                    <li className={`text-sm font-semibold pb-2 border-b ${
+                      plan.popular 
+                        ? 'text-white/90 border-white/20' 
+                        : 'text-[#1C1C1C] border-[#E5E5E0]'
+                    }`}>
+                      {plan.inheritText}
+                    </li>
+                  )}
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-3 text-sm">
-                      <Check className="w-4 h-4 text-[#3E6653] flex-shrink-0 mt-0.5" />
-                      <span className="text-[#1C1C1C]">{feature}</span>
-                    </li>
-                  ))}
-                  {plan.notIncluded.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm opacity-50">
-                      <Check className="w-4 h-4 text-[#6B6B6B] flex-shrink-0 mt-0.5" />
-                      <span className="text-[#6B6B6B] line-through">{feature}</span>
+                      <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                        plan.popular ? 'text-[#E6B861]' : 'text-[#3E6653]'
+                      }`} />
+                      <span className={plan.popular ? 'text-white/90' : 'text-[#1C1C1C]'}>{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -278,15 +258,15 @@ export default function PricingPage() {
               Start your free trial today
             </h2>
             <p className="text-white/80 text-lg mb-8">
-              14 days free. No credit card required. Cancel anytime.
+              3 days free. No credit card required. Cancel anytime.
             </p>
-            <Link to="/signup">
+            <Link to="/trial">
               <Button 
                 size="lg" 
                 className="bg-white text-[#2E473B] hover:bg-white/90 rounded-full px-8"
                 data-testid="pricing-cta"
               >
-                Get Started Free
+                Start Free Trial
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>

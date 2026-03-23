@@ -58,22 +58,55 @@ const testimonials = [
 const plans = [
   {
     name: 'Starter',
-    price: 90,
-    description: 'Solo practitioners',
-    features: ['1 location', '2 staff', 'Online booking', 'Email confirmations'],
+    price: 59,
+    description: 'For solo operators and very small teams',
+    features: [
+      '1 location',
+      'Up to 2 staff',
+      'Online booking page',
+      'Email confirmations',
+      'Automated reminders',
+      'Calendar sync',
+      'Basic customer records',
+      'Basic availability management',
+      'Basic reports',
+    ],
   },
   {
     name: 'Growth',
-    price: 145,
+    price: 129,
     popular: true,
-    description: 'Growing teams',
-    features: ['1 location', '8 staff', 'AI receptionist', 'Reports & analytics'],
+    description: 'For growing teams',
+    inheritText: 'Everything in Starter, plus:',
+    features: [
+      'Up to 8 staff',
+      'AI receptionist',
+      'Reports & analytics',
+      'Deposits and no-show protection',
+      'Custom booking forms',
+      'Service add-ons / extras',
+      'Team performance insights',
+      'Branded booking page',
+      'Priority email support',
+    ],
   },
   {
     name: 'Pro',
-    price: 299,
-    description: 'Multi-location',
-    features: ['10 locations', '50 staff', 'API & webhooks', 'White-label'],
+    price: 279,
+    description: 'For multi-location businesses',
+    inheritText: 'Everything in Growth, plus:',
+    features: [
+      'Up to 5 locations',
+      'Up to 50 staff',
+      'API access',
+      'Webhooks',
+      'White-label option',
+      'Advanced roles and permissions',
+      'Multi-location reporting',
+      'Centralised admin dashboard',
+      'Custom onboarding support',
+      'Priority support',
+    ],
   },
 ];
 
@@ -138,7 +171,7 @@ export default function FranchiseLanding() {
             </h1>
             
             <p className="text-gray-500 text-lg mb-6">
-              Online scheduling your clients will love. From €90/month.
+              Online scheduling your clients will love. From €59/month.
             </p>
 
             <Link to="/trial">
@@ -255,16 +288,20 @@ export default function FranchiseLanding() {
             {plans.map((plan) => (
               <div
                 key={plan.name}
-                className={`rounded-2xl p-6 ${
+                className={`rounded-2xl p-6 relative ${
                   plan.popular 
-                    ? 'bg-gray-900 text-white' 
+                    ? 'bg-gray-900 text-white ring-2 ring-gray-900 ring-offset-2' 
                     : 'bg-white border border-gray-200'
                 }`}
               >
                 {plan.popular && (
-                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Popular</span>
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="bg-amber-400 text-gray-900 text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap">
+                      Most Popular
+                    </span>
+                  </div>
                 )}
-                <h3 className={`text-xl font-semibold mt-1 ${plan.popular ? 'text-white' : 'text-gray-900'}`}>
+                <h3 className={`text-xl font-semibold ${plan.popular ? 'text-white' : 'text-gray-900'}`}>
                   {plan.name}
                 </h3>
                 <p className={`text-sm mb-4 ${plan.popular ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -274,7 +311,7 @@ export default function FranchiseLanding() {
                   <span className={`text-3xl font-semibold ${plan.popular ? 'text-white' : 'text-gray-900'}`}>
                     €{plan.price}
                   </span>
-                  <span className={plan.popular ? 'text-gray-400' : 'text-gray-500'}>/mo</span>
+                  <span className={plan.popular ? 'text-gray-400' : 'text-gray-500'}>/month</span>
                 </div>
                 
                 <Link to="/trial">
@@ -291,9 +328,14 @@ export default function FranchiseLanding() {
                 </Link>
                 
                 <ul className="space-y-2.5">
+                  {plan.inheritText && (
+                    <li className={`text-sm font-medium mb-3 ${plan.popular ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {plan.inheritText}
+                    </li>
+                  )}
                   {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2.5 text-sm">
-                      <Check className={`w-4 h-4 ${plan.popular ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <li key={i} className="flex items-start gap-2.5 text-sm">
+                      <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${plan.popular ? 'text-emerald-400' : 'text-emerald-600'}`} />
                       <span className={plan.popular ? 'text-gray-300' : 'text-gray-600'}>{feature}</span>
                     </li>
                   ))}
