@@ -50,6 +50,20 @@ from email_service import (
     generate_reminder_email, generate_cancellation_email
 )
 from admin import admin_router, set_admin_db
+from slot_locking import (
+    acquire_slot_lock, release_slot_lock, convert_lock_to_booking,
+    check_slot_available, cleanup_expired_locks
+)
+from rbac import Permission, has_permission, require_permission, ROLE_PERMISSIONS
+from plan_enforcement import (
+    check_feature_access, require_feature, check_resource_limit,
+    require_resource_limit, get_plan_usage_summary, PLAN_FEATURES
+)
+from invoices import (
+    create_invoice, get_invoice, list_invoices, update_invoice_status,
+    generate_invoice_pdf_html, InvoiceStatus
+)
+from reminders import process_reminders, get_reminder_status, reminder_scheduler_task
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -553,8 +567,13 @@ async def create_staff(data: StaffCreate, request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
-    if not await check_plan_limits(user.tenant_id, "staff"):
-        raise HTTPException(status_code=403, detail="Staff limit reached for your plan")
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.STAFF_CREATE):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    # Plan limit check using new enforcement
+    await require_resource_limit(db, user.tenant_id, "staff", "staff members")
     
     staff = StaffMember(
         tenant_id=user.tenant_id,
@@ -668,6 +687,11 @@ async def delete_staff(staff_id: str, request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
+    # RBAC check - only owner/admin can delete staff
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.STAFF_DELETE):
+        raise HTTPException(status_code=403, detail="Permission denied. Only owners and admins can delete staff.")
+    
     await db.staff.update_one(
         {"staff_id": staff_id, "tenant_id": user.tenant_id},
         {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
@@ -775,6 +799,11 @@ async def delete_service(service_id: str, request: Request):
     user = await require_auth(request, db)
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check - only owner/admin can delete services
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.SERVICES_DELETE):
+        raise HTTPException(status_code=403, detail="Permission denied. Only owners and admins can delete services.")
     
     await db.services.update_one(
         {"service_id": service_id, "tenant_id": user.tenant_id},
@@ -1910,6 +1939,173 @@ async def upgrade_subscription(request: Request):
     return {"message": f"Upgraded to {new_plan} plan", "plan": new_plan}
 
 
+# =====================
+# Invoice Endpoints
+# =====================
+
+class InvoiceCreate(BaseModel):
+    bill_to_name: str
+    bill_to_email: str
+    bill_to_address: Optional[str] = None
+    bill_to_city: Optional[str] = None
+    bill_to_country: Optional[str] = None
+    bill_to_vat: Optional[str] = None
+    items: List[Dict[str, Any]]
+    tax_rate: float = 0
+    notes: Optional[str] = None
+    due_days: int = 14
+
+
+@api_router.get("/invoices")
+async def list_tenant_invoices(
+    request: Request,
+    status: Optional[str] = Query(None),
+    limit: int = Query(50, le=100),
+    skip: int = Query(0)
+):
+    """List invoices for current tenant"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # Check permission
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.INVOICES_VIEW):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    invoices = await list_invoices(db, user.tenant_id, status=status, limit=limit, skip=skip)
+    total = await db.invoices.count_documents({"tenant_id": user.tenant_id})
+    
+    return {"invoices": invoices, "total": total}
+
+
+@api_router.post("/invoices")
+async def create_tenant_invoice(data: InvoiceCreate, request: Request):
+    """Create a new invoice"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # Check permission
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.INVOICES_CREATE):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    invoice = await create_invoice(
+        db=db,
+        tenant_id=user.tenant_id,
+        bill_to_name=data.bill_to_name,
+        bill_to_email=data.bill_to_email,
+        items=data.items,
+        bill_to_address=data.bill_to_address,
+        bill_to_city=data.bill_to_city,
+        bill_to_country=data.bill_to_country,
+        bill_to_vat=data.bill_to_vat,
+        tax_rate=data.tax_rate,
+        notes=data.notes,
+        due_days=data.due_days
+    )
+    
+    await log_audit(user.tenant_id, user.user_id, "create", "invoice", invoice["invoice_id"], data.model_dump())
+    
+    return invoice
+
+
+@api_router.get("/invoices/{invoice_id}")
+async def get_tenant_invoice(invoice_id: str, request: Request):
+    """Get a specific invoice"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    invoice = await get_invoice(db, user.tenant_id, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    return invoice
+
+
+@api_router.put("/invoices/{invoice_id}/status")
+async def update_tenant_invoice_status(invoice_id: str, request: Request):
+    """Update invoice status"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    body = await request.json()
+    new_status = body.get("status")
+    
+    if new_status not in [InvoiceStatus.DRAFT, InvoiceStatus.SENT, InvoiceStatus.PAID, InvoiceStatus.CANCELLED]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    success = await update_invoice_status(db, user.tenant_id, invoice_id, new_status)
+    if not success:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    await log_audit(user.tenant_id, user.user_id, "update", "invoice", invoice_id, {"status": new_status})
+    
+    return {"message": "Status updated", "status": new_status}
+
+
+@api_router.get("/invoices/{invoice_id}/pdf")
+async def get_invoice_pdf(invoice_id: str, request: Request):
+    """Generate and download invoice PDF"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    invoice = await get_invoice(db, user.tenant_id, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    tenant = await db.tenants.find_one({"tenant_id": user.tenant_id}, {"_id": 0})
+    
+    # Generate HTML (will be PDF in production with weasyprint)
+    html_content = generate_invoice_pdf_html(invoice, tenant)
+    
+    # Return HTML for now (can be rendered as PDF by client or use weasyprint)
+    return Response(
+        content=html_content,
+        media_type="text/html",
+        headers={
+            "Content-Disposition": f"inline; filename=invoice-{invoice['invoice_number']}.html"
+        }
+    )
+
+
+# =====================
+# Plan Usage Endpoint
+# =====================
+
+@api_router.get("/subscription/usage")
+async def get_subscription_usage(request: Request):
+    """Get plan usage summary for current tenant"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    usage = await get_plan_usage_summary(db, user.tenant_id)
+    return usage
+
+
+# =====================
+# Permission Check Endpoint  
+# =====================
+
+@api_router.get("/permissions")
+async def get_user_permissions(request: Request):
+    """Get current user's permissions"""
+    user = await require_auth(request, db)
+    
+    user_role = UserRole(user.role)
+    permissions = [p.value for p in ROLE_PERMISSIONS.get(user_role, set())]
+    
+    return {
+        "role": user.role,
+        "permissions": permissions
+    }
+
+
 # Include router
 app.include_router(api_router)
 app.include_router(admin_router)
@@ -1924,6 +2120,22 @@ app.add_middleware(
 )
 
 
+# Background tasks
+reminder_task = None
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks on server startup"""
+    global reminder_task
+    import asyncio
+    # Start reminder scheduler as background task
+    reminder_task = asyncio.create_task(reminder_scheduler_task(db))
+    logging.info("Reminder scheduler started")
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    global reminder_task
+    if reminder_task:
+        reminder_task.cancel()
     client.close()

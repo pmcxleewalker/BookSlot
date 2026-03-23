@@ -35,6 +35,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminTenants from './pages/admin/AdminTenants';
 import AdminCreateTenant from './pages/admin/AdminCreateTenant';
 import AdminTenantDetail from './pages/admin/AdminTenantDetail';
+import AdminInvoices from './pages/admin/AdminInvoices';
+import AdminCreateInvoice from './pages/admin/AdminCreateInvoice';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -230,6 +232,22 @@ const AppRouter = () => {
         element={
           <ProtectedAdminRoute>
             <AdminTenantDetail />
+          </ProtectedAdminRoute>
+        }
+      />
+      <Route
+        path="/admin/invoices"
+        element={
+          <ProtectedAdminRoute>
+            <AdminInvoices />
+          </ProtectedAdminRoute>
+        }
+      />
+      <Route
+        path="/admin/invoices/new"
+        element={
+          <ProtectedAdminRoute>
+            <AdminCreateInvoice />
           </ProtectedAdminRoute>
         }
       />

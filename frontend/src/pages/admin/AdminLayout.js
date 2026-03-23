@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Building2, LayoutDashboard, Users, Settings, LogOut, Menu, X, 
-  PlusCircle, BarChart3, Shield
+  PlusCircle, BarChart3, Shield, FileText
 } from 'lucide-react';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import { Button } from '../../components/ui/button';
@@ -11,6 +11,7 @@ const navItems = [
   { path: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
   { path: '/admin/tenants', label: 'Tenants', icon: Users },
   { path: '/admin/tenants/new', label: 'Add Tenant', icon: PlusCircle },
+  { path: '/admin/invoices', label: 'Invoices', icon: FileText },
 ];
 
 export const AdminLayout = ({ children, title }) => {

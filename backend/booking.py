@@ -8,7 +8,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from models import (
     Appointment, AppointmentCreate, Service, StaffMember, 
-    StaffSchedule, Resource, BookingStatus, AvailabilitySlot, WorkingHours
+    StaffSchedule, Resource, BookingStatus, AvailabilitySlot, WorkingHours,
+    generate_id
 )
 
 
@@ -273,9 +274,12 @@ async def create_appointment(
     db: AsyncIOMotorDatabase,
     tenant_id: str,
     data: AppointmentCreate,
-    source: str = "online"
+    source: str = "online",
+    lock_id: Optional[str] = None,
+    locked_by: Optional[str] = None
 ) -> Appointment:
-    """Create a new appointment with conflict checking"""
+    """Create a new appointment with conflict checking and slot locking"""
+    from slot_locking import acquire_slot_lock, convert_lock_to_booking, check_slot_available
     
     # Get service details
     service_doc = await db.services.find_one(
@@ -293,7 +297,7 @@ async def create_appointment(
     )
     end_time = data.start_time + timedelta(minutes=total_duration)
     
-    # Check for conflicts
+    # Check for conflicts (traditional check)
     has_conflict = await check_booking_conflict(
         db, tenant_id, data.staff_id,
         data.start_time, end_time,
@@ -302,6 +306,23 @@ async def create_appointment(
     
     if has_conflict:
         raise ValueError("Time slot is not available")
+    
+    # If no lock_id provided, try to acquire a lock
+    # This prevents race conditions when two people book simultaneously
+    if not lock_id:
+        session_id = locked_by or generate_id("sess_")
+        lock_id = await acquire_slot_lock(
+            db=db,
+            tenant_id=tenant_id,
+            staff_id=data.staff_id,
+            start_time=data.start_time,
+            end_time=end_time,
+            locked_by=session_id,
+            resource_id=data.resource_id
+        )
+        
+        if not lock_id:
+            raise ValueError("Someone else is booking this slot. Please try another time.")
     
     # Create appointment
     appointment = Appointment(
@@ -327,6 +348,10 @@ async def create_appointment(
     doc["updated_at"] = doc["updated_at"].isoformat()
     
     await db.appointments.insert_one(doc)
+    
+    # Convert the lock to a booking (marks it as used)
+    if lock_id and locked_by:
+        await convert_lock_to_booking(db, lock_id, locked_by, appointment.appointment_id)
     
     return appointment
 

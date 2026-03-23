@@ -662,3 +662,191 @@ async def delete_tenant(tenant_id: str, request: Request):
     await db.tenants.delete_one({"tenant_id": tenant_id})
     
     return {"message": "Tenant and all data deleted"}
+
+
+# =====================
+# Admin Invoice Management (For Franchise Control Center)
+# =====================
+
+class AdminInvoiceCreate(BaseModel):
+    tenant_id: str
+    bill_to_name: str
+    bill_to_email: str
+    bill_to_address: Optional[str] = None
+    bill_to_city: Optional[str] = None
+    bill_to_country: Optional[str] = None
+    bill_to_vat: Optional[str] = None
+    items: List[Dict[str, Any]]
+    tax_rate: float = 0
+    notes: Optional[str] = None
+    due_days: int = 14
+
+
+@admin_router.get("/invoices")
+async def admin_list_all_invoices(
+    request: Request,
+    tenant_id: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    limit: int = Query(50, le=100),
+    skip: int = Query(0)
+):
+    """List all invoices across all tenants (super admin only)"""
+    await require_super_admin(request)
+    db = get_db()
+    
+    query = {}
+    if tenant_id:
+        query["tenant_id"] = tenant_id
+    if status:
+        query["status"] = status
+    
+    invoices = await db.invoices.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Enrich with tenant info
+    for invoice in invoices:
+        tenant = await db.tenants.find_one(
+            {"tenant_id": invoice["tenant_id"]},
+            {"_id": 0, "name": 1}
+        )
+        invoice["tenant_name"] = tenant.get("name") if tenant else "Unknown"
+    
+    total = await db.invoices.count_documents(query)
+    
+    return {"invoices": invoices, "total": total}
+
+
+@admin_router.post("/invoices")
+async def admin_create_invoice(data: AdminInvoiceCreate, request: Request):
+    """Create invoice for a tenant (super admin only)"""
+    from invoices import create_invoice
+    
+    await require_super_admin(request)
+    db = get_db()
+    
+    # Verify tenant exists
+    tenant = await db.tenants.find_one({"tenant_id": data.tenant_id})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    invoice = await create_invoice(
+        db=db,
+        tenant_id=data.tenant_id,
+        bill_to_name=data.bill_to_name,
+        bill_to_email=data.bill_to_email,
+        items=data.items,
+        bill_to_address=data.bill_to_address,
+        bill_to_city=data.bill_to_city,
+        bill_to_country=data.bill_to_country,
+        bill_to_vat=data.bill_to_vat,
+        tax_rate=data.tax_rate,
+        notes=data.notes,
+        due_days=data.due_days
+    )
+    
+    return invoice
+
+
+@admin_router.get("/invoices/{invoice_id}")
+async def admin_get_invoice(invoice_id: str, request: Request):
+    """Get invoice details (super admin only)"""
+    await require_super_admin(request)
+    db = get_db()
+    
+    invoice = await db.invoices.find_one(
+        {"invoice_id": invoice_id},
+        {"_id": 0}
+    )
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Get tenant info
+    tenant = await db.tenants.find_one(
+        {"tenant_id": invoice["tenant_id"]},
+        {"_id": 0}
+    )
+    
+    return {"invoice": invoice, "tenant": tenant}
+
+
+@admin_router.put("/invoices/{invoice_id}/status")
+async def admin_update_invoice_status(invoice_id: str, request: Request):
+    """Update invoice status (super admin only)"""
+    from invoices import InvoiceStatus
+    
+    await require_super_admin(request)
+    db = get_db()
+    
+    body = await request.json()
+    new_status = body.get("status")
+    
+    valid_statuses = [InvoiceStatus.DRAFT, InvoiceStatus.SENT, InvoiceStatus.PAID, InvoiceStatus.OVERDUE, InvoiceStatus.CANCELLED]
+    if new_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    update_data = {
+        "status": new_status,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if new_status == InvoiceStatus.PAID:
+        update_data["paid_date"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.invoices.update_one(
+        {"invoice_id": invoice_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    return {"message": "Invoice status updated", "status": new_status}
+
+
+@admin_router.get("/invoices/{invoice_id}/pdf")
+async def admin_get_invoice_pdf(invoice_id: str, request: Request):
+    """Generate and return invoice PDF HTML (super admin only)"""
+    from invoices import generate_invoice_pdf_html
+    from starlette.responses import HTMLResponse
+    
+    await require_super_admin(request)
+    db = get_db()
+    
+    invoice = await db.invoices.find_one(
+        {"invoice_id": invoice_id},
+        {"_id": 0}
+    )
+    
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    tenant = await db.tenants.find_one(
+        {"tenant_id": invoice["tenant_id"]},
+        {"_id": 0}
+    )
+    
+    html_content = generate_invoice_pdf_html(invoice, tenant)
+    
+    return HTMLResponse(
+        content=html_content,
+        headers={
+            "Content-Disposition": f"inline; filename=invoice-{invoice['invoice_number']}.html"
+        }
+    )
+
+
+@admin_router.delete("/invoices/{invoice_id}")
+async def admin_delete_invoice(invoice_id: str, request: Request):
+    """Delete an invoice (super admin only)"""
+    await require_super_admin(request)
+    db = get_db()
+    
+    result = await db.invoices.delete_one({"invoice_id": invoice_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    return {"message": "Invoice deleted"}
