@@ -69,6 +69,10 @@ from billing import (
     handle_stripe_webhook, get_plan_details, get_all_plans,
     SUBSCRIPTION_PLANS
 )
+from trial import (
+    create_trial_tenant, get_trial_status, convert_trial_to_paid,
+    check_trial_access, TRIAL_DURATION_DAYS, EARLY_SIGNUP_DISCOUNT_PERCENT
+)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -347,6 +351,80 @@ async def logout(request: Request, response: Response):
     
     clear_session_cookie(response)
     return {"message": "Logged out"}
+
+
+# =====================
+# Trial System
+# =====================
+
+class TrialSignupRequest(BaseModel):
+    business_name: str
+    owner_name: str
+    email: EmailStr
+    password: str
+    business_type: Optional[str] = "general"
+
+
+@api_router.post("/trial/signup")
+async def trial_signup(data: TrialSignupRequest, request: Request, response: Response):
+    """
+    Create a new 3-day trial account.
+    Returns tenant info and automatically logs in the user.
+    """
+    result = await create_trial_tenant(
+        db=db,
+        business_name=data.business_name,
+        owner_name=data.owner_name,
+        owner_email=data.email,
+        owner_password=data.password,
+        business_type=data.business_type
+    )
+    
+    # Auto-login the new user
+    user_doc = await db.users.find_one({"user_id": result["user_id"]}, {"_id": 0})
+    if user_doc:
+        session_token = generate_session_token()
+        await create_user_session(
+            db, user_doc["user_id"], session_token,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("User-Agent")
+        )
+        set_session_cookie(response, session_token)
+        result["session_token"] = session_token
+    
+    return result
+
+
+@api_router.get("/trial/status")
+async def get_trial_status_endpoint(request: Request):
+    """Get current trial status for authenticated user's tenant"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    return await get_trial_status(db, user.tenant_id)
+
+
+@api_router.post("/trial/convert")
+async def convert_trial_endpoint(request: Request):
+    """Convert trial to paid plan with optional early signup discount"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    body = await request.json()
+    plan_id = body.get("plan_id")
+    apply_discount = body.get("apply_discount", True)
+    
+    if not plan_id:
+        raise HTTPException(status_code=400, detail="plan_id required")
+    
+    return await convert_trial_to_paid(
+        db=db,
+        tenant_id=user.tenant_id,
+        plan_id=plan_id,
+        apply_discount=apply_discount
+    )
 
 
 # =====================

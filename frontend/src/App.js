@@ -15,6 +15,7 @@ import SignupPage from './pages/SignupPage';
 import AuthCallback from './pages/AuthCallback';
 import PublicBooking from './pages/PublicBooking';
 import ManageBooking from './pages/ManageBooking';
+import TrialSignup from './pages/TrialSignup';
 
 // Pages - Dashboard
 import Dashboard from './pages/dashboard/Dashboard';
@@ -107,6 +108,7 @@ const AppRouter = () => {
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/trial" element={<TrialSignup />} />
       <Route path="/book/:tenantSlug" element={<PublicBooking />} />
       <Route path="/manage/:appointmentId" element={<ManageBooking />} />
 

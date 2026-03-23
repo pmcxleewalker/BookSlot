@@ -97,7 +97,7 @@ export default function FranchiseLanding() {
               <a href="#pricing" className="text-gray-500 hover:text-gray-900 transition-colors text-sm font-medium">
                 Pricing
               </a>
-              <Link to="/book/demo-business">
+              <Link to="/trial">
                 <Button className="bg-gray-900 hover:bg-gray-800 text-white rounded-full px-5 h-9 text-sm">
                   Try Free Demo
                 </Button>
@@ -116,7 +116,7 @@ export default function FranchiseLanding() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100 py-3 px-4">
             <a href="#pricing" className="block py-2 text-gray-900">Pricing</a>
-            <Link to="/book/demo-business">
+            <Link to="/trial">
               <Button className="w-full mt-2 bg-gray-900 text-white rounded-full">Try Free Demo</Button>
             </Link>
           </div>
@@ -141,7 +141,7 @@ export default function FranchiseLanding() {
               Online scheduling your clients will love. From €90/month.
             </p>
 
-            <Link to="/book/demo-business">
+            <Link to="/trial">
               <Button 
                 size="lg" 
                 className="bg-gray-900 hover:bg-gray-800 text-white rounded-full px-8 h-12 text-base"
@@ -277,7 +277,7 @@ export default function FranchiseLanding() {
                   <span className={plan.popular ? 'text-gray-400' : 'text-gray-500'}>/mo</span>
                 </div>
                 
-                <Link to="/book/demo-business">
+                <Link to="/trial">
                   <Button 
                     className={`w-full rounded-full h-10 mb-5 ${
                       plan.popular 
@@ -313,7 +313,7 @@ export default function FranchiseLanding() {
           <p className="text-gray-500 mb-6">
             Try TimeSlot Pro free for 3 days. No credit card needed.
           </p>
-          <Link to="/book/demo-business">
+          <Link to="/trial">
             <Button 
               size="lg" 
               className="bg-gray-900 hover:bg-gray-800 text-white rounded-full px-8 h-12"
