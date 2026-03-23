@@ -7,7 +7,7 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - **Authentication**: Both JWT-based custom auth AND Emergent-managed Google OAuth
 - **Payment Integration**: Mock billing for V1 (skip Stripe)
 - **Reminders**: Email integration via Resend
-- **AI Receptionist**: API-only (no chat UI, endpoints for Moltbot to connect)
+- **AI Receptionist**: API-only (no chat UI, endpoints for MoltBot to connect)
 - **Design**: Ultra premium and professional SaaS design, incredibly easy to use
 
 ---
@@ -63,11 +63,11 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 
 ---
 
-## What's Been Implemented (V1 MVP)
+## What's Been Implemented
 
-### Date: March 23, 2026
+### V1 MVP (March 23, 2026)
 
-### Backend (FastAPI + MongoDB)
+#### Backend (FastAPI + MongoDB)
 - [x] Multi-tenant architecture with tenant isolation
 - [x] JWT authentication + session management
 - [x] Emergent Google OAuth integration
@@ -91,7 +91,7 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - [x] Email templates (confirmation, reminder, cancellation)
 - [x] Resend email integration (logs if no API key)
 
-### Frontend (React + Shadcn/UI)
+#### Frontend (React + Shadcn/UI)
 - [x] Landing page with hero, features, industries, testimonials, CTA
 - [x] Features page
 - [x] Pricing page with plan comparison
@@ -114,7 +114,58 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - [x] Responsive sidebar navigation
 - [x] Premium organic/earthy design theme
 
-### Design System
+### V2 Upgrade (March 23, 2026)
+
+#### WebSocket & Real-time Notifications
+- [x] WebSocket endpoint at `/ws` with session-based authentication
+- [x] WebSocket manager for connection management
+- [x] Real-time notifications for booking events
+- [x] Real-time notifications for conversation events
+- [x] Ping/pong keepalive mechanism
+
+#### V1 Receptionist API (`/api/v1/receptionist/*`)
+- [x] Versioned API structure
+- [x] API key authentication with rate limiting
+- [x] Rate limit tiers by plan (starter: 30/min, growth: 100/min, pro: 300/min)
+- [x] Idempotency key support for safe retries
+- [x] Services endpoint (`GET /services`)
+- [x] Staff endpoint (`GET /staff`)
+- [x] Availability endpoint (`POST /availability`)
+- [x] Slot locking endpoint (`POST /slots/lock`, `DELETE /slots/lock/{id}`)
+- [x] Atomic booking creation with lock support (`POST /bookings`)
+- [x] Reschedule endpoint (`POST /bookings/{id}/reschedule`)
+- [x] Cancel endpoint (`POST /bookings/{id}/cancel`)
+
+#### Conversation & Inbox System
+- [x] Conversation model with status tracking (active, waiting_human, human_handling, resolved)
+- [x] Message model with sender types (client, ai, staff, system)
+- [x] Handoff mechanism with priority levels
+- [x] Create conversation endpoint (`POST /conversations`)
+- [x] Add message endpoint (`POST /conversations/{id}/messages`)
+- [x] Request handoff endpoint (`POST /conversations/{id}/handoff`)
+- [x] Resolve conversation endpoint (`POST /conversations/{id}/resolve`)
+- [x] Inbox stats endpoint (`GET /inbox/stats`)
+
+#### Dashboard Inbox UI
+- [x] Inbox page with conversation list
+- [x] Stats cards (Active, Waiting for Human, Being Handled, Resolved Today)
+- [x] Filter tabs (All, Waiting, Active, Resolved)
+- [x] Conversation detail view
+- [x] Message thread display
+- [x] Staff message sending
+- [x] Take Over / Assign functionality
+- [x] Resolve conversation button
+- [x] Real-time updates via WebSocket hook
+
+#### Booking Safety
+- [x] Slot locking mechanism (temporary hold during booking)
+- [x] Lock expiration (default 5 minutes)
+- [x] Lock conversion to booking
+- [x] Conflict-safe atomic booking creation
+
+---
+
+## Design System
 - Primary color: #2E473B (deep forest green)
 - Secondary color: #C26A58 (terracotta)
 - Success color: #3E6653
@@ -142,6 +193,7 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - [ ] Reports and analytics dashboard
 - [ ] Multi-location support UI
 - [ ] Staff permissions management
+- [ ] AI Receptionist analytics dashboard
 
 ### P2 (Nice to Have)
 - [ ] White-label booking pages
@@ -151,6 +203,7 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - [ ] Mobile app (React Native)
 - [ ] Voice receptionist integration
 - [ ] Two-way calendar sync
+- [ ] Message templates for conversations
 
 ---
 
@@ -160,8 +213,8 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 2. **Calendar Sync** - Google Calendar integration
 3. **Stripe Integration** - Real subscription billing
 4. **Deposit Collection** - Payment at booking time
-5. **Waitlist UI** - Frontend for waitlist management
-6. **Reports Dashboard** - Charts and analytics
+5. **Analytics Dashboard** - Receptionist analytics reporting
+6. **Waitlist UI** - Frontend for waitlist management
 7. **Custom Forms** - Intake form builder
 
 ---
@@ -171,9 +224,10 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 ### Backend
 - Framework: FastAPI
 - Database: MongoDB (motor async driver)
-- Auth: JWT + Emergent OAuth
+- Auth: JWT + Emergent OAuth + API Keys
 - Email: Resend
-- API prefix: /api
+- Real-time: WebSockets (native FastAPI)
+- API prefix: /api, /api/v1/receptionist
 
 ### Frontend
 - Framework: React 18
@@ -196,6 +250,11 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - resources
 - clients
 - appointments
+- conversations (V2)
+- conversation_messages (V2)
+- slot_locks (V2)
+- rate_limits (V2)
+- idempotency_records (V2)
 - custom_forms
 - form_submissions
 - waitlist
@@ -203,3 +262,39 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - api_keys
 - audit_logs
 - notifications
+
+---
+
+## API Endpoints Summary
+
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login with email/password
+- `POST /api/auth/session` - Process OAuth session
+- `GET /api/auth/me` - Get current user
+- `POST /api/auth/logout` - Logout
+
+### V1 Receptionist API (API key required)
+- `GET /api/v1/receptionist/services` - List services
+- `GET /api/v1/receptionist/staff` - List staff
+- `POST /api/v1/receptionist/availability` - Check availability
+- `POST /api/v1/receptionist/slots/lock` - Lock a slot
+- `DELETE /api/v1/receptionist/slots/lock/{lock_id}` - Release lock
+- `POST /api/v1/receptionist/bookings` - Create booking
+- `POST /api/v1/receptionist/bookings/{id}/reschedule` - Reschedule
+- `POST /api/v1/receptionist/bookings/{id}/cancel` - Cancel
+- `POST /api/v1/receptionist/conversations` - Create conversation
+- `POST /api/v1/receptionist/conversations/{id}/messages` - Add message
+- `POST /api/v1/receptionist/conversations/{id}/handoff` - Request handoff
+- `POST /api/v1/receptionist/conversations/{id}/resolve` - Resolve
+
+### Inbox (Auth required)
+- `GET /api/inbox/conversations` - List conversations
+- `GET /api/inbox/conversations/{id}` - Get conversation with messages
+- `POST /api/inbox/conversations/{id}/assign` - Take over conversation
+- `POST /api/inbox/conversations/{id}/messages` - Send staff message
+- `POST /api/inbox/conversations/{id}/resolve` - Resolve conversation
+- `GET /api/inbox/stats` - Get inbox statistics
+
+### WebSocket
+- `WS /ws` - Real-time notifications (authenticate with session_token)
