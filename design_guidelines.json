@@ -1,0 +1,134 @@
+{
+  "theme_strategy": {
+    "default_theme": "Light",
+    "rationale": "Nature, Health, and Service businesses relate best to Light themes for trustworthiness, cleanliness, and clarity. A toggle for Dark mode should be available in the dashboard, but Light is the primary focus."
+  },
+  "typography": {
+    "primary_heading_font": "Outfit",
+    "secondary_body_font": "DM Sans",
+    "rules": [
+      "Headings (>32px) MUST use tracking-tight or tracking-tighter.",
+      "Overlines/Labels MUST be Uppercase + Tiny (text-xs) + tracking-[0.2em].",
+      "Line Height: tight (leading-none) for headers, loose (leading-relaxed) for body.",
+      "Never use Inter, Roboto, Open Sans, or Lato for headings."
+    ]
+  },
+  "colors": {
+    "archetype": "ORGANIC & EARTHY",
+    "palette": {
+      "background_base": "#FAF9F6",
+      "background_surface": "#FFFFFF",
+      "primary": "#2E473B",
+      "primary_hover": "#243A2F",
+      "secondary": "#C26A58",
+      "text_primary": "#1C1C1C",
+      "text_secondary": "#6B6B6B",
+      "border_subtle": "#E5E5E0",
+      "status_success": "#3E6653",
+      "status_warning": "#E6B861",
+      "status_danger": "#D9534F"
+    },
+    "rules": [
+      "No default SaaS Blue. Use the defined deep forest green (Moss/Sage) as the primary brand color.",
+      "Never use pure #000000 or #808080. Blacks and grays must be tinted with warmth to match the earthy palette.",
+      "Limit the use of the primary color to main CTAs (buttons, primary forms)."
+    ]
+  },
+  "visual_enhancers": {
+    "textures": "Use subtle grain/noise overlays (opacity-5) to kill digital flatness on marketing pages.",
+    "borders": "Dashboard cards use 1px solid border-border/40. No heavy drop shadows by default.",
+    "surfaces": [
+      "Headers/Nav: Use Glassmorphism (bg-white/70, backdrop-blur-xl, border-b border-black/5).",
+      "Dashboard Cards: Flat Solid off-white, 1px subtle border, rounded-2xl.",
+      "Modals/Dialogs: Glassmorphism overlay with solid white card."
+    ]
+  },
+  "grids_and_layouts": {
+    "marketing_pages": "Bento Grid (Mode A). Asymmetry, gap-8 to gap-12. Never fill 100% of the grid perfectly.",
+    "dashboard": "High Density Grid (Mode B). grid-cols-1 md:grid-cols-3 lg:grid-cols-4. gap-4 or gap-6.",
+    "spacing": "Generous Spacing Philosophy. Use p-6, p-8, p-12 for breathing room.",
+    "alignment": "Optical alignment over geometrical. Left-align paragraphs, inputs, and dense content."
+  },
+  "motion": {
+    "interactions": "Hover states must explicitly set text color (e.g., hover:bg-primary-hover hover:text-white).",
+    "transitions": "Use specific properties (transition-transform, transition-colors). NEVER use 'transition: all'.",
+    "animations": "Framer motion for staggered list entrances and subtle page transitions."
+  },
+  "accessibility": {
+    "contrast": "Minimum 4.5:1 for normal text. Use APCA guidelines. Focus states must have HIGHER contrast.",
+    "focus": "focus:ring-2 focus:ring-primary/50 focus:outline-none.",
+    "testing": "All interactive elements MUST include a data-testid attribute (e.g., data-testid='login-submit-button').",
+    "motion_preference": "Respect prefers-reduced-motion."
+  },
+  "media": {
+    "icon_library": "@phosphor-icons/react",
+    "installation_command": "yarn add @phosphor-icons/react",
+    "image_urls": [
+      {
+        "category": "Hero / Salon",
+        "url": "https://images.pexels.com/photos/3993293/pexels-photo-3993293.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Empty barber shop with sleek chairs and illuminated mirrors. Use for Salon/Beauty industry section."
+      },
+      {
+        "category": "Hero / Salon Interior",
+        "url": "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Spacious and stylish hair salon interior. Use for landing page hero or features."
+      },
+      {
+        "category": "Clinic / Medical",
+        "url": "https://images.pexels.com/photos/4269361/pexels-photo-4269361.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "A bright, clean dental clinic. Use for Medical/Clinic industry section."
+      },
+      {
+        "category": "Productivity / Booking UI",
+        "url": "https://images.pexels.com/photos/196650/pexels-photo-196650.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Tidy desk setup with tablet calendar. Use for Booking/Calendar feature highlight."
+      }
+    ]
+  },
+  "components": {
+    "component_path": "/app/frontend/src/components/ui/",
+    "strategy": [
+      "Use purely HTML/Tailwind for Marketing page layouts (raw div, section, span) to allow overlapping.",
+      "Use Shadcn components for complex logic (Forms, Modals, Calendars, Selects) heavily customized to match the Organics & Earthy brand.",
+      "Use Sonner for toasts."
+    ]
+  },
+  "3d_libraries": {
+    "selected": "Framer Motion",
+    "steps": "Install framer-motion via yarn. Wrap page transitions in motion.div. Use staggerChildren for lists.",
+    "rationale": "For a SaaS booking app, a full 3D canvas (R3F) is overkill and detracts from utility. Use Framer Motion for premium 2D page transitions, modal scale-ins, and bento grid item staggers to keep the UI ultra-fast and lightweight."
+  },
+  "instructions_to_main_agent": [
+    "Components MUST use named exports (export const ComponentName = ...).",
+    "Pages MUST use default exports (export default function PageName() {...}).",
+    "DO NOT center align the app container. DO NOT add `.App { text-align: center; }`.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) for sticky/floating elements.",
+    "You MUST NOT apply universal transition (transition: all). Use specific transitions.",
+    "Always use modern button styles (pill-shaped or rounded-xl) with interaction animations.",
+    "NEVER use AI assistant emoji characters for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, entrance animations.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "DO NOT use complete `transparent` background in headers, overlays, or any surface that has content under it.",
+    "Use standard JS/JSX files (.js), no TypeScript (.tsx).",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "All interactive elements MUST include a data-testid attribute."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Always add transitions for specific interactive elements excluding transforms.",
+    "You MUST NOT center align the app container. This disrupts the human natural reading flow of text.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER use AI assistant Emoji characters for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, custom cursors, selection states, and loading animations separate good from extraordinary.",
+    "Components MUST use named exports. Pages MUST use default exports.",
+    "Use sonner for toasts, located in /app/frontend/src/components/ui/sonner.js"
+  ]
+}
