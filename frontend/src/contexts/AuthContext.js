@@ -71,6 +71,10 @@ export const AuthProvider = ({ children }) => {
     if (data.session_token) {
       setSessionToken(data.session_token);
     }
+    
+    // Refresh user data to get full tenant info
+    await checkAuth();
+    
     return data;
   };
 

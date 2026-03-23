@@ -25,6 +25,8 @@ import Clients from './pages/dashboard/Clients';
 import Settings from './pages/dashboard/Settings';
 import Integrations from './pages/dashboard/Integrations';
 import Inbox from './pages/dashboard/Inbox';
+import Analytics from './pages/dashboard/Analytics';
+import Waitlist from './pages/dashboard/Waitlist';
 import Onboarding from './pages/Onboarding';
 
 // Protected Route Component
@@ -163,6 +165,22 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <Inbox />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/analytics"
+        element={
+          <ProtectedRoute>
+            <Analytics />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/waitlist"
+        element={
+          <ProtectedRoute>
+            <Waitlist />
           </ProtectedRoute>
         }
       />

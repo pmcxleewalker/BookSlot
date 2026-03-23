@@ -54,6 +54,13 @@ from email_service import (
 from websocket_manager import ws_manager
 from receptionist_api import receptionist_router
 from inbox_routes import inbox_router
+from analytics import analytics_router
+from plan_gating import (
+    check_feature_access, check_resource_limit, check_monthly_booking_limit,
+    get_tenant_usage, PlanFeature, get_plan_definition
+)
+from reminders import create_appointment_reminders, cancel_appointment_reminders, send_cancellation_notification
+from waitlist import waitlist_router
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -203,16 +210,22 @@ async def register(data: UserCreate, request: Request, response: Response):
 @api_router.post("/auth/login")
 async def login(data: UserLogin, request: Request, response: Response):
     """Login with email/password"""
+    logger.info(f"Login attempt for: {data.email}")
     user_doc = await db.users.find_one({"email": data.email}, {"_id": 0})
     if not user_doc:
+        logger.warning(f"User not found: {data.email}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     if not user_doc.get("password_hash"):
+        logger.warning(f"No password hash for: {data.email}")
         raise HTTPException(status_code=401, detail="Please use Google login")
     
+    logger.info(f"Verifying password for: {data.email}")
     if not verify_password(data.password, user_doc["password_hash"]):
+        logger.warning(f"Password verification failed for: {data.email}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
+    logger.info(f"Login successful for: {data.email}")
     # Create session
     session_token = generate_session_token()
     await create_user_session(
@@ -554,8 +567,8 @@ async def create_staff(data: StaffCreate, request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
-    if not await check_plan_limits(user.tenant_id, "staff"):
-        raise HTTPException(status_code=403, detail="Staff limit reached for your plan")
+    # Check resource limit using new plan gating
+    await check_resource_limit(db, user.tenant_id, "staff")
     
     staff = StaffMember(
         tenant_id=user.tenant_id,
@@ -1829,6 +1842,47 @@ async def upgrade_subscription(request: Request):
     return {"message": f"Upgraded to {new_plan} plan", "plan": new_plan}
 
 
+# =====================
+# Plan Usage & Subscription Endpoints
+# =====================
+
+@api_router.get("/subscription/usage")
+async def get_subscription_usage(request: Request):
+    """Get current subscription usage and limits"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    usage = await get_tenant_usage(db, user.tenant_id)
+    return usage
+
+
+@api_router.get("/admin/demo-accounts")
+async def get_demo_accounts():
+    """Get list of demo accounts for login"""
+    demo_tenants = await db.tenants.find(
+        {"email": {"$regex": r"\.demo$"}},
+        {"_id": 0, "tenant_id": 1, "name": 1, "slug": 1, "industry": 1}
+    ).to_list(10)
+    
+    accounts = []
+    for t in demo_tenants:
+        owner = await db.users.find_one(
+            {"tenant_id": t["tenant_id"], "role": "owner"},
+            {"_id": 0, "email": 1, "name": 1}
+        )
+        if owner:
+            accounts.append({
+                "business_name": t["name"],
+                "slug": t["slug"],
+                "industry": t["industry"],
+                "email": owner["email"],
+                "password": "demo123"
+            })
+    
+    return {"demo_accounts": accounts}
+
+
 # Include router
 app.include_router(api_router)
 
@@ -1837,6 +1891,12 @@ app.include_router(receptionist_router)
 
 # Include inbox routes
 app.include_router(inbox_router)
+
+# Include analytics router
+app.include_router(analytics_router)
+
+# Include waitlist router
+app.include_router(waitlist_router)
 
 
 # =====================

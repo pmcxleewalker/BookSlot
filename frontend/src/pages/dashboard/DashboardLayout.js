@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, CalendarDays, Users, Briefcase, 
   Box, UserCircle, Settings, Webhook, LogOut, Menu, X, ChevronRight,
-  MessageSquare, BarChart3
+  MessageSquare, BarChart3, Clock
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/button';
@@ -13,6 +13,7 @@ const navItems = [
   { path: '/dashboard/inbox', label: 'Inbox', icon: MessageSquare, badge: true },
   { path: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
   { path: '/dashboard/appointments', label: 'Appointments', icon: CalendarDays },
+  { path: '/dashboard/waitlist', label: 'Waitlist', icon: Clock },
   { path: '/dashboard/staff', label: 'Staff', icon: Users },
   { path: '/dashboard/services', label: 'Services', icon: Briefcase },
   { path: '/dashboard/resources', label: 'Resources', icon: Box },
