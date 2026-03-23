@@ -64,6 +64,11 @@ from invoices import (
     generate_invoice_pdf_html, InvoiceStatus
 )
 from reminders import process_reminders, get_reminder_status, reminder_scheduler_task
+from billing import (
+    create_subscription_checkout, check_payment_status, 
+    handle_stripe_webhook, get_plan_details, get_all_plans,
+    SUBSCRIPTION_PLANS
+)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -728,6 +733,14 @@ async def create_service(data: ServiceCreate, request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.SERVICES_CREATE):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    # Plan limit check
+    await require_resource_limit(db, user.tenant_id, "services", "services")
+    
     service = Service(
         tenant_id=user.tenant_id,
         name=data.name,
@@ -841,6 +854,14 @@ async def create_resource(data: ResourceCreate, request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.RESOURCES_CREATE):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    # Plan limit check
+    await require_resource_limit(db, user.tenant_id, "resources", "resources")
+    
     resource = Resource(
         tenant_id=user.tenant_id,
         name=data.name,
@@ -883,6 +904,11 @@ async def delete_resource(resource_id: str, request: Request):
     user = await require_auth(request, db)
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check - only owner/admin/manager can delete resources
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.RESOURCES_DELETE):
+        raise HTTPException(status_code=403, detail="Permission denied. Only owners, admins, and managers can delete resources.")
     
     await db.resources.update_one(
         {"resource_id": resource_id, "tenant_id": user.tenant_id},
@@ -1444,6 +1470,14 @@ async def list_webhooks(request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.WEBHOOKS_VIEW):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    # Feature gating - webhooks are Pro plan only
+    await require_feature(db, user.tenant_id, "webhooks", "Webhooks")
+    
     webhooks = await db.webhooks.find(
         {"tenant_id": user.tenant_id},
         {"_id": 0, "secret": 0}  # Don't return secret
@@ -1458,6 +1492,14 @@ async def create_webhook(data: WebhookCreate, request: Request):
     user = await require_auth(request, db)
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.WEBHOOKS_MANAGE):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    # Feature gating - webhooks are Pro plan only
+    await require_feature(db, user.tenant_id, "webhooks", "Webhooks")
     
     webhook = Webhook(
         tenant_id=user.tenant_id,
@@ -1483,6 +1525,11 @@ async def delete_webhook(webhook_id: str, request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.WEBHOOKS_MANAGE):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
     await db.webhooks.delete_one(
         {"webhook_id": webhook_id, "tenant_id": user.tenant_id}
     )
@@ -1507,6 +1554,14 @@ async def list_api_keys(request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.API_KEYS_VIEW):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    # Feature gating - API keys are Pro plan only
+    await require_feature(db, user.tenant_id, "api_access", "API Access")
+    
     keys = await db.api_keys.find(
         {"tenant_id": user.tenant_id},
         {"_id": 0, "key_hash": 0}  # Don't return hash
@@ -1521,6 +1576,14 @@ async def create_api_key_endpoint(request: Request):
     user = await require_auth(request, db)
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.API_KEYS_MANAGE):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    # Feature gating - API keys are Pro plan only
+    await require_feature(db, user.tenant_id, "api_access", "API Access")
     
     body = await request.json()
     name = body.get("name", "API Key")
@@ -1554,6 +1617,11 @@ async def delete_api_key(api_key_id: str, request: Request):
     user = await require_auth(request, db)
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.API_KEYS_MANAGE):
+        raise HTTPException(status_code=403, detail="Permission denied")
     
     await db.api_keys.delete_one(
         {"api_key_id": api_key_id, "tenant_id": user.tenant_id}
@@ -1802,6 +1870,11 @@ async def update_business_settings(request: Request):
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
     
+    # RBAC check - only owner/admin can update business settings
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.SETTINGS_EDIT):
+        raise HTTPException(status_code=403, detail="Permission denied. Only owners and admins can update settings.")
+    
     body = await request.json()
     update_data = {k: v for k, v in body.items() if k not in ["tenant_id", "slug", "created_at"]}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -1853,6 +1926,11 @@ async def update_branding_settings(request: Request):
     user = await require_auth(request, db)
     if not user.tenant_id:
         raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check - only owner/admin can update branding
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.BRANDING_EDIT):
+        raise HTTPException(status_code=403, detail="Permission denied. Only owners and admins can update branding.")
     
     body = await request.json()
     
@@ -2077,7 +2155,7 @@ async def get_invoice_pdf(invoice_id: str, request: Request):
                 "Content-Disposition": f"attachment; filename=invoice-{invoice['invoice_number']}.pdf"
             }
         )
-    except Exception as e:
+    except Exception:
         # Fallback to HTML if PDF generation fails
         return Response(
             content=html_content,
@@ -2119,6 +2197,113 @@ async def get_user_permissions(request: Request):
         "role": user.role,
         "permissions": permissions
     }
+
+
+# =====================
+# Billing / Subscription
+# =====================
+
+class SubscriptionCheckoutRequest(BaseModel):
+    plan_id: str
+    origin_url: str  # Frontend origin URL (window.location.origin)
+
+
+@api_router.get("/billing/plans")
+async def get_billing_plans():
+    """Get available subscription plans"""
+    return {
+        "plans": [
+            {
+                "id": plan_id,
+                "name": plan["name"],
+                "price_monthly": plan["price_monthly"],
+                "max_staff": plan["max_staff"],
+                "max_locations": plan["max_locations"],
+                "features": plan["features"]
+            }
+            for plan_id, plan in SUBSCRIPTION_PLANS.items()
+        ]
+    }
+
+
+@api_router.post("/billing/checkout")
+async def create_billing_checkout(data: SubscriptionCheckoutRequest, request: Request):
+    """Create a checkout session for subscription upgrade"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check - only owner/admin can manage billing
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.BILLING_MANAGE):
+        raise HTTPException(status_code=403, detail="Permission denied. Only owners can manage billing.")
+    
+    result = await create_subscription_checkout(
+        db=db,
+        request=request,
+        tenant_id=user.tenant_id,
+        user_id=user.user_id,
+        user_email=user.email,
+        plan_id=data.plan_id,
+        origin_url=data.origin_url
+    )
+    
+    await log_audit(user.tenant_id, user.user_id, "billing_checkout", "subscription", data.plan_id)
+    
+    return result
+
+
+@api_router.get("/billing/status/{session_id}")
+async def get_billing_status(session_id: str, request: Request):
+    """Check payment status for a checkout session"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    result = await check_payment_status(
+        db=db,
+        request=request,
+        session_id=session_id,
+        tenant_id=user.tenant_id
+    )
+    
+    return result
+
+
+@api_router.get("/billing/transactions")
+async def get_billing_transactions(
+    request: Request,
+    limit: int = Query(20, le=50),
+    skip: int = Query(0)
+):
+    """Get payment transaction history"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.BILLING_VIEW):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    transactions = await db.payment_transactions.find(
+        {"tenant_id": user.tenant_id},
+        {"_id": 0}
+    ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    
+    total = await db.payment_transactions.count_documents({"tenant_id": user.tenant_id})
+    
+    return {"transactions": transactions, "total": total}
+
+
+@api_router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhook events"""
+    body = await request.body()
+    
+    result = await handle_stripe_webhook(db, request, body)
+    
+    return result
 
 
 # Include router

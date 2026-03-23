@@ -3,8 +3,8 @@ Booking logic for TimeSlot Pro
 Handles availability calculation, conflict detection, and booking operations
 """
 from datetime import datetime, timezone, timedelta, time
-from typing import List, Optional, Dict, Any
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from typing import List, Optional, Dict, Any, Tuple
+from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClient
 
 from models import (
     Appointment, AppointmentCreate, Service, StaffMember, 
@@ -276,10 +276,34 @@ async def create_appointment(
     data: AppointmentCreate,
     source: str = "online",
     lock_id: Optional[str] = None,
-    locked_by: Optional[str] = None
-) -> Appointment:
-    """Create a new appointment with conflict checking and slot locking"""
-    from slot_locking import acquire_slot_lock, convert_lock_to_booking, check_slot_available
+    locked_by: Optional[str] = None,
+    idempotency_key: Optional[str] = None
+) -> Tuple[Appointment, bool]:
+    """
+    Create a new appointment with:
+    - Conflict checking
+    - Slot locking (race condition prevention)
+    - Idempotency support
+    
+    Returns: (appointment, was_idempotent)
+    - was_idempotent=True means this was a duplicate request
+    """
+    from slot_locking import acquire_slot_lock, convert_lock_to_booking
+    from idempotency import check_idempotency, store_idempotency
+    
+    # Check idempotency first
+    if idempotency_key:
+        is_duplicate, cached = await check_idempotency(db, idempotency_key, tenant_id)
+        if is_duplicate and cached:
+            # Return cached appointment
+            cached_apt = Appointment(**{
+                **cached,
+                "start_time": datetime.fromisoformat(cached["start_time"]),
+                "end_time": datetime.fromisoformat(cached["end_time"]),
+                "created_at": datetime.fromisoformat(cached["created_at"]),
+                "updated_at": datetime.fromisoformat(cached["updated_at"])
+            })
+            return (cached_apt, True)
     
     # Get service details
     service_doc = await db.services.find_one(
@@ -307,10 +331,9 @@ async def create_appointment(
     if has_conflict:
         raise ValueError("Time slot is not available")
     
-    # If no lock_id provided, try to acquire a lock
-    # This prevents race conditions when two people book simultaneously
+    # Acquire slot lock (prevents race conditions)
+    session_id = locked_by or generate_id("sess_")
     if not lock_id:
-        session_id = locked_by or generate_id("sess_")
         lock_id = await acquire_slot_lock(
             db=db,
             tenant_id=tenant_id,
@@ -350,10 +373,30 @@ async def create_appointment(
     await db.appointments.insert_one(doc)
     
     # Convert the lock to a booking (marks it as used)
-    if lock_id and locked_by:
-        await convert_lock_to_booking(db, lock_id, locked_by, appointment.appointment_id)
+    if lock_id:
+        await convert_lock_to_booking(db, lock_id, session_id, appointment.appointment_id)
     
-    return appointment
+    # Store idempotency record
+    if idempotency_key:
+        await store_idempotency(
+            db, idempotency_key, tenant_id, "booking.create",
+            {
+                "appointment_id": appointment.appointment_id,
+                "confirmation_code": appointment.confirmation_code,
+                "start_time": doc["start_time"],
+                "end_time": doc["end_time"],
+                "created_at": doc["created_at"],
+                "updated_at": doc["updated_at"],
+                "tenant_id": tenant_id,
+                "staff_id": data.staff_id,
+                "service_id": data.service_id,
+                "client_name": data.client_name,
+                "client_email": data.client_email,
+                "status": appointment.status
+            }
+        )
+    
+    return (appointment, False)
 
 
 async def reschedule_appointment(

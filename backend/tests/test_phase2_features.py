@@ -7,7 +7,7 @@ import requests
 import os
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://booking-safety-lock.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://timeslot-pro-launch.preview.emergentagent.com')
 
 # Test credentials
 SUPER_ADMIN = {
