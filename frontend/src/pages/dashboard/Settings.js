@@ -8,6 +8,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { settingsAPI, subscriptionAPI } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
+import BusinessHoursSettings from './BusinessHoursSettings';
 
 const timezones = [
   { value: 'Europe/London', label: 'London (GMT/BST)' },
@@ -213,6 +214,11 @@ export default function Settings() {
             </div>
           </div>
         </form>
+
+        {/* Business Hours */}
+        <div className="bg-white rounded-2xl border border-[#E5E5E0] overflow-hidden p-6">
+          <BusinessHoursSettings />
+        </div>
 
         {/* Subscription */}
         <div className="bg-white rounded-2xl border border-[#E5E5E0] overflow-hidden">

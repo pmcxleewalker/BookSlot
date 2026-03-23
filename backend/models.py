@@ -69,6 +69,16 @@ class Tenant(TimestampMixin):
     booking_url: Optional[str] = None
     settings: Dict[str, Any] = Field(default_factory=dict)
     is_active: bool = True
+    # Business operating hours (sets bounds for all staff schedules)
+    business_hours: Dict[str, Any] = Field(default_factory=lambda: {
+        "monday": {"open": "09:00", "close": "17:00", "is_open": True},
+        "tuesday": {"open": "09:00", "close": "17:00", "is_open": True},
+        "wednesday": {"open": "09:00", "close": "17:00", "is_open": True},
+        "thursday": {"open": "09:00", "close": "17:00", "is_open": True},
+        "friday": {"open": "09:00", "close": "17:00", "is_open": True},
+        "saturday": {"open": "10:00", "close": "16:00", "is_open": False},
+        "sunday": {"open": "10:00", "close": "16:00", "is_open": False},
+    })
     # Branding customization
     branding: Dict[str, Any] = Field(default_factory=lambda: {
         "primary_color": "#2E473B",

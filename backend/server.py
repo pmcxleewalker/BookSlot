@@ -1349,7 +1349,16 @@ async def get_public_services(tenant_slug: str):
             "phone": tenant.get("phone"),
             "address": tenant.get("address"),
             "city": tenant.get("city"),
-            "branding": {**default_branding, **(tenant.get("branding") or {})}
+            "branding": {**default_branding, **(tenant.get("branding") or {})},
+            "business_hours": tenant.get("business_hours", {
+                "monday": {"open": "09:00", "close": "17:00", "is_open": True},
+                "tuesday": {"open": "09:00", "close": "17:00", "is_open": True},
+                "wednesday": {"open": "09:00", "close": "17:00", "is_open": True},
+                "thursday": {"open": "09:00", "close": "17:00", "is_open": True},
+                "friday": {"open": "09:00", "close": "17:00", "is_open": True},
+                "saturday": {"open": "10:00", "close": "16:00", "is_open": False},
+                "sunday": {"open": "10:00", "close": "16:00", "is_open": False},
+            })
         },
         "services": services
     }
@@ -1357,7 +1366,7 @@ async def get_public_services(tenant_slug: str):
 
 @api_router.get("/public/{tenant_slug}/staff")
 async def get_public_staff(tenant_slug: str, service_id: Optional[str] = Query(None)):
-    """Get staff for public booking page"""
+    """Get staff for public booking page, including 'Any Available' option"""
     tenant = await db.tenants.find_one({"slug": tenant_slug, "is_active": True}, {"_id": 0})
     if not tenant:
         raise HTTPException(status_code=404, detail="Business not found")
@@ -1370,6 +1379,16 @@ async def get_public_staff(tenant_slug: str, service_id: Optional[str] = Query(N
         query,
         {"_id": 0, "staff_id": 1, "name": 1, "title": 1, "avatar_url": 1}
     ).to_list(50)
+    
+    # Add "Any Available" option at the beginning if there's more than 1 staff
+    if len(staff) > 1:
+        staff.insert(0, {
+            "staff_id": "any",
+            "name": "Next Available",
+            "title": "First available team member",
+            "avatar_url": None,
+            "is_any": True
+        })
     
     return staff
 
@@ -1409,13 +1428,37 @@ async def create_public_booking(tenant_slug: str, data: AppointmentCreate):
         raise HTTPException(status_code=404, detail="Business not found")
     
     try:
+        # Handle "any available" staff selection
+        actual_staff_id = data.staff_id
+        if data.staff_id == "any" or not data.staff_id:
+            # Find first available staff for this slot
+            from booking import calculate_available_slots
+            date_obj = datetime.fromisoformat(data.start_time.replace('Z', '+00:00'))
+            slots = await calculate_available_slots(
+                db, tenant["tenant_id"], data.service_id, date_obj, staff_id="any"
+            )
+            
+            # Find a slot matching the requested time
+            requested_time = data.start_time
+            for slot in slots:
+                if slot.start_time == requested_time:
+                    actual_staff_id = slot.staff_id
+                    break
+            
+            if not actual_staff_id or actual_staff_id == "any":
+                raise ValueError("No staff available at this time")
+            
+            # Update the data with actual staff
+            data.staff_id = actual_staff_id
+        
         appointment = await create_appointment(db, tenant["tenant_id"], data, source="online")
+        
+        # Get service and staff info for confirmation
+        service = await db.services.find_one({"service_id": data.service_id}, {"_id": 0})
+        staff = await db.staff.find_one({"staff_id": actual_staff_id}, {"_id": 0})
         
         # Send confirmation email
         if data.client_email:
-            service = await db.services.find_one({"service_id": data.service_id}, {"_id": 0})
-            staff = await db.staff.find_one({"staff_id": data.staff_id}, {"_id": 0})
-            
             html = generate_booking_confirmation_email(
                 client_name=data.client_name,
                 service_name=service.get("name", "Service"),
@@ -2037,6 +2080,77 @@ async def update_branding_settings(request: Request):
     await log_audit(user.tenant_id, user.user_id, "update", "branding", user.tenant_id, body)
     
     return {"message": "Branding updated"}
+
+
+@api_router.get("/settings/business-hours")
+async def get_business_hours_endpoint(request: Request):
+    """Get business operating hours"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    tenant = await db.tenants.find_one(
+        {"tenant_id": user.tenant_id},
+        {"_id": 0, "business_hours": 1}
+    )
+    
+    default_hours = {
+        "monday": {"open": "09:00", "close": "17:00", "is_open": True},
+        "tuesday": {"open": "09:00", "close": "17:00", "is_open": True},
+        "wednesday": {"open": "09:00", "close": "17:00", "is_open": True},
+        "thursday": {"open": "09:00", "close": "17:00", "is_open": True},
+        "friday": {"open": "09:00", "close": "17:00", "is_open": True},
+        "saturday": {"open": "10:00", "close": "16:00", "is_open": False},
+        "sunday": {"open": "10:00", "close": "16:00", "is_open": False},
+    }
+    
+    return {
+        "business_hours": {**default_hours, **(tenant.get("business_hours") or {})} if tenant else default_hours
+    }
+
+
+@api_router.put("/settings/business-hours")
+async def update_business_hours_endpoint(request: Request):
+    """Update business operating hours"""
+    user = await require_auth(request, db)
+    if not user.tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # RBAC check
+    user_role = UserRole(user.role)
+    if not has_permission(user_role, Permission.SETTINGS_EDIT):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    body = await request.json()
+    business_hours = body.get("business_hours", {})
+    
+    # Validate time format
+    valid_days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    for day, hours in business_hours.items():
+        if day not in valid_days:
+            raise HTTPException(status_code=400, detail=f"Invalid day: {day}")
+        if "open" in hours:
+            try:
+                datetime.strptime(hours["open"], "%H:%M")
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid open time for {day}")
+        if "close" in hours:
+            try:
+                datetime.strptime(hours["close"], "%H:%M")
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid close time for {day}")
+    
+    await db.tenants.update_one(
+        {"tenant_id": user.tenant_id},
+        {"$set": {
+            "business_hours": business_hours,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    await log_audit(user.tenant_id, user.user_id, "update", "business_hours", user.tenant_id, business_hours)
+    
+    return {"message": "Business hours updated"}
 
 
 # =====================

@@ -12,6 +12,9 @@ from models import (
     generate_id
 )
 
+# Day name mapping
+DAY_NAMES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
 
 def parse_time(time_str: str) -> time:
     """Parse time string HH:MM to time object"""
@@ -29,33 +32,109 @@ def minutes_to_time(minutes: int) -> time:
     return time(minutes // 60, minutes % 60)
 
 
+async def get_business_hours(
+    db: AsyncIOMotorDatabase,
+    tenant_id: str,
+    date: datetime
+) -> Optional[Dict[str, Any]]:
+    """Get business operating hours for a specific day"""
+    day_name = DAY_NAMES[date.weekday()]
+    
+    tenant = await db.tenants.find_one(
+        {"tenant_id": tenant_id},
+        {"_id": 0, "business_hours": 1}
+    )
+    
+    if not tenant or "business_hours" not in tenant:
+        # Default hours
+        return {"open": "09:00", "close": "17:00", "is_open": True}
+    
+    day_hours = tenant["business_hours"].get(day_name)
+    if not day_hours:
+        return {"open": "09:00", "close": "17:00", "is_open": True}
+    
+    return day_hours
+
+
 async def get_staff_working_hours(
     db: AsyncIOMotorDatabase,
     staff_id: str,
-    date: datetime
+    date: datetime,
+    business_hours: Optional[Dict[str, Any]] = None
 ) -> Optional[WorkingHours]:
-    """Get staff working hours for a specific day"""
+    """Get staff working hours for a specific day, bounded by business hours"""
     day_of_week = date.weekday()  # 0=Monday
     
+    # Get staff schedule
     schedule_doc = await db.staff_schedules.find_one(
         {"staff_id": staff_id},
         {"_id": 0}
     )
     
-    if not schedule_doc:
-        # Default working hours if no schedule set
+    # Also check staff document for working_hours
+    staff_doc = await db.staff.find_one(
+        {"staff_id": staff_id},
+        {"_id": 0, "working_hours": 1}
+    )
+    
+    staff_hours = None
+    
+    # Try schedule first
+    if schedule_doc:
+        for wh in schedule_doc.get("working_hours", []):
+            if wh["day_of_week"] == day_of_week:
+                staff_hours = wh
+                break
+    
+    # Try staff document working_hours
+    if not staff_hours and staff_doc and staff_doc.get("working_hours"):
+        day_name = DAY_NAMES[day_of_week]
+        day_hours = staff_doc["working_hours"].get(day_name)
+        if day_hours and day_hours.get("enabled", True):
+            staff_hours = {
+                "day_of_week": day_of_week,
+                "start_time": day_hours.get("start", "09:00"),
+                "end_time": day_hours.get("end", "17:00"),
+                "is_working": day_hours.get("enabled", True)
+            }
+    
+    # Default if no schedule
+    if not staff_hours:
+        staff_hours = {
+            "day_of_week": day_of_week,
+            "start_time": "09:00",
+            "end_time": "17:00",
+            "is_working": True
+        }
+    
+    # If not working, return None
+    if not staff_hours.get("is_working", True):
+        return None
+    
+    # Bound by business hours if provided
+    if business_hours and business_hours.get("is_open"):
+        biz_open = parse_time(business_hours["open"])
+        biz_close = parse_time(business_hours["close"])
+        staff_start = parse_time(staff_hours["start_time"])
+        staff_end = parse_time(staff_hours["end_time"])
+        
+        # Staff can't work outside business hours
+        actual_start = max(biz_open, staff_start, key=time_to_minutes)
+        actual_end = min(biz_close, staff_end, key=time_to_minutes)
+        
+        if time_to_minutes(actual_start) >= time_to_minutes(actual_end):
+            return None  # No valid working time
+        
         return WorkingHours(
             day_of_week=day_of_week,
-            start_time="09:00",
-            end_time="17:00",
+            start_time=actual_start.strftime("%H:%M"),
+            end_time=actual_end.strftime("%H:%M"),
             is_working=True
         )
+    elif business_hours and not business_hours.get("is_open"):
+        return None  # Business closed
     
-    for wh in schedule_doc.get("working_hours", []):
-        if wh["day_of_week"] == day_of_week:
-            return WorkingHours(**wh)
-    
-    return None
+    return WorkingHours(**staff_hours)
 
 
 async def get_staff_appointments(
@@ -110,9 +189,16 @@ async def calculate_available_slots(
     slot_interval: int = 15  # minutes
 ) -> List[AvailabilitySlot]:
     """
-    Calculate available time slots for a service on a given date
+    Calculate available time slots for a service on a given date.
+    Respects business hours and staff working hours.
+    If staff_id is None or "any", returns slots from any available staff.
     """
     available_slots = []
+    
+    # Get business hours first
+    business_hours = await get_business_hours(db, tenant_id, date)
+    if not business_hours or not business_hours.get("is_open", True):
+        return []  # Business is closed
     
     # Get service details
     service_doc = await db.services.find_one(
@@ -129,7 +215,9 @@ async def calculate_available_slots(
     )
     
     # Get eligible staff
-    if staff_id:
+    any_staff = staff_id is None or staff_id == "any"
+    
+    if not any_staff:
         staff_list = [await db.staff.find_one(
             {"staff_id": staff_id, "tenant_id": tenant_id, "is_active": True},
             {"_id": 0}
@@ -148,9 +236,12 @@ async def calculate_available_slots(
             {"_id": 0}
         ).to_list(50)
     
+    # Track slots by time to find "any available" slots
+    slots_by_time = {}
+    
     for staff in staff_list:
-        # Get working hours
-        working_hours = await get_staff_working_hours(db, staff["staff_id"], date)
+        # Get working hours bounded by business hours
+        working_hours = await get_staff_working_hours(db, staff["staff_id"], date, business_hours)
         if not working_hours or not working_hours.is_working:
             continue
         

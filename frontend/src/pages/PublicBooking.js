@@ -294,34 +294,31 @@ export default function PublicBooking() {
             </p>
 
             {/* Optional Staff Selection */}
-            {staff.length > 1 && (
+            {staff.length > 0 && (
               <div className="mb-6">
-                <Label className="text-[#1C1C1C] mb-2 block">Preferred staff (optional)</Label>
+                <Label className="text-[#1C1C1C] mb-2 block">Select staff</Label>
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setBooking({ ...booking, staff: null })}
-                    className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                      !booking.staff
-                        ? 'bg-[#2E473B] text-white'
-                        : 'bg-white border border-[#E5E5E0] text-[#6B6B6B] hover:border-[#2E473B]/30'
-                    }`}
-                  >
-                    Any available
-                  </button>
                   {staff.map((s) => (
                     <button
                       key={s.staff_id}
-                      onClick={() => setBooking({ ...booking, staff: s })}
+                      onClick={() => setBooking({ ...booking, staff: s.is_any ? null : s })}
                       className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                        booking.staff?.staff_id === s.staff_id
+                        (s.is_any && !booking.staff) || booking.staff?.staff_id === s.staff_id
                           ? 'bg-[#2E473B] text-white'
                           : 'bg-white border border-[#E5E5E0] text-[#6B6B6B] hover:border-[#2E473B]/30'
                       }`}
+                      data-testid={`staff-${s.staff_id}`}
                     >
                       {s.name}
+                      {s.is_any && <span className="ml-1 opacity-70">⚡</span>}
                     </button>
                   ))}
                 </div>
+                {staff.length === 1 && !staff[0].is_any && (
+                  <p className="text-sm text-[#6B6B6B] mt-2">
+                    Booking with {staff[0].name}
+                  </p>
+                )}
               </div>
             )}
 
