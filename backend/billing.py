@@ -20,10 +20,11 @@ from models import generate_id
 logger = logging.getLogger(__name__)
 
 # Fixed subscription plans - NEVER accept amounts from frontend
+# Prices: Starter €90, Growth €145, Pro €299
 SUBSCRIPTION_PLANS = {
     "starter": {
         "name": "Starter",
-        "price_monthly": 29.00,
+        "price_monthly": 90.00,
         "max_staff": 2,
         "max_locations": 1,
         "max_services": 10,
@@ -33,12 +34,12 @@ SUBSCRIPTION_PLANS = {
             "email_confirmations",
             "calendar_view",
             "client_management",
-            "basic_reports",
+            "calendar_sync",
         ]
     },
     "growth": {
         "name": "Growth",
-        "price_monthly": 79.00,
+        "price_monthly": 145.00,
         "max_staff": 8,
         "max_locations": 1,
         "max_services": 50,
@@ -48,19 +49,19 @@ SUBSCRIPTION_PLANS = {
             "email_confirmations",
             "calendar_view",
             "client_management",
-            "basic_reports",
+            "calendar_sync",
             "sms_notifications",
             "automated_reminders",
             "waitlist",
             "deposits",
             "packages",
             "ai_receptionist",
-            "advanced_reports",
+            "reports",
         ]
     },
     "pro": {
         "name": "Pro",
-        "price_monthly": 149.00,
+        "price_monthly": 299.00,
         "max_staff": 50,
         "max_locations": 10,
         "max_services": 999,
@@ -70,17 +71,19 @@ SUBSCRIPTION_PLANS = {
             "email_confirmations",
             "calendar_view",
             "client_management",
-            "basic_reports",
+            "calendar_sync",
             "sms_notifications",
             "automated_reminders",
             "waitlist",
             "deposits",
             "packages",
             "ai_receptionist",
-            "advanced_reports",
+            "reports",
             "api_access",
             "webhooks",
             "multi_location",
+            "advanced_permissions",
+            "resource_booking",
             "custom_forms",
             "white_label",
         ]

@@ -458,9 +458,9 @@ async def create_tenant_by_admin(data: TenantCreateByAdmin, request: Request):
     
     # Create subscription
     plan_config = {
-        "starter": {"price": 29, "max_locations": 1, "max_staff": 2, "features": ["online_booking", "reminders", "deposits", "calendar_sync"]},
-        "growth": {"price": 79, "max_locations": 1, "max_staff": 8, "features": ["online_booking", "reminders", "deposits", "calendar_sync", "waitlist", "packages", "ai_assistant", "sms_automations", "reports"]},
-        "pro": {"price": 149, "max_locations": 10, "max_staff": 50, "features": ["online_booking", "reminders", "deposits", "calendar_sync", "waitlist", "packages", "ai_assistant", "sms_automations", "reports", "multi_location", "advanced_permissions", "resource_booking", "custom_forms", "white_label", "api_webhooks"]}
+        "starter": {"price": 90, "max_locations": 1, "max_staff": 2, "features": ["online_booking", "email_confirmations", "calendar_view", "client_management", "calendar_sync"]},
+        "growth": {"price": 145, "max_locations": 1, "max_staff": 8, "features": ["online_booking", "email_confirmations", "calendar_view", "client_management", "calendar_sync", "sms_notifications", "automated_reminders", "waitlist", "deposits", "packages", "ai_receptionist", "reports"]},
+        "pro": {"price": 299, "max_locations": 10, "max_staff": 50, "features": ["online_booking", "email_confirmations", "calendar_view", "client_management", "calendar_sync", "sms_notifications", "automated_reminders", "waitlist", "deposits", "packages", "ai_receptionist", "reports", "api_access", "webhooks", "multi_location", "advanced_permissions", "resource_booking", "custom_forms", "white_label"]}
     }
     config = plan_config.get(data.plan, plan_config["starter"])
     
@@ -611,9 +611,9 @@ async def update_tenant_subscription(tenant_id: str, request: Request):
     new_plan = body.get("plan")
     
     plan_config = {
-        "starter": {"price": 29, "max_locations": 1, "max_staff": 2, "features": ["online_booking", "reminders", "deposits", "calendar_sync"]},
-        "growth": {"price": 79, "max_locations": 1, "max_staff": 8, "features": ["online_booking", "reminders", "deposits", "calendar_sync", "waitlist", "packages", "ai_assistant", "sms_automations", "reports"]},
-        "pro": {"price": 149, "max_locations": 10, "max_staff": 50, "features": ["online_booking", "reminders", "deposits", "calendar_sync", "waitlist", "packages", "ai_assistant", "sms_automations", "reports", "multi_location", "advanced_permissions", "resource_booking", "custom_forms", "white_label", "api_webhooks"]}
+        "starter": {"price": 90, "max_locations": 1, "max_staff": 2, "features": ["online_booking", "email_confirmations", "calendar_view", "client_management", "calendar_sync"]},
+        "growth": {"price": 145, "max_locations": 1, "max_staff": 8, "features": ["online_booking", "email_confirmations", "calendar_view", "client_management", "calendar_sync", "sms_notifications", "automated_reminders", "waitlist", "deposits", "packages", "ai_receptionist", "reports"]},
+        "pro": {"price": 299, "max_locations": 10, "max_staff": 50, "features": ["online_booking", "email_confirmations", "calendar_view", "client_management", "calendar_sync", "sms_notifications", "automated_reminders", "waitlist", "deposits", "packages", "ai_receptionist", "reports", "api_access", "webhooks", "multi_location", "advanced_permissions", "resource_booking", "custom_forms", "white_label"]}
     }
     
     if new_plan not in plan_config:

@@ -6,6 +6,7 @@ import { AdminAuthProvider, useAdminAuth } from './contexts/AdminAuthContext';
 import './App.css';
 
 // Pages - Public
+import FranchiseLanding from './pages/FranchiseLanding';
 import LandingPage from './pages/LandingPage';
 import FeaturesPage from './pages/FeaturesPage';
 import PricingPage from './pages/PricingPage';
@@ -100,7 +101,8 @@ const AppRouter = () => {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<FranchiseLanding />} />
+      <Route path="/tenants" element={<LandingPage />} />
       <Route path="/features" element={<FeaturesPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/login" element={<LoginPage />} />
