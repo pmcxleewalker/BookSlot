@@ -1271,7 +1271,9 @@ async def create_appointment_api(data: AppointmentCreate, request: Request):
         raise HTTPException(status_code=400, detail="No business found")
     
     try:
-        appointment = await create_appointment(db, user.tenant_id, data, source="admin")
+        result = await create_appointment(db, user.tenant_id, data, source="admin")
+        # create_appointment returns (appointment, was_idempotent) tuple
+        appointment = result[0] if isinstance(result, tuple) else result
         
         # Send confirmation email if email provided
         if data.client_email:
@@ -1578,7 +1580,9 @@ async def create_public_booking(tenant_slug: str, data: AppointmentCreate):
             # Update the data with actual staff
             data.staff_id = actual_staff_id
         
-        appointment = await create_appointment(db, tenant["tenant_id"], data, source="online")
+        result = await create_appointment(db, tenant["tenant_id"], data, source="online")
+        # create_appointment returns (appointment, was_idempotent) tuple
+        appointment = result[0] if isinstance(result, tuple) else result
         
         # Get service and staff info for confirmation
         service = await db.services.find_one({"service_id": data.service_id}, {"_id": 0})
@@ -2032,7 +2036,9 @@ async def moltbot_create_booking(data: MoltbotBookingAction, request: Request):
         )
         
         try:
-            appointment = await create_appointment(db, tenant_id, appointment_data, source="api")
+            result = await create_appointment(db, tenant_id, appointment_data, source="api")
+            # create_appointment returns (appointment, was_idempotent) tuple
+            appointment = result[0] if isinstance(result, tuple) else result
             await trigger_booking_webhook(db, tenant_id, "booking.created", appointment.model_dump())
             
             return {
