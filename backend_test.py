@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import uuid
 
 class BookSlotAPITester:
-    def __init__(self, base_url="https://bookslot-3.preview.emergentagent.com"):
+    def __init__(self, base_url="https://bookslot-admin.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None

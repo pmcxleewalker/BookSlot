@@ -14,6 +14,9 @@ import bcrypt
 import jwt
 import httpx
 from enum import Enum
+import hashlib
+import hmac
+import asyncio
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1348,8 +1351,112 @@ async def delete_webhook(webhook_id: str, user: Dict = Depends(get_current_user)
     
     return {"message": "Webhook deleted"}
 
+@api_router.get("/webhooks/{webhook_id}/deliveries")
+async def get_webhook_deliveries(webhook_id: str, user: Dict = Depends(get_current_user), limit: int = 50):
+    """Get delivery logs for a webhook"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # Verify webhook belongs to tenant
+    webhook = await db.webhooks.find_one({
+        "webhook_id": webhook_id,
+        "tenant_id": user["tenant_id"]
+    }, {"_id": 0})
+    
+    if not webhook:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    
+    deliveries = await db.webhook_deliveries.find(
+        {"webhook_id": webhook_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    
+    return {"deliveries": deliveries}
+
+@api_router.post("/webhooks/{webhook_id}/test")
+async def test_webhook(webhook_id: str, user: Dict = Depends(get_current_user)):
+    """Send a test webhook delivery"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    webhook = await db.webhooks.find_one({
+        "webhook_id": webhook_id,
+        "tenant_id": user["tenant_id"]
+    }, {"_id": 0})
+    
+    if not webhook:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    
+    # Create test payload
+    test_data = {
+        "appointment_id": "test_appt_123",
+        "service_name": "Test Service",
+        "client_name": "Test Client",
+        "start_time": datetime.now(timezone.utc).isoformat(),
+        "test": True
+    }
+    
+    # Trigger test webhook
+    await trigger_webhook(user["tenant_id"], WebhookEvent.BOOKING_CREATED, test_data)
+    
+    return {"message": "Test webhook sent", "data": test_data}
+
+@api_router.put("/webhooks/{webhook_id}")
+async def update_webhook(webhook_id: str, updates: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Update webhook configuration"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # Don't allow updating certain fields
+    updates.pop("webhook_id", None)
+    updates.pop("tenant_id", None)
+    updates.pop("created_at", None)
+    updates.pop("secret", None)  # Secret should not be changed via update
+    
+    # Validate events if provided
+    if "events" in updates:
+        updates["events"] = [WebhookEvent(e).value for e in updates["events"]]
+    
+    result = await db.webhooks.update_one(
+        {"webhook_id": webhook_id, "tenant_id": user["tenant_id"]},
+        {"$set": updates}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    
+    webhook = await db.webhooks.find_one({"webhook_id": webhook_id}, {"_id": 0})
+    return {"webhook": webhook}
+
+@api_router.post("/webhooks/{webhook_id}/regenerate-secret")
+async def regenerate_webhook_secret(webhook_id: str, user: Dict = Depends(get_current_user)):
+    """Regenerate webhook secret"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    new_secret = uuid.uuid4().hex
+    
+    result = await db.webhooks.update_one(
+        {"webhook_id": webhook_id, "tenant_id": user["tenant_id"]},
+        {"$set": {"secret": new_secret}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    
+    webhook = await db.webhooks.find_one({"webhook_id": webhook_id}, {"_id": 0})
+    return {"webhook": webhook, "message": "Secret regenerated"}
+
+def generate_webhook_signature(payload: str, secret: str) -> str:
+    """Generate HMAC-SHA256 signature for webhook payload"""
+    return hmac.new(
+        secret.encode('utf-8'),
+        payload.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
 async def trigger_webhook(tenant_id: str, event: WebhookEvent, data: Dict[str, Any]):
-    """Trigger webhooks for an event"""
+    """Trigger webhooks for an event with logging and retry support"""
     webhooks = await db.webhooks.find({
         "tenant_id": tenant_id,
         "is_active": True,
@@ -1357,20 +1464,116 @@ async def trigger_webhook(tenant_id: str, event: WebhookEvent, data: Dict[str, A
     }, {"_id": 0}).to_list(100)
     
     for webhook in webhooks:
-        try:
-            async with httpx.AsyncClient() as client:
-                await client.post(
-                    webhook["url"],
-                    json={
-                        "event": event.value,
-                        "data": data,
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    },
-                    headers={"X-Webhook-Secret": webhook.get("secret", "")},
-                    timeout=10
-                )
-        except Exception as e:
-            logger.error(f"Webhook failed: {e}")
+        # Create delivery log
+        delivery_id = f"delivery_{uuid.uuid4().hex[:12]}"
+        timestamp = datetime.now(timezone.utc).isoformat()
+        
+        payload = {
+            "id": delivery_id,
+            "event": event.value,
+            "tenant_id": tenant_id,
+            "data": data,
+            "timestamp": timestamp,
+            "api_version": "1.0"
+        }
+        
+        payload_str = str(payload)
+        signature = generate_webhook_signature(payload_str, webhook.get("secret", ""))
+        
+        delivery_log = {
+            "delivery_id": delivery_id,
+            "webhook_id": webhook["webhook_id"],
+            "tenant_id": tenant_id,
+            "event": event.value,
+            "url": webhook["url"],
+            "payload": payload,
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 3,
+            "created_at": timestamp,
+            "last_attempt_at": None,
+            "response_status": None,
+            "response_body": None,
+            "error_message": None
+        }
+        
+        # Store delivery log
+        await db.webhook_deliveries.insert_one({**delivery_log})
+        
+        # Attempt delivery with retries
+        await attempt_webhook_delivery(webhook, payload, signature, delivery_id)
+
+async def attempt_webhook_delivery(webhook: Dict, payload: Dict, signature: str, delivery_id: str, attempt: int = 1):
+    """Attempt to deliver webhook with retry logic"""
+    max_attempts = 3
+    retry_delays = [0, 30, 300]  # Immediate, 30 seconds, 5 minutes
+    
+    headers = {
+        "Content-Type": "application/json",
+        "X-Webhook-Secret": webhook.get("secret", ""),
+        "X-Webhook-Signature": f"sha256={signature}",
+        "X-Webhook-Delivery-ID": payload["id"],
+        "X-BookSlot-Event": payload["event"],
+        "User-Agent": "BookSlot-Webhook/1.0"
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                webhook["url"],
+                json=payload,
+                headers=headers,
+                timeout=10
+            )
+            
+            # Update delivery log
+            await db.webhook_deliveries.update_one(
+                {"delivery_id": delivery_id},
+                {"$set": {
+                    "status": "delivered" if response.status_code < 400 else "failed",
+                    "attempts": attempt,
+                    "last_attempt_at": datetime.now(timezone.utc).isoformat(),
+                    "response_status": response.status_code,
+                    "response_body": response.text[:500] if response.text else None
+                }}
+            )
+            
+            # Log success
+            if response.status_code < 400:
+                logger.info(f"Webhook delivered: {delivery_id} to {webhook['url']} (status: {response.status_code})")
+            else:
+                logger.warning(f"Webhook delivery failed: {delivery_id} (status: {response.status_code})")
+                # Schedule retry if attempts remaining
+                if attempt < max_attempts:
+                    asyncio.create_task(
+                        retry_webhook_delivery(webhook, payload, signature, delivery_id, attempt + 1, retry_delays[attempt])
+                    )
+                    
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Webhook delivery error: {delivery_id} - {error_msg}")
+        
+        # Update delivery log with error
+        await db.webhook_deliveries.update_one(
+            {"delivery_id": delivery_id},
+            {"$set": {
+                "status": "error" if attempt >= max_attempts else "retrying",
+                "attempts": attempt,
+                "last_attempt_at": datetime.now(timezone.utc).isoformat(),
+                "error_message": error_msg[:500]
+            }}
+        )
+        
+        # Schedule retry if attempts remaining
+        if attempt < max_attempts:
+            asyncio.create_task(
+                retry_webhook_delivery(webhook, payload, signature, delivery_id, attempt + 1, retry_delays[attempt])
+            )
+
+async def retry_webhook_delivery(webhook: Dict, payload: Dict, signature: str, delivery_id: str, attempt: int, delay: int):
+    """Retry webhook delivery after a delay"""
+    await asyncio.sleep(delay)
+    await attempt_webhook_delivery(webhook, payload, signature, delivery_id, attempt)
 
 # ================== AI RECEPTIONIST API (MOLTBOT) ==================
 
