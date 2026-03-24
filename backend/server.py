@@ -18,6 +18,19 @@ import hashlib
 import hmac
 import asyncio
 
+# Resend and Twilio imports (optional - graceful fallback if not configured)
+try:
+    import resend
+    RESEND_AVAILABLE = True
+except ImportError:
+    RESEND_AVAILABLE = False
+
+try:
+    from twilio.rest import Client as TwilioClient
+    TWILIO_AVAILABLE = True
+except ImportError:
+    TWILIO_AVAILABLE = False
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -28,6 +41,20 @@ db = client[os.environ['DB_NAME']]
 
 # JWT Configuration
 JWT_SECRET = os.environ.get('JWT_SECRET', 'bookslot-secret-key-change-in-production')
+
+# Email Configuration (Resend)
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
+if RESEND_AVAILABLE and RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+
+# SMS Configuration (Twilio)
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
+TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER', '')
+twilio_client = None
+if TWILIO_AVAILABLE and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
+    twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 168  # 7 days
 
@@ -71,6 +98,20 @@ class IndustryType(str, Enum):
 
 # ================== MODELS ==================
 
+# Working Hours Schema
+DEFAULT_WORKING_HOURS = {
+    "monday": {"enabled": True, "start": "09:00", "end": "17:00", "breaks": []},
+    "tuesday": {"enabled": True, "start": "09:00", "end": "17:00", "breaks": []},
+    "wednesday": {"enabled": True, "start": "09:00", "end": "17:00", "breaks": []},
+    "thursday": {"enabled": True, "start": "09:00", "end": "17:00", "breaks": []},
+    "friday": {"enabled": True, "start": "09:00", "end": "17:00", "breaks": []},
+    "saturday": {"enabled": False, "start": "10:00", "end": "16:00", "breaks": []},
+    "sunday": {"enabled": False, "start": "10:00", "end": "16:00", "breaks": []}
+}
+
+# SMS Add-on Configuration
+SMS_ADDON_PRICE = 10  # €10/month
+
 # Base Models
 class TenantBase(BaseModel):
     name: str
@@ -95,6 +136,13 @@ class Tenant(TenantBase):
     is_active: bool = True
     onboarding_completed: bool = False
     settings: Dict[str, Any] = Field(default_factory=dict)
+    # Add-ons
+    sms_addon_enabled: bool = False
+    sms_addon_activated_at: Optional[datetime] = None
+    # Notification settings
+    email_reminders_enabled: bool = True
+    sms_reminders_enabled: bool = False
+    reminder_hours_before: int = 24  # Send reminder X hours before appointment
 
 # User Models
 class UserBase(BaseModel):
@@ -138,7 +186,7 @@ class StaffBase(BaseModel):
     avatar_url: Optional[str] = None
     color: str = "#4F46E5"
     services: List[str] = Field(default_factory=list)
-    working_hours: Dict[str, Any] = Field(default_factory=dict)
+    working_hours: Dict[str, Any] = Field(default_factory=lambda: DEFAULT_WORKING_HOURS.copy())
 
 class StaffCreate(StaffBase):
     pass
@@ -1030,7 +1078,7 @@ async def get_availability(
     staff_id: str,
     date: str
 ):
-    """Get available time slots for a date"""
+    """Get available time slots for a date based on staff working hours"""
     tenant = await db.tenants.find_one({"booking_url_slug": slug, "is_active": True}, {"_id": 0})
     if not tenant:
         raise HTTPException(status_code=404, detail="Business not found")
@@ -1038,6 +1086,30 @@ async def get_availability(
     service = await db.services.find_one({"service_id": service_id}, {"_id": 0})
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
+    
+    # Get staff working hours
+    staff = await db.staff.find_one({"staff_id": staff_id, "is_active": True}, {"_id": 0})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    working_hours = staff.get("working_hours", DEFAULT_WORKING_HOURS)
+    
+    # Get day of week
+    try:
+        date_obj = datetime.strptime(date, "%Y-%m-%d")
+        day_name = date_obj.strftime("%A").lower()
+    except:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+    
+    day_schedule = working_hours.get(day_name, {"enabled": False})
+    
+    # If staff doesn't work this day, return empty slots
+    if not day_schedule.get("enabled", False):
+        return {"slots": [], "date": date, "message": "Staff not available on this day"}
+    
+    # Get working hours for the day
+    start_hour, start_min = map(int, day_schedule.get("start", "09:00").split(":"))
+    end_hour, end_min = map(int, day_schedule.get("end", "17:00").split(":"))
     
     # Get existing appointments for the day
     start_of_day = f"{date}T00:00:00"
@@ -1050,32 +1122,60 @@ async def get_availability(
         "start_time": {"$gte": start_of_day, "$lte": end_of_day}
     }, {"_id": 0}).to_list(100)
     
-    # Generate available slots (9 AM to 6 PM, simplified)
+    # Parse breaks
+    breaks = day_schedule.get("breaks", [])
+    
+    # Generate available slots based on working hours
     duration = service.get("duration", 30)
     buffer = service.get("buffer_time", 0)
     slots = []
     
-    for hour in range(9, 18):
-        for minute in [0, 30]:
-            slot_start = f"{date}T{hour:02d}:{minute:02d}:00"
-            slot_end_dt = datetime.fromisoformat(slot_start) + timedelta(minutes=duration + buffer)
-            slot_end = slot_end_dt.isoformat()
+    # Generate time slots in 30-minute increments within working hours
+    current_time = datetime(date_obj.year, date_obj.month, date_obj.day, start_hour, start_min)
+    end_time = datetime(date_obj.year, date_obj.month, date_obj.day, end_hour, end_min)
+    
+    while current_time < end_time:
+        slot_start = current_time
+        slot_end = current_time + timedelta(minutes=duration + buffer)
+        
+        # Check if slot ends within working hours
+        if slot_end > end_time:
+            break
+        
+        slot_start_str = slot_start.strftime(f"{date}T%H:%M:%S")
+        slot_end_str = slot_end.strftime(f"{date}T%H:%M:%S")
+        
+        # Check if slot is during a break
+        in_break = False
+        for brk in breaks:
+            brk_start = brk.get("start", "12:00")
+            brk_end = brk.get("end", "13:00")
+            brk_start_time = datetime.strptime(f"{date} {brk_start}", "%Y-%m-%d %H:%M")
+            brk_end_time = datetime.strptime(f"{date} {brk_end}", "%Y-%m-%d %H:%M")
             
-            # Check if slot conflicts
+            if slot_start < brk_end_time and slot_end > brk_start_time:
+                in_break = True
+                break
+        
+        if not in_break:
+            # Check if slot conflicts with existing appointments
             conflict = False
             for appt in existing:
-                if appt["start_time"] < slot_end and appt["end_time"] > slot_start:
+                if appt["start_time"] < slot_end_str and appt["end_time"] > slot_start_str:
                     conflict = True
                     break
             
             if not conflict:
                 slots.append({
-                    "start_time": slot_start,
-                    "end_time": slot_end,
+                    "start_time": slot_start_str,
+                    "end_time": slot_end_str,
                     "available": True
                 })
+        
+        # Move to next slot (30-minute increments)
+        current_time += timedelta(minutes=30)
     
-    return {"slots": slots, "date": date}
+    return {"slots": slots, "date": date, "working_hours": {"start": day_schedule.get("start"), "end": day_schedule.get("end")}}
 
 @api_router.post("/public/booking/{slug}/book")
 async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
@@ -1147,6 +1247,9 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
     await db.appointments.insert_one({**appt_dict})
     
     await trigger_webhook(tenant["tenant_id"], WebhookEvent.BOOKING_CREATED, appt_dict)
+    
+    # Send booking confirmation notifications
+    await send_booking_confirmation(appt_dict, tenant)
     
     return {
         "appointment": appt_dict,
@@ -1305,6 +1408,372 @@ async def get_dashboard_stats(user: Dict = Depends(get_current_user)):
         },
         "upcoming_appointments": upcoming
     }
+
+# ================== NOTIFICATIONS & SMS ADD-ON ==================
+
+@api_router.get("/notifications/settings")
+async def get_notification_settings(user: Dict = Depends(get_current_user)):
+    """Get tenant notification settings"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    return {
+        "email_reminders_enabled": tenant.get("email_reminders_enabled", True),
+        "sms_reminders_enabled": tenant.get("sms_reminders_enabled", False),
+        "sms_addon_enabled": tenant.get("sms_addon_enabled", False),
+        "reminder_hours_before": tenant.get("reminder_hours_before", 24),
+        "sms_addon_price": SMS_ADDON_PRICE
+    }
+
+@api_router.put("/notifications/settings")
+async def update_notification_settings(settings: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Update tenant notification settings"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    updates = {}
+    
+    # Email settings (always available)
+    if "email_reminders_enabled" in settings:
+        updates["email_reminders_enabled"] = settings["email_reminders_enabled"]
+    
+    if "reminder_hours_before" in settings:
+        updates["reminder_hours_before"] = settings["reminder_hours_before"]
+    
+    # SMS settings (only if addon is enabled)
+    if "sms_reminders_enabled" in settings:
+        if settings["sms_reminders_enabled"] and not tenant.get("sms_addon_enabled"):
+            raise HTTPException(status_code=403, detail="SMS add-on not enabled. Please enable SMS add-on first.")
+        updates["sms_reminders_enabled"] = settings["sms_reminders_enabled"]
+    
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.tenants.update_one(
+        {"tenant_id": user["tenant_id"]},
+        {"$set": updates}
+    )
+    
+    return {"message": "Settings updated", "settings": updates}
+
+@api_router.post("/notifications/sms-addon/enable")
+async def enable_sms_addon(user: Dict = Depends(get_current_user)):
+    """Enable SMS add-on for tenant (+€10/month)"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    await db.tenants.update_one(
+        {"tenant_id": user["tenant_id"]},
+        {"$set": {
+            "sms_addon_enabled": True,
+            "sms_addon_activated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Log the add-on activation
+    await db.addon_logs.insert_one({
+        "log_id": f"addon_log_{uuid.uuid4().hex[:12]}",
+        "tenant_id": user["tenant_id"],
+        "addon_type": "sms",
+        "action": "enabled",
+        "price": SMS_ADDON_PRICE,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "message": "SMS add-on enabled",
+        "monthly_cost": SMS_ADDON_PRICE,
+        "currency": "EUR"
+    }
+
+@api_router.post("/notifications/sms-addon/disable")
+async def disable_sms_addon(user: Dict = Depends(get_current_user)):
+    """Disable SMS add-on for tenant"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    await db.tenants.update_one(
+        {"tenant_id": user["tenant_id"]},
+        {"$set": {
+            "sms_addon_enabled": False,
+            "sms_reminders_enabled": False,  # Also disable SMS reminders
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Log the add-on deactivation
+    await db.addon_logs.insert_one({
+        "log_id": f"addon_log_{uuid.uuid4().hex[:12]}",
+        "tenant_id": user["tenant_id"],
+        "addon_type": "sms",
+        "action": "disabled",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": "SMS add-on disabled"}
+
+# Notification sending functions (to be connected with Resend/Twilio)
+async def send_email_notification(tenant_id: str, to_email: str, subject: str, body: str, template_type: str = "generic"):
+    """Send email notification via Resend"""
+    notification_log = {
+        "log_id": f"notif_{uuid.uuid4().hex[:12]}",
+        "tenant_id": tenant_id,
+        "type": "email",
+        "to": to_email,
+        "subject": subject,
+        "body": body[:500],
+        "template_type": template_type,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notification_logs.insert_one({**notification_log})
+    
+    # Check if Resend is configured
+    if not RESEND_AVAILABLE or not RESEND_API_KEY:
+        logger.warning("Resend not configured - email queued but not sent")
+        await db.notification_logs.update_one(
+            {"log_id": notification_log["log_id"]},
+            {"$set": {"status": "queued", "error": "Resend not configured"}}
+        )
+        return notification_log["log_id"]
+    
+    # Generate HTML email from plain text
+    html_body = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ border-bottom: 2px solid #E34A33; padding-bottom: 20px; margin-bottom: 20px; }}
+            .content {{ white-space: pre-wrap; }}
+            .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #666; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1 style="margin: 0; color: #0A0A0A;">BookSlot</h1>
+            </div>
+            <div class="content">{body}</div>
+            <div class="footer">
+                <p>This email was sent by BookSlot on behalf of your service provider.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_body
+        }
+        
+        # Run sync SDK in thread to keep FastAPI non-blocking
+        email_response = await asyncio.to_thread(resend.Emails.send, params)
+        
+        await db.notification_logs.update_one(
+            {"log_id": notification_log["log_id"]},
+            {"$set": {
+                "status": "sent",
+                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "external_id": email_response.get("id")
+            }}
+        )
+        logger.info(f"Email sent to {to_email}: {notification_log['log_id']}")
+        
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Failed to send email: {error_msg}")
+        await db.notification_logs.update_one(
+            {"log_id": notification_log["log_id"]},
+            {"$set": {"status": "failed", "error": error_msg[:200]}}
+        )
+    
+    return notification_log["log_id"]
+
+async def send_sms_notification(tenant_id: str, to_phone: str, message: str):
+    """Send SMS notification via Twilio"""
+    # Check if tenant has SMS addon enabled
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id}, {"_id": 0})
+    if not tenant or not tenant.get("sms_addon_enabled"):
+        logger.warning(f"SMS addon not enabled for tenant {tenant_id}")
+        return None
+    
+    notification_log = {
+        "log_id": f"notif_{uuid.uuid4().hex[:12]}",
+        "tenant_id": tenant_id,
+        "type": "sms",
+        "to": to_phone,
+        "message": message[:160],  # SMS limit
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notification_logs.insert_one({**notification_log})
+    
+    # Check if Twilio is configured
+    if not TWILIO_AVAILABLE or not twilio_client or not TWILIO_PHONE_NUMBER:
+        logger.warning("Twilio not configured - SMS queued but not sent")
+        await db.notification_logs.update_one(
+            {"log_id": notification_log["log_id"]},
+            {"$set": {"status": "queued", "error": "Twilio not configured"}}
+        )
+        return notification_log["log_id"]
+    
+    try:
+        # Send SMS via Twilio
+        sms_response = await asyncio.to_thread(
+            twilio_client.messages.create,
+            body=message[:160],
+            from_=TWILIO_PHONE_NUMBER,
+            to=to_phone
+        )
+        
+        await db.notification_logs.update_one(
+            {"log_id": notification_log["log_id"]},
+            {"$set": {
+                "status": "sent",
+                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "external_id": sms_response.sid
+            }}
+        )
+        logger.info(f"SMS sent to {to_phone}: {notification_log['log_id']}")
+        
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Failed to send SMS: {error_msg}")
+        await db.notification_logs.update_one(
+            {"log_id": notification_log["log_id"]},
+            {"$set": {"status": "failed", "error": error_msg[:200]}}
+        )
+    
+    return notification_log["log_id"]
+
+async def send_booking_confirmation(appointment: Dict, tenant: Dict):
+    """Send booking confirmation via email and optionally SMS"""
+    client_email = appointment.get("client_email")
+    client_phone = appointment.get("client_phone")
+    client_name = appointment.get("client_name", "Customer")
+    
+    # Get service name
+    service = await db.services.find_one({"service_id": appointment.get("service_id")}, {"_id": 0})
+    service_name = service.get("name", "Appointment") if service else "Appointment"
+    
+    # Format date/time
+    start_time = appointment.get("start_time", "")
+    if isinstance(start_time, str):
+        try:
+            dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+            date_str = dt.strftime("%B %d, %Y")
+            time_str = dt.strftime("%I:%M %p")
+        except:
+            date_str = start_time
+            time_str = ""
+    else:
+        date_str = str(start_time)
+        time_str = ""
+    
+    # Send email confirmation (always, if email provided)
+    if client_email and tenant.get("email_reminders_enabled", True):
+        subject = f"Booking Confirmed - {service_name}"
+        body = f"""Hi {client_name},
+
+Your appointment has been confirmed!
+
+Service: {service_name}
+Date: {date_str}
+Time: {time_str}
+Location: {tenant.get('address', 'See booking details')}
+
+Confirmation Code: {appointment.get('appointment_id')}
+
+To manage your booking, visit: /booking/{appointment.get('appointment_id')}
+
+Thank you for choosing {tenant.get('name')}!
+"""
+        await send_email_notification(tenant["tenant_id"], client_email, subject, body, "booking_confirmation")
+    
+    # Send SMS confirmation (only if addon enabled and SMS reminders on)
+    if client_phone and tenant.get("sms_addon_enabled") and tenant.get("sms_reminders_enabled"):
+        sms_message = f"Booking confirmed at {tenant.get('name')}: {service_name} on {date_str} at {time_str}. Code: {appointment.get('appointment_id')[-6:]}"
+        await send_sms_notification(tenant["tenant_id"], client_phone, sms_message)
+
+@api_router.get("/notifications/logs")
+async def get_notification_logs(user: Dict = Depends(get_current_user), limit: int = 50, type: Optional[str] = None):
+    """Get notification logs for tenant"""
+    if not user.get("tenant_id"):
+        return {"logs": []}
+    
+    query = {"tenant_id": user["tenant_id"]}
+    if type:
+        query["type"] = type
+    
+    logs = await db.notification_logs.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return {"logs": logs}
+
+@api_router.get("/notifications/integration-status")
+async def get_notification_integration_status(user: Dict = Depends(get_current_user)):
+    """Check if notification integrations are configured"""
+    return {
+        "email": {
+            "provider": "Resend",
+            "configured": bool(RESEND_AVAILABLE and RESEND_API_KEY),
+            "sender": SENDER_EMAIL if RESEND_API_KEY else None
+        },
+        "sms": {
+            "provider": "Twilio",
+            "configured": bool(TWILIO_AVAILABLE and twilio_client and TWILIO_PHONE_NUMBER),
+            "phone": TWILIO_PHONE_NUMBER[-4:] if TWILIO_PHONE_NUMBER else None  # Only show last 4 digits
+        }
+    }
+
+# ================== STAFF WORKING HOURS ==================
+
+@api_router.get("/staff/{staff_id}/working-hours")
+async def get_staff_working_hours(staff_id: str, user: Dict = Depends(get_current_user)):
+    """Get working hours for a staff member"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    staff = await db.staff.find_one({
+        "staff_id": staff_id,
+        "tenant_id": user["tenant_id"]
+    }, {"_id": 0})
+    
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    return {
+        "staff_id": staff_id,
+        "working_hours": staff.get("working_hours", DEFAULT_WORKING_HOURS)
+    }
+
+@api_router.put("/staff/{staff_id}/working-hours")
+async def update_staff_working_hours(staff_id: str, working_hours: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Update working hours for a staff member"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    result = await db.staff.update_one(
+        {"staff_id": staff_id, "tenant_id": user["tenant_id"]},
+        {"$set": {"working_hours": working_hours}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    return {"message": "Working hours updated", "working_hours": working_hours}
 
 # ================== WEBHOOKS ==================
 

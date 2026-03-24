@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
@@ -8,8 +8,8 @@ import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, addMinutes } from 'date-fns';
+import { ChevronLeft, ChevronRight, Plus, X, GripVertical, Clock } from 'lucide-react';
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, addMinutes, differenceInMinutes } from 'date-fns';
 
 const CalendarPage = () => {
   const { token } = useAuth();
@@ -22,6 +22,8 @@ const CalendarPage = () => {
   const [loading, setLoading] = useState(true);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [draggedAppointment, setDraggedAppointment] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
 
   // New appointment form
   const [newAppt, setNewAppt] = useState({
@@ -82,6 +84,7 @@ const CalendarPage = () => {
   };
 
   const handleSlotClick = (day, hour) => {
+    if (draggedAppointment) return; // Don't open dialog while dragging
     setSelectedSlot({ day, hour });
     setNewAppt({
       ...newAppt,
@@ -89,6 +92,71 @@ const CalendarPage = () => {
       time: `${hour.toString().padStart(2, '0')}:00`
     });
     setShowNewAppointment(true);
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e, appointment) => {
+    setDraggedAppointment(appointment);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', appointment.appointment_id);
+    // Add visual feedback
+    e.currentTarget.style.opacity = '0.5';
+  };
+
+  const handleDragEnd = (e) => {
+    e.currentTarget.style.opacity = '1';
+    setDraggedAppointment(null);
+    setDropTarget(null);
+  };
+
+  const handleDragOver = (e, day, hour) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const targetKey = `${format(day, 'yyyy-MM-dd')}-${hour}`;
+    if (dropTarget !== targetKey) {
+      setDropTarget(targetKey);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    // Only clear if leaving the cell entirely
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDropTarget(null);
+    }
+  };
+
+  const handleDrop = async (e, day, hour) => {
+    e.preventDefault();
+    setDropTarget(null);
+    
+    if (!draggedAppointment) return;
+
+    const newDate = format(day, 'yyyy-MM-dd');
+    const newTime = `${hour.toString().padStart(2, '0')}:00`;
+    const newStartTime = `${newDate}T${newTime}:00`;
+    
+    // Calculate duration from original appointment
+    const originalStart = parseISO(draggedAppointment.start_time);
+    const originalEnd = parseISO(draggedAppointment.end_time);
+    const durationMinutes = differenceInMinutes(originalEnd, originalStart);
+    
+    const newEndTime = format(addMinutes(parseISO(newStartTime), durationMinutes), "yyyy-MM-dd'T'HH:mm:ss");
+
+    try {
+      await axios.put(`${API}/appointments/${draggedAppointment.appointment_id}`, {
+        start_time: newStartTime,
+        end_time: newEndTime
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      toast.success('Appointment moved successfully');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to move appointment');
+    }
+    
+    setDraggedAppointment(null);
   };
 
   const handleCreateAppointment = async () => {
@@ -197,23 +265,41 @@ const CalendarPage = () => {
               {weekDays.map((day, dayIdx) => {
                 const slotAppointments = getAppointmentsForSlot(day, hour);
                 const isToday = isSameDay(day, new Date());
+                const targetKey = `${format(day, 'yyyy-MM-dd')}-${hour}`;
+                const isDropTarget = dropTarget === targetKey;
                 
                 return (
                   <div
                     key={dayIdx}
                     onClick={() => handleSlotClick(day, hour)}
-                    className={`calendar-cell min-h-[60px] cursor-pointer relative ${isToday ? 'bg-[#FAFAFA]/50' : ''}`}
+                    onDragOver={(e) => handleDragOver(e, day, hour)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, day, hour)}
+                    className={`calendar-cell min-h-[60px] cursor-pointer relative transition-colors ${
+                      isToday ? 'bg-[#FAFAFA]/50' : ''
+                    } ${isDropTarget ? 'bg-[#E34A33]/10 ring-2 ring-[#E34A33] ring-inset' : ''}`}
                     data-testid={`slot-${format(day, 'yyyy-MM-dd')}-${hour}`}
                   >
                     {slotAppointments.map((appt) => (
                       <div
                         key={appt.appointment_id}
-                        className="absolute inset-x-1 top-1 p-1.5 text-xs text-white rounded-sm truncate"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, appt)}
+                        onDragEnd={handleDragEnd}
+                        className="absolute inset-x-1 top-1 p-1.5 text-xs text-white rounded-sm truncate cursor-grab active:cursor-grabbing group"
                         style={{ backgroundColor: getStaffColor(appt.staff_id) }}
                         data-testid={`appt-${appt.appointment_id}`}
                       >
-                        <p className="font-medium truncate">{appt.client_name || 'Walk-in'}</p>
-                        <p className="text-white/80 truncate">{format(parseISO(appt.start_time), 'h:mm a')}</p>
+                        <div className="flex items-start gap-1">
+                          <GripVertical className="w-3 h-3 opacity-0 group-hover:opacity-70 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{appt.client_name || 'Walk-in'}</p>
+                            <p className="text-white/80 truncate flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {format(parseISO(appt.start_time), 'h:mm a')}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>

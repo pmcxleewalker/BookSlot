@@ -7,14 +7,19 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Mail, Phone, User } from 'lucide-react';
+import { Plus, Edit2, Trash2, Mail, Phone, User, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import WorkingHoursEditor from '../../components/WorkingHoursEditor';
 
 const StaffPage = () => {
   const { token, tenant } = useAuth();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [showHoursDialog, setShowHoursDialog] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
+  const [selectedStaffForHours, setSelectedStaffForHours] = useState(null);
+  const [workingHours, setWorkingHours] = useState({});
+  const [expandedStaff, setExpandedStaff] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -98,6 +103,44 @@ const StaffPage = () => {
     }
   };
 
+  const openHoursDialog = async (member) => {
+    setSelectedStaffForHours(member);
+    try {
+      const response = await axios.get(`${API}/staff/${member.staff_id}/working-hours`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setWorkingHours(response.data.working_hours || {});
+    } catch (error) {
+      setWorkingHours({});
+    }
+    setShowHoursDialog(true);
+  };
+
+  const saveWorkingHours = async () => {
+    if (!selectedStaffForHours) return;
+    
+    try {
+      await axios.put(`${API}/staff/${selectedStaffForHours.staff_id}/working-hours`, workingHours, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Working hours updated');
+      setShowHoursDialog(false);
+      fetchStaff();
+    } catch (error) {
+      toast.error('Failed to update working hours');
+    }
+  };
+
+  const getWorkingDays = (member) => {
+    const hours = member.working_hours || {};
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const enabledDays = days.filter(d => hours[d]?.enabled);
+    if (enabledDays.length === 0) return 'No schedule set';
+    if (enabledDays.length === 7) return 'Every day';
+    if (enabledDays.length === 5 && !hours.saturday?.enabled && !hours.sunday?.enabled) return 'Mon-Fri';
+    return enabledDays.map(d => d.charAt(0).toUpperCase() + d.slice(0, 2)).join(', ');
+  };
+
   const getStaffLimit = () => {
     const limits = { starter: 2, growth: 8, pro: 999 };
     return limits[tenant?.plan] || 2;
@@ -154,6 +197,15 @@ const StaffPage = () => {
                   <Button 
                     variant="ghost" 
                     size="sm" 
+                    onClick={() => openHoursDialog(member)}
+                    className="text-[#666666]"
+                    data-testid={`hours-staff-${member.staff_id}`}
+                  >
+                    <Clock className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
                     onClick={() => openDialog(member)}
                     data-testid={`edit-staff-${member.staff_id}`}
                   >
@@ -182,6 +234,10 @@ const StaffPage = () => {
                     {member.phone}
                   </div>
                 )}
+                <div className="flex items-center gap-2 text-[#666666]">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-xs">{getWorkingDays(member)}</span>
+                </div>
               </div>
             </div>
           ))}
@@ -265,6 +321,33 @@ const StaffPage = () => {
               </Button>
               <Button className="flex-1 btn-primary" onClick={handleSubmit} data-testid="save-staff-btn">
                 {editingStaff ? 'Update' : 'Add Staff'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Working Hours Dialog */}
+      <Dialog open={showHoursDialog} onOpenChange={setShowHoursDialog}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Working Hours - {selectedStaffForHours?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4">
+            <WorkingHoursEditor
+              workingHours={workingHours}
+              onChange={setWorkingHours}
+            />
+
+            <div className="flex gap-3 pt-6 border-t border-[#E5E5E5] mt-6">
+              <Button variant="outline" className="flex-1" onClick={() => setShowHoursDialog(false)}>
+                Cancel
+              </Button>
+              <Button className="flex-1 btn-primary" onClick={saveWorkingHours} data-testid="save-hours-btn">
+                Save Working Hours
               </Button>
             </div>
           </div>
