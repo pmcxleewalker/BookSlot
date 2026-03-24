@@ -107,6 +107,15 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - Create Tenant Dialog with plan selection
   - Tenant Detail Page with plan editor (/admin/tenants/{id})
 
+- [x] **Moltbot AI Conversation System:**
+  - Full conversation understanding via GPT-4o-mini
+  - Intent parsing (book, reschedule, cancel, check availability)
+  - Entity extraction (service, date, time, contact info)
+  - Automatic booking action execution
+  - Conversation history storage
+  - Admin management page (/moltbot)
+  - Webhook endpoints for SMS/Email (ready for activation)
+
 ### Design
 - Swiss/High-contrast design system
 - Fonts: Cormorant Garamond (headings), Manrope (body), JetBrains Mono (code)
@@ -150,7 +159,6 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 ### P1 (High Priority) - PENDING
 - [ ] Stripe payment integration for deposits
 - [ ] Google Calendar sync
-- [ ] Moltbot AI auto-reply for full email/SMS conversations
 
 ### P2 (Medium Priority) - Deferred
 - [ ] Custom intake forms builder
@@ -191,5 +199,23 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 ## Next Tasks
 1. Add Stripe payment integration for deposits
 2. Implement Google Calendar sync
-3. Build Moltbot AI auto-reply for full conversations
-4. Build custom forms builder
+3. Build custom forms builder
+
+## Moltbot AI Activation Guide (When Ready)
+To activate Moltbot for incoming SMS/Email:
+
+**For SMS (Twilio):**
+1. Configure Twilio webhook URL: `{YOUR_DOMAIN}/api/moltbot/webhook/incoming-sms`
+2. Add credentials to `.env`: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+3. Enable SMS add-on per tenant in Settings
+
+**For Email (Resend Inbound):**
+1. Configure Resend inbound webhook: `{YOUR_DOMAIN}/api/moltbot/webhook/incoming-email`
+2. Add credentials to `.env`: RESEND_API_KEY
+3. Set up inbound parsing in Resend dashboard
+
+The AI conversation system will automatically:
+- Parse incoming messages
+- Understand booking intents
+- Execute actions (book, cancel, reschedule)
+- Send confirmation responses
