@@ -1079,11 +1079,48 @@ async def get_public_booking_page(slug: str):
         "timezone": tenant.get("timezone")
     }
     
+    # Include services info for each staff (which services they can perform)
+    staff_public = []
+    for s in staff:
+        staff_public.append({
+            "staff_id": s["staff_id"],
+            "name": s["name"],
+            "title": s.get("title"),
+            "avatar_url": s.get("avatar_url"),
+            "services": s.get("services", [])  # List of service_ids this staff can perform
+        })
+    
     return {
         "tenant": tenant_public,
         "services": services,
-        "staff": staff
+        "staff": staff_public
     }
+
+@api_router.get("/public/booking/{slug}/staff-for-service")
+async def get_staff_for_service(slug: str, service_id: str):
+    """Get staff members who can perform a specific service"""
+    tenant = await db.tenants.find_one({"booking_url_slug": slug, "is_active": True}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    # Get all active staff
+    all_staff = await db.staff.find({"tenant_id": tenant["tenant_id"], "is_active": True}, {"_id": 0}).to_list(100)
+    
+    # Filter staff who can perform this service
+    # If staff has no services assigned, they can perform all services (backwards compatible)
+    # If staff has services assigned, only show if service_id is in their list
+    eligible_staff = []
+    for s in all_staff:
+        staff_services = s.get("services", [])
+        if len(staff_services) == 0 or service_id in staff_services:
+            eligible_staff.append({
+                "staff_id": s["staff_id"],
+                "name": s["name"],
+                "title": s.get("title"),
+                "avatar_url": s.get("avatar_url")
+            })
+    
+    return {"staff": eligible_staff}
 
 @api_router.get("/public/booking/{slug}/availability")
 async def get_availability(
