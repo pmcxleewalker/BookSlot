@@ -5,6 +5,7 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - Supported industries: salons, clinics, dentists, doctors, vets, consultants, service businesses
 - Core positioning: Simple booking software with transparent pricing, fast setup, and AI receptionist
 - **NEW REQUIREMENT (March 2026):** Super Admin Dashboard to manage all tenants, create tenants manually, and assign pricing tiers/features
+- **NEW REQUIREMENT (March 2026):** Email/SMS notification system with SMS as paid add-on (+€10/month)
 
 ## User Personas
 1. **Platform Owner (Super Admin)**: Manages all tenants, creates businesses, assigns tiers
@@ -25,6 +26,7 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - Webhook support for booking events
 - GDPR-compliant design
 - **Super Admin Dashboard with tier management**
+- **Email reminders (free) + SMS add-on (+€10/month)**
 
 ## What's Been Implemented
 
@@ -54,6 +56,18 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - [x] **Plan-based feature enforcement:**
   - Staff limits per plan (Starter=2, Growth=8, Pro=unlimited)
   - Feature access control based on tenant plan
+- [x] **Notification System:**
+  - Email reminders via Resend (free tier: 3000/month)
+  - SMS reminders via Twilio (+€10/month add-on)
+  - Notification settings API
+  - SMS add-on enable/disable
+  - Notification logs with delivery status
+  - Integration status endpoint
+- [x] **Staff Working Hours:**
+  - Custom working hours per staff member
+  - Support for breaks during the day
+  - Public availability respects working hours
+  - Default working hours (Mon-Fri 9-5)
 
 ### Frontend (React + Tailwind + Shadcn)
 - [x] Public pages: Landing, Features, Pricing, Login, Signup
@@ -61,15 +75,29 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - [x] Manage booking page (view/cancel by confirmation code)
 - [x] Onboarding wizard (3 steps: business name, industry, contact)
 - [x] Dashboard with stats cards and upcoming appointments
-- [x] Calendar page with week view
-- [x] Staff management page
+- [x] **Calendar page with:**
+  - Week view
+  - Drag-and-drop appointment rescheduling
+  - Visual drop target feedback
+  - Grip handle on hover
+- [x] **Staff management page with:**
+  - Working hours editor per staff
+  - Visual schedule summary (Mon-Fri, Mon-Sat, etc.)
+  - Break time configuration
 - [x] Services management page
 - [x] Clients page with search
 - [x] Resources page (Pro feature)
 - [x] Forms page (Pro feature placeholder)
 - [x] Messages/reminders page (MOCKED)
 - [x] Reports page with stats
-- [x] Settings page
+- [x] **Settings page with:**
+  - Business details
+  - Regional settings
+  - Booking settings
+  - **Notification settings:**
+    - Email reminders toggle (FREE - Included)
+    - SMS add-on toggle (+€10/month)
+    - Reminder timing selector (1-48 hours)
 - [x] Integrations page with API docs and webhook config
 - [x] AI Receptionist demo widget (Moltbot chat)
 - [x] **Super Admin Portal:**
@@ -92,12 +120,12 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 |---------|---------------|--------------|------------|
 | Max Staff | 2 | 8 | Unlimited |
 | Online Booking | ✓ | ✓ | ✓ |
-| Reminders | ✓ | ✓ | ✓ |
+| Email Reminders | ✓ (FREE) | ✓ (FREE) | ✓ (FREE) |
+| SMS Reminders | +€10/mo | +€10/mo | +€10/mo |
 | Deposits | ✓ | ✓ | ✓ |
 | Calendar Sync | ✓ | ✓ | ✓ |
 | Waitlist | - | ✓ | ✓ |
 | AI Assistant | - | ✓ | ✓ |
-| SMS Automations | - | ✓ | ✓ |
 | Advanced Reports | - | ✓ | ✓ |
 | Multi-location | - | - | ✓ |
 | Resource Booking | - | - | ✓ |
@@ -114,13 +142,15 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - ✅ Super Admin Dashboard
 - ✅ Tier-based feature enforcement
 - ✅ Webhook dispatcher with logs & retries
+- ✅ Email notifications (Resend integration ready)
+- ✅ SMS notifications (Twilio integration ready, +€10/month add-on)
+- ✅ Staff working hours configuration
+- ✅ Drag-and-drop calendar
 
-### P1 (High Priority) - IN PROGRESS
-- [ ] Real email/SMS notifications (currently mocked)
+### P1 (High Priority) - PENDING
 - [ ] Stripe payment integration for deposits
 - [ ] Google Calendar sync
-- [ ] Working hours configuration per staff
-- [ ] Drag-and-drop calendar (currently click-to-create)
+- [ ] Moltbot AI auto-reply for full email/SMS conversations
 
 ### P2 (Medium Priority) - Deferred
 - [ ] Custom intake forms builder
@@ -148,10 +178,18 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - `/api/receptionist/{tenant_id}/*` - Moltbot AI API
 - `/api/admin/*` - Super Admin APIs
 - `/api/public/booking/{slug}/*` - Public booking
+- `/api/notifications/*` - Notification settings & logs
+
+## External Integrations (API Keys Required)
+1. **Resend** (Email) - Add `RESEND_API_KEY` to `/app/backend/.env`
+   - Get API key: https://resend.com → Dashboard → API Keys
+   - Free tier: 3,000 emails/month
+2. **Twilio** (SMS) - Add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` to `/app/backend/.env`
+   - Get credentials: https://console.twilio.com
+   - Cost: ~$0.0079/SMS (passed through to tenant via +€10/month add-on)
 
 ## Next Tasks
-1. Implement real email notifications (SendGrid or Resend)
-2. Add Stripe payment integration for deposits
-3. Implement drag-and-drop calendar
-4. Add working hours configuration per staff
-5. Build custom forms builder
+1. Add Stripe payment integration for deposits
+2. Implement Google Calendar sync
+3. Build Moltbot AI auto-reply for full conversations
+4. Build custom forms builder

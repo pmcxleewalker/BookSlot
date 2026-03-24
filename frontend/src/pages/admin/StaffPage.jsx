@@ -134,11 +134,13 @@ const StaffPage = () => {
   const getWorkingDays = (member) => {
     const hours = member.working_hours || {};
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const dayLabels = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
     const enabledDays = days.filter(d => hours[d]?.enabled);
     if (enabledDays.length === 0) return 'No schedule set';
     if (enabledDays.length === 7) return 'Every day';
     if (enabledDays.length === 5 && !hours.saturday?.enabled && !hours.sunday?.enabled) return 'Mon-Fri';
-    return enabledDays.map(d => d.charAt(0).toUpperCase() + d.slice(0, 2)).join(', ');
+    if (enabledDays.length === 6 && !hours.sunday?.enabled) return 'Mon-Sat';
+    return enabledDays.map(d => dayLabels[d]).join(', ');
   };
 
   const getStaffLimit = () => {
