@@ -17,6 +17,8 @@ from enum import Enum
 import hashlib
 import hmac
 import asyncio
+import json
+import re
 
 # Resend and Twilio imports (optional - graceful fallback if not configured)
 try:
@@ -30,6 +32,13 @@ try:
     TWILIO_AVAILABLE = True
 except ImportError:
     TWILIO_AVAILABLE = False
+
+# Emergent LLM integration for Moltbot AI
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    MOLTBOT_LLM_AVAILABLE = True
+except ImportError:
+    MOLTBOT_LLM_AVAILABLE = False
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -55,6 +64,11 @@ TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER', '')
 twilio_client = None
 if TWILIO_AVAILABLE and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
     twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
+# Moltbot AI Configuration
+EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
+MOLTBOT_ENABLED = os.environ.get('MOLTBOT_ENABLED', 'true').lower() == 'true'
+
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 168  # 7 days
 
@@ -2265,6 +2279,503 @@ async def receptionist_reschedule_booking(tenant_id: str, body: Dict[str, Any], 
     await trigger_webhook(tenant_id, WebhookEvent.BOOKING_UPDATED, updated)
     
     return {"success": True, "appointment": updated}
+
+# ================== MOLTBOT AI CONVERSATION SYSTEM ==================
+
+# Moltbot system prompt for understanding booking intents
+MOLTBOT_SYSTEM_PROMPT = """You are Moltbot, an AI receptionist for {business_name}. You help customers:
+1. Book appointments
+2. Check availability
+3. Reschedule existing appointments
+4. Cancel bookings
+5. Get information about services
+
+BUSINESS CONTEXT:
+- Business: {business_name}
+- Services: {services_list}
+- Today's date: {today_date}
+
+INSTRUCTIONS:
+- Be friendly, professional, and concise
+- When a customer wants to book, ask for: service, preferred date/time, and their contact info
+- When rescheduling, ask for their confirmation code and new preferred time
+- When cancelling, ask for their confirmation code
+- Always confirm details before taking action
+- If you're unsure, ask clarifying questions
+
+RESPOND WITH JSON in this format:
+{{
+    "response_text": "Your friendly message to the customer",
+    "intent": "book|reschedule|cancel|check_availability|get_info|clarify|general",
+    "action_ready": true/false,
+    "extracted_data": {{
+        "service_name": "if mentioned",
+        "preferred_date": "YYYY-MM-DD if mentioned",
+        "preferred_time": "HH:MM if mentioned",
+        "client_name": "if provided",
+        "client_email": "if provided",
+        "client_phone": "if provided",
+        "confirmation_code": "if provided for reschedule/cancel"
+    }}
+}}
+
+If action_ready is true, you have enough info to execute the booking action.
+Always keep response_text conversational and helpful."""
+
+class MoltbotMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class MoltbotConversation(BaseModel):
+    conversation_id: str = Field(default_factory=lambda: f"conv_{uuid.uuid4().hex[:12]}")
+    tenant_id: str
+    client_identifier: str  # phone or email
+    channel: str  # "sms", "email", "chat"
+    messages: List[Dict[str, Any]] = Field(default_factory=list)
+    context: Dict[str, Any] = Field(default_factory=dict)  # Extracted booking context
+    status: str = "active"  # active, completed, abandoned
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+async def get_moltbot_context(tenant_id: str) -> Dict[str, Any]:
+    """Get business context for Moltbot"""
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id}, {"_id": 0})
+    if not tenant:
+        return {}
+    
+    services = await db.services.find({"tenant_id": tenant_id, "is_active": True}, {"_id": 0}).to_list(20)
+    services_list = ", ".join([f"{s['name']} (€{s.get('price', 0)}, {s.get('duration', 30)} min)" for s in services])
+    
+    return {
+        "business_name": tenant.get("name", "the business"),
+        "services_list": services_list or "Various services available",
+        "today_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "services": services,
+        "tenant": tenant
+    }
+
+async def process_moltbot_message(
+    tenant_id: str,
+    client_identifier: str,
+    message: str,
+    channel: str = "chat"
+) -> Dict[str, Any]:
+    """Process incoming message and generate AI response"""
+    
+    # Check if Moltbot is available
+    if not MOLTBOT_LLM_AVAILABLE or not EMERGENT_LLM_KEY:
+        return {
+            "response": "AI assistant is not configured. Please contact the business directly.",
+            "conversation_id": None,
+            "action_taken": None
+        }
+    
+    # Get or create conversation
+    conversation = await db.moltbot_conversations.find_one({
+        "tenant_id": tenant_id,
+        "client_identifier": client_identifier,
+        "status": "active"
+    }, {"_id": 0})
+    
+    if not conversation:
+        conv = MoltbotConversation(
+            tenant_id=tenant_id,
+            client_identifier=client_identifier,
+            channel=channel
+        )
+        conversation = conv.model_dump()
+        await db.moltbot_conversations.insert_one({**conversation})
+    
+    # Add user message to conversation
+    user_msg = {
+        "role": "user",
+        "content": message,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    conversation["messages"].append(user_msg)
+    
+    # Get business context
+    context = await get_moltbot_context(tenant_id)
+    
+    # Build conversation history for LLM
+    system_prompt = MOLTBOT_SYSTEM_PROMPT.format(**context)
+    
+    # Create LLM chat instance
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=conversation["conversation_id"],
+        system_message=system_prompt
+    ).with_model("openai", "gpt-4o-mini")
+    
+    # Build message history for context
+    history_text = ""
+    for msg in conversation["messages"][-10:]:  # Last 10 messages for context
+        role = "Customer" if msg["role"] == "user" else "Moltbot"
+        history_text += f"{role}: {msg['content']}\n"
+    
+    try:
+        # Get AI response
+        user_message = UserMessage(text=f"Conversation history:\n{history_text}\n\nCustomer's latest message: {message}")
+        ai_response = await chat.send_message(user_message)
+        
+        # Parse JSON response
+        try:
+            # Try to extract JSON from response
+            json_match = re.search(r'\{[\s\S]*\}', ai_response)
+            if json_match:
+                parsed = json.loads(json_match.group())
+            else:
+                parsed = {
+                    "response_text": ai_response,
+                    "intent": "general",
+                    "action_ready": False,
+                    "extracted_data": {}
+                }
+        except json.JSONDecodeError:
+            parsed = {
+                "response_text": ai_response,
+                "intent": "general",
+                "action_ready": False,
+                "extracted_data": {}
+            }
+        
+        response_text = parsed.get("response_text", ai_response)
+        intent = parsed.get("intent", "general")
+        action_ready = parsed.get("action_ready", False)
+        extracted_data = parsed.get("extracted_data", {})
+        
+        # Update conversation context with extracted data
+        for key, value in extracted_data.items():
+            if value:
+                conversation["context"][key] = value
+        
+        # Add assistant message
+        assistant_msg = {
+            "role": "assistant",
+            "content": response_text,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "intent": intent,
+            "action_ready": action_ready
+        }
+        conversation["messages"].append(assistant_msg)
+        
+        # Execute action if ready
+        action_result = None
+        if action_ready and intent in ["book", "reschedule", "cancel"]:
+            action_result = await execute_moltbot_action(
+                tenant_id=tenant_id,
+                intent=intent,
+                context=conversation["context"],
+                services=context.get("services", [])
+            )
+            
+            if action_result and action_result.get("success"):
+                conversation["status"] = "completed"
+        
+        # Update conversation in DB
+        conversation["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.moltbot_conversations.update_one(
+            {"conversation_id": conversation["conversation_id"]},
+            {"$set": conversation}
+        )
+        
+        return {
+            "response": response_text,
+            "conversation_id": conversation["conversation_id"],
+            "intent": intent,
+            "action_ready": action_ready,
+            "action_taken": action_result,
+            "context": conversation["context"]
+        }
+        
+    except Exception as e:
+        logger.error(f"Moltbot AI error: {str(e)}")
+        return {
+            "response": "I apologize, but I'm having trouble processing your request. Please try again or contact us directly.",
+            "conversation_id": conversation["conversation_id"],
+            "error": str(e)
+        }
+
+async def execute_moltbot_action(
+    tenant_id: str,
+    intent: str,
+    context: Dict[str, Any],
+    services: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Execute booking action based on intent"""
+    
+    if intent == "book":
+        # Find matching service
+        service_name = context.get("service_name", "")
+        service = None
+        for s in services:
+            if service_name.lower() in s["name"].lower():
+                service = s
+                break
+        
+        if not service:
+            return {"success": False, "error": "Service not found"}
+        
+        # Get available staff
+        staff = await db.staff.find({"tenant_id": tenant_id, "is_active": True}, {"_id": 0}).to_list(1)
+        if not staff:
+            return {"success": False, "error": "No staff available"}
+        
+        # Parse date/time
+        preferred_date = context.get("preferred_date", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+        preferred_time = context.get("preferred_time", "10:00")
+        
+        start_time = f"{preferred_date}T{preferred_time}:00"
+        end_time_dt = datetime.fromisoformat(start_time) + timedelta(minutes=service.get("duration", 30))
+        end_time = end_time_dt.isoformat()
+        
+        # Create appointment
+        appointment = Appointment(
+            tenant_id=tenant_id,
+            service_id=service["service_id"],
+            staff_id=staff[0]["staff_id"],
+            client_name=context.get("client_name", "AI Booking"),
+            client_email=context.get("client_email"),
+            client_phone=context.get("client_phone"),
+            start_time=start_time,
+            end_time=end_time,
+            notes="Booked via Moltbot AI",
+            source="ai_receptionist"
+        )
+        
+        appt_dict = appointment.model_dump()
+        appt_dict["created_at"] = appt_dict["created_at"].isoformat()
+        appt_dict["updated_at"] = appt_dict["updated_at"].isoformat()
+        
+        await db.appointments.insert_one({**appt_dict})
+        await trigger_webhook(tenant_id, WebhookEvent.BOOKING_CREATED, appt_dict)
+        
+        return {
+            "success": True,
+            "action": "booked",
+            "confirmation_code": appointment.appointment_id,
+            "details": {
+                "service": service["name"],
+                "date": preferred_date,
+                "time": preferred_time
+            }
+        }
+    
+    elif intent == "cancel":
+        confirmation_code = context.get("confirmation_code")
+        if not confirmation_code:
+            return {"success": False, "error": "Confirmation code required"}
+        
+        result = await db.appointments.update_one(
+            {"appointment_id": confirmation_code, "tenant_id": tenant_id},
+            {"$set": {
+                "status": "cancelled",
+                "cancellation_reason": "Cancelled via Moltbot AI",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        if result.matched_count == 0:
+            return {"success": False, "error": "Appointment not found"}
+        
+        return {"success": True, "action": "cancelled", "confirmation_code": confirmation_code}
+    
+    elif intent == "reschedule":
+        confirmation_code = context.get("confirmation_code")
+        new_date = context.get("preferred_date")
+        new_time = context.get("preferred_time")
+        
+        if not confirmation_code:
+            return {"success": False, "error": "Confirmation code required"}
+        
+        appointment = await db.appointments.find_one(
+            {"appointment_id": confirmation_code, "tenant_id": tenant_id},
+            {"_id": 0}
+        )
+        
+        if not appointment:
+            return {"success": False, "error": "Appointment not found"}
+        
+        # Calculate new times
+        if new_date and new_time:
+            new_start = f"{new_date}T{new_time}:00"
+            old_start = datetime.fromisoformat(appointment["start_time"].replace('Z', '+00:00'))
+            old_end = datetime.fromisoformat(appointment["end_time"].replace('Z', '+00:00'))
+            duration = (old_end - old_start).total_seconds() / 60
+            new_end_dt = datetime.fromisoformat(new_start) + timedelta(minutes=duration)
+            new_end = new_end_dt.isoformat()
+            
+            await db.appointments.update_one(
+                {"appointment_id": confirmation_code},
+                {"$set": {
+                    "start_time": new_start,
+                    "end_time": new_end,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            return {
+                "success": True,
+                "action": "rescheduled",
+                "confirmation_code": confirmation_code,
+                "new_date": new_date,
+                "new_time": new_time
+            }
+        
+        return {"success": False, "error": "New date and time required"}
+    
+    return {"success": False, "error": "Unknown action"}
+
+# Moltbot Conversation API Endpoints
+
+@api_router.post("/moltbot/{tenant_id}/chat")
+async def moltbot_chat(tenant_id: str, body: Dict[str, Any], api_key: str = Query(...)):
+    """Chat endpoint for Moltbot AI - handles incoming messages and returns AI responses"""
+    
+    # Validate tenant
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    # Check if AI receptionist is enabled for this tenant
+    features = tenant.get("features", {})
+    if not features.get("ai_assistant", True):  # Default to True for testing
+        raise HTTPException(status_code=403, detail="AI assistant not enabled for this business")
+    
+    message = body.get("message", "")
+    client_identifier = body.get("client_identifier", body.get("phone", body.get("email", "anonymous")))
+    channel = body.get("channel", "chat")
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+    
+    result = await process_moltbot_message(
+        tenant_id=tenant_id,
+        client_identifier=client_identifier,
+        message=message,
+        channel=channel
+    )
+    
+    return result
+
+@api_router.get("/moltbot/{tenant_id}/conversations")
+async def get_moltbot_conversations(
+    tenant_id: str,
+    api_key: str = Query(...),
+    status: Optional[str] = None,
+    limit: int = 20
+):
+    """Get Moltbot conversations for a tenant"""
+    
+    query = {"tenant_id": tenant_id}
+    if status:
+        query["status"] = status
+    
+    conversations = await db.moltbot_conversations.find(
+        query, {"_id": 0}
+    ).sort("updated_at", -1).to_list(limit)
+    
+    return {"conversations": conversations}
+
+@api_router.get("/moltbot/{tenant_id}/conversations/{conversation_id}")
+async def get_moltbot_conversation(tenant_id: str, conversation_id: str, api_key: str = Query(...)):
+    """Get a specific Moltbot conversation"""
+    
+    conversation = await db.moltbot_conversations.find_one({
+        "tenant_id": tenant_id,
+        "conversation_id": conversation_id
+    }, {"_id": 0})
+    
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    return conversation
+
+@api_router.post("/moltbot/{tenant_id}/conversations/{conversation_id}/close")
+async def close_moltbot_conversation(tenant_id: str, conversation_id: str, api_key: str = Query(...)):
+    """Close/end a Moltbot conversation"""
+    
+    result = await db.moltbot_conversations.update_one(
+        {"tenant_id": tenant_id, "conversation_id": conversation_id},
+        {"$set": {"status": "completed", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    return {"message": "Conversation closed"}
+
+@api_router.post("/moltbot/webhook/incoming-sms")
+async def moltbot_incoming_sms(request: Request):
+    """Webhook endpoint for incoming SMS (Twilio)"""
+    
+    form_data = await request.form()
+    from_number = form_data.get("From", "")
+    to_number = form_data.get("To", "")
+    message_body = form_data.get("Body", "")
+    
+    # Find tenant by phone number (you'd need to store this mapping)
+    # For now, log and return TwiML response
+    logger.info(f"Incoming SMS from {from_number}: {message_body}")
+    
+    # Store incoming message
+    await db.moltbot_incoming.insert_one({
+        "message_id": f"sms_{uuid.uuid4().hex[:12]}",
+        "channel": "sms",
+        "from": from_number,
+        "to": to_number,
+        "body": message_body,
+        "status": "received",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Return TwiML response (empty for now - response would be sent async)
+    return Response(
+        content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
+        media_type="application/xml"
+    )
+
+@api_router.post("/moltbot/webhook/incoming-email")
+async def moltbot_incoming_email(request: Request):
+    """Webhook endpoint for incoming emails (Resend inbound)"""
+    
+    body = await request.json()
+    
+    from_email = body.get("from", "")
+    to_email = body.get("to", "")
+    subject = body.get("subject", "")
+    text_body = body.get("text", body.get("html", ""))
+    
+    logger.info(f"Incoming email from {from_email}: {subject}")
+    
+    # Store incoming message
+    await db.moltbot_incoming.insert_one({
+        "message_id": f"email_{uuid.uuid4().hex[:12]}",
+        "channel": "email",
+        "from": from_email,
+        "to": to_email,
+        "subject": subject,
+        "body": text_body[:1000],
+        "status": "received",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"received": True}
+
+@api_router.get("/moltbot/status")
+async def get_moltbot_status():
+    """Check Moltbot AI system status"""
+    return {
+        "enabled": MOLTBOT_ENABLED,
+        "llm_available": MOLTBOT_LLM_AVAILABLE,
+        "llm_configured": bool(EMERGENT_LLM_KEY),
+        "features": {
+            "chat": True,
+            "sms_webhook": bool(TWILIO_AVAILABLE and twilio_client),
+            "email_webhook": bool(RESEND_AVAILABLE and RESEND_API_KEY)
+        }
+    }
 
 # ================== DEMO DATA ==================
 

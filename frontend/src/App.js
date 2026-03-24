@@ -26,6 +26,7 @@ import ReportsPage from './pages/admin/ReportsPage';
 import SettingsPage from './pages/admin/SettingsPage';
 import IntegrationsPage from './pages/admin/IntegrationsPage';
 import OnboardingPage from './pages/admin/OnboardingPage';
+import MoltbotPage from './pages/admin/MoltbotPage';
 
 // Pages - Super Admin
 import AdminLoginPage from './pages/superadmin/AdminLoginPage';
@@ -249,6 +250,7 @@ const AppRouter = () => {
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
+      <Route path="/moltbot" element={<ProtectedRoute><MoltbotPage /></ProtectedRoute>} />
 
       {/* Super Admin Routes */}
       <Route path="/admin" element={<AdminLoginPage />} />

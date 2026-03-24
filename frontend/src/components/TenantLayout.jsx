@@ -17,7 +17,8 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  Bot
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -31,6 +32,7 @@ const navItems = [
   { path: '/clients', label: 'Clients', icon: UserCircle },
   { path: '/forms', label: 'Forms', icon: FileText },
   { path: '/messages', label: 'Messages', icon: Mail },
+  { path: '/moltbot', label: 'AI Receptionist', icon: Bot },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
   { path: '/integrations', label: 'Integrations', icon: Puzzle },
