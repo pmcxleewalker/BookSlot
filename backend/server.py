@@ -156,7 +156,14 @@ class Tenant(TenantBase):
     # Notification settings
     email_reminders_enabled: bool = True
     sms_reminders_enabled: bool = False
-    reminder_hours_before: int = 24  # Send reminder X hours before appointment
+    reminder_hours_before: int = 24
+    # Custom Branding (Salon Package)
+    branding: Dict[str, Any] = Field(default_factory=lambda: {
+        "primary_color": "#E34A33",
+        "secondary_color": "#0A0A0A", 
+        "accent_color": "#4F46E5",
+        "show_powered_by": True  # "Powered by BookSlot"
+    })
 
 # User Models
 class UserBase(BaseModel):
@@ -201,17 +208,48 @@ class StaffBase(BaseModel):
     color: str = "#4F46E5"
     services: List[str] = Field(default_factory=list)
     working_hours: Dict[str, Any] = Field(default_factory=lambda: DEFAULT_WORKING_HOURS.copy())
+    # Permissions
+    role: str = "staff"  # "admin" or "staff"
+    can_view_all_bookings: bool = False
+    can_edit_services: bool = False
+    can_manage_staff: bool = False
+    can_view_reports: bool = False
+    can_manage_customers: bool = True
 
 class StaffCreate(StaffBase):
-    pass
+    password: Optional[str] = None  # For creating staff login
 
 class Staff(StaffBase):
     model_config = ConfigDict(extra="ignore")
     staff_id: str = Field(default_factory=lambda: f"staff_{uuid.uuid4().hex[:12]}")
     tenant_id: str
-    user_id: Optional[str] = None
+    user_id: Optional[str] = None  # Linked user account for login
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Time blocks (annual leave, lunch, unavailable)
+    time_blocks: List[Dict[str, Any]] = Field(default_factory=list)
+
+# Time Block Types
+class TimeBlockType(str, Enum):
+    ANNUAL_LEAVE = "annual_leave"
+    LUNCH = "lunch"
+    UNAVAILABLE = "unavailable"
+    BREAK = "break"
+
+class TimeBlock(BaseModel):
+    block_id: str = Field(default_factory=lambda: f"block_{uuid.uuid4().hex[:8]}")
+    staff_id: str
+    tenant_id: str
+    block_type: TimeBlockType
+    title: str
+    start_date: str  # YYYY-MM-DD
+    end_date: str    # YYYY-MM-DD
+    start_time: Optional[str] = None  # HH:MM (for lunch/breaks)
+    end_time: Optional[str] = None
+    all_day: bool = False
+    recurring: bool = False  # For daily lunch breaks
+    notes: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 # Service Models
 class ServiceBase(BaseModel):
@@ -259,6 +297,13 @@ class ClientBase(BaseModel):
     phone: Optional[str] = None
     notes: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
+    # Salon Package enhancements
+    is_vip: bool = False
+    preferred_staff_id: Optional[str] = None
+    service_notes: Optional[str] = None  # Notes about services they prefer
+    important_info: Optional[str] = None  # Allergies, preferences, etc.
+    birthday: Optional[str] = None  # YYYY-MM-DD
+    marketing_consent: bool = True
 
 class ClientCreate(ClientBase):
     pass
@@ -271,6 +316,8 @@ class Client(ClientBase):
     total_appointments: int = 0
     total_spent: float = 0.0
     last_visit: Optional[datetime] = None
+    # Service history
+    service_history: List[Dict[str, Any]] = Field(default_factory=list)  # [{service_name, date, staff, notes}]
 
 # Appointment Models
 class AppointmentBase(BaseModel):
@@ -694,6 +741,39 @@ async def complete_onboarding(user: Dict = Depends(get_current_user)):
     
     return {"message": "Onboarding completed"}
 
+@api_router.put("/tenants/me/branding")
+async def update_tenant_branding(branding: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Update tenant branding (colors, logo, etc.)"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=404, detail="No business found")
+    
+    allowed_fields = ["primary_color", "secondary_color", "accent_color", "show_powered_by"]
+    clean_branding = {k: v for k, v in branding.items() if k in allowed_fields}
+    
+    await db.tenants.update_one(
+        {"tenant_id": user["tenant_id"]},
+        {"$set": {"branding": clean_branding, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    return {"branding": tenant.get("branding", {})}
+
+@api_router.get("/tenants/me/branding")
+async def get_tenant_branding(user: Dict = Depends(get_current_user)):
+    """Get tenant branding settings"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=404, detail="No business found")
+    
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    default_branding = {
+        "primary_color": "#E34A33",
+        "secondary_color": "#0A0A0A",
+        "accent_color": "#4F46E5",
+        "show_powered_by": True
+    }
+    
+    return {"branding": tenant.get("branding", default_branding), "logo_url": tenant.get("logo_url")}
+
 # ================== STAFF ENDPOINTS ==================
 
 @api_router.get("/staff")
@@ -758,6 +838,224 @@ async def delete_staff(staff_id: str, user: Dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Staff not found")
     
     return {"message": "Staff deleted"}
+
+# ================== STAFF LOGIN & ACCOUNTS ==================
+
+@api_router.post("/staff/{staff_id}/create-account")
+async def create_staff_account(staff_id: str, body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Create login account for staff member (Admin only)"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # Check admin permission
+    current_user = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if current_user.get("role") not in ["owner", "admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    staff = await db.staff.find_one({"staff_id": staff_id, "tenant_id": user["tenant_id"]}, {"_id": 0})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    if staff.get("user_id"):
+        raise HTTPException(status_code=400, detail="Staff already has an account")
+    
+    password = body.get("password")
+    if not password or len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    # Create user account for staff
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    new_user = User(
+        email=staff["email"],
+        name=staff["name"],
+        tenant_id=user["tenant_id"],
+        role=UserRole.STAFF
+    )
+    user_dict = new_user.model_dump()
+    user_dict["created_at"] = user_dict["created_at"].isoformat()
+    user_dict["password_hash"] = hashed_password
+    
+    await db.users.insert_one({**user_dict})
+    
+    # Link staff to user account
+    await db.staff.update_one(
+        {"staff_id": staff_id},
+        {"$set": {"user_id": new_user.user_id}}
+    )
+    
+    return {"message": "Account created", "user_id": new_user.user_id, "email": staff["email"]}
+
+@api_router.post("/staff/login")
+async def staff_login(body: UserLogin):
+    """Staff member login"""
+    user = await db.users.find_one({"email": body.email}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not bcrypt.checkpw(body.password.encode('utf-8'), user.get("password_hash", "").encode('utf-8')):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Account disabled")
+    
+    # Get staff record for permissions
+    staff = await db.staff.find_one({"user_id": user["user_id"], "tenant_id": user.get("tenant_id")}, {"_id": 0})
+    
+    # Generate token
+    token = jwt.encode(
+        {"user_id": user["user_id"], "tenant_id": user.get("tenant_id"), "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)},
+        JWT_SECRET, algorithm=JWT_ALGORITHM
+    )
+    
+    return {
+        "token": token,
+        "user": {
+            "user_id": user["user_id"],
+            "email": user["email"],
+            "name": user["name"],
+            "role": user.get("role", "staff"),
+            "tenant_id": user.get("tenant_id")
+        },
+        "staff": staff,
+        "permissions": {
+            "can_view_all_bookings": staff.get("can_view_all_bookings", False) if staff else False,
+            "can_edit_services": staff.get("can_edit_services", False) if staff else False,
+            "can_manage_staff": staff.get("can_manage_staff", False) if staff else False,
+            "can_view_reports": staff.get("can_view_reports", False) if staff else False,
+            "can_manage_customers": staff.get("can_manage_customers", True) if staff else True
+        }
+    }
+
+@api_router.put("/staff/{staff_id}/permissions")
+async def update_staff_permissions(staff_id: str, permissions: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Update staff permissions (Admin only)"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    current_user = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if current_user.get("role") not in ["owner", "admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    allowed_permissions = ["can_view_all_bookings", "can_edit_services", "can_manage_staff", "can_view_reports", "can_manage_customers", "role"]
+    updates = {k: v for k, v in permissions.items() if k in allowed_permissions}
+    
+    await db.staff.update_one(
+        {"staff_id": staff_id, "tenant_id": user["tenant_id"]},
+        {"$set": updates}
+    )
+    
+    staff = await db.staff.find_one({"staff_id": staff_id}, {"_id": 0})
+    return {"staff": staff}
+
+@api_router.put("/staff/{staff_id}/change-password")
+async def change_staff_password(staff_id: str, body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Change staff password (Admin or self)"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    staff = await db.staff.find_one({"staff_id": staff_id, "tenant_id": user["tenant_id"]}, {"_id": 0})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    # Check permission (admin can change any, staff can change own)
+    current_user = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    is_admin = current_user.get("role") in ["owner", "admin"]
+    is_self = staff.get("user_id") == user["user_id"]
+    
+    if not is_admin and not is_self:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    if not staff.get("user_id"):
+        raise HTTPException(status_code=400, detail="Staff has no account")
+    
+    new_password = body.get("new_password")
+    if not new_password or len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    await db.users.update_one(
+        {"user_id": staff["user_id"]},
+        {"$set": {"password_hash": hashed}}
+    )
+    
+    return {"message": "Password changed"}
+
+# ================== TIME BLOCKS (Leave, Lunch, Unavailable) ==================
+
+@api_router.get("/staff/{staff_id}/time-blocks")
+async def get_staff_time_blocks(staff_id: str, user: Dict = Depends(get_current_user), start_date: Optional[str] = None, end_date: Optional[str] = None):
+    """Get time blocks for staff member"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    query = {"staff_id": staff_id, "tenant_id": user["tenant_id"]}
+    if start_date and end_date:
+        query["$or"] = [
+            {"start_date": {"$gte": start_date, "$lte": end_date}},
+            {"end_date": {"$gte": start_date, "$lte": end_date}}
+        ]
+    
+    blocks = await db.time_blocks.find(query, {"_id": 0}).to_list(200)
+    return {"time_blocks": blocks}
+
+@api_router.post("/staff/{staff_id}/time-blocks")
+async def create_time_block(staff_id: str, block_data: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Create time block (annual leave, lunch, unavailable)"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    staff = await db.staff.find_one({"staff_id": staff_id, "tenant_id": user["tenant_id"]}, {"_id": 0})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    block = TimeBlock(
+        staff_id=staff_id,
+        tenant_id=user["tenant_id"],
+        block_type=block_data.get("block_type", "unavailable"),
+        title=block_data.get("title", "Blocked"),
+        start_date=block_data.get("start_date"),
+        end_date=block_data.get("end_date"),
+        start_time=block_data.get("start_time"),
+        end_time=block_data.get("end_time"),
+        all_day=block_data.get("all_day", False),
+        recurring=block_data.get("recurring", False),
+        notes=block_data.get("notes")
+    )
+    
+    block_dict = block.model_dump()
+    await db.time_blocks.insert_one({**block_dict})
+    
+    return {"time_block": block_dict}
+
+@api_router.delete("/time-blocks/{block_id}")
+async def delete_time_block(block_id: str, user: Dict = Depends(get_current_user)):
+    """Delete time block"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    result = await db.time_blocks.delete_one({"block_id": block_id, "tenant_id": user["tenant_id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Block not found")
+    
+    return {"message": "Block deleted"}
+
+@api_router.get("/time-blocks")
+async def get_all_time_blocks(user: Dict = Depends(get_current_user), start_date: Optional[str] = None, end_date: Optional[str] = None):
+    """Get all time blocks for tenant"""
+    if not user.get("tenant_id"):
+        return {"time_blocks": []}
+    
+    query = {"tenant_id": user["tenant_id"]}
+    if start_date and end_date:
+        query["$or"] = [
+            {"start_date": {"$gte": start_date, "$lte": end_date}},
+            {"end_date": {"$gte": start_date, "$lte": end_date}}
+        ]
+    
+    blocks = await db.time_blocks.find(query, {"_id": 0}).to_list(500)
+    return {"time_blocks": blocks}
 
 # ================== SERVICE ENDPOINTS ==================
 
@@ -1459,6 +1757,236 @@ async def get_dashboard_stats(user: Dict = Depends(get_current_user)):
         },
         "upcoming_appointments": upcoming
     }
+
+@api_router.get("/reports/detailed")
+async def get_detailed_reports(
+    user: Dict = Depends(get_current_user),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    report_type: str = "overview"
+):
+    """Get detailed reports for admin"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    tenant_id = user["tenant_id"]
+    
+    # Default to last 30 days
+    if not end_date:
+        end_date = datetime.now(timezone.utc).date().isoformat()
+    if not start_date:
+        start_date = (datetime.now(timezone.utc) - timedelta(days=30)).date().isoformat()
+    
+    # Get appointments in range
+    appointments = await db.appointments.find({
+        "tenant_id": tenant_id,
+        "start_time": {"$gte": start_date, "$lte": end_date + "T23:59:59"}
+    }, {"_id": 0}).to_list(5000)
+    
+    # Get services and staff for lookups
+    services = await db.services.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(100)
+    staff = await db.staff.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(100)
+    
+    services_map = {s["service_id"]: s for s in services}
+    staff_map = {s["staff_id"]: s for s in staff}
+    
+    # Calculate metrics
+    total_revenue = sum(a.get("total_price", 0) for a in appointments if a.get("status") in ["completed", "confirmed"])
+    total_bookings = len(appointments)
+    completed = len([a for a in appointments if a.get("status") == "completed"])
+    cancelled = len([a for a in appointments if a.get("status") == "cancelled"])
+    no_shows = len([a for a in appointments if a.get("status") == "no_show"])
+    
+    # Revenue by service
+    revenue_by_service = {}
+    bookings_by_service = {}
+    for a in appointments:
+        service_id = a.get("service_id")
+        service_name = services_map.get(service_id, {}).get("name", "Unknown")
+        price = a.get("total_price", 0) if a.get("status") in ["completed", "confirmed"] else 0
+        
+        revenue_by_service[service_name] = revenue_by_service.get(service_name, 0) + price
+        bookings_by_service[service_name] = bookings_by_service.get(service_name, 0) + 1
+    
+    # Revenue by staff
+    revenue_by_staff = {}
+    bookings_by_staff = {}
+    for a in appointments:
+        staff_id = a.get("staff_id")
+        staff_name = staff_map.get(staff_id, {}).get("name", "Unknown")
+        price = a.get("total_price", 0) if a.get("status") in ["completed", "confirmed"] else 0
+        
+        revenue_by_staff[staff_name] = revenue_by_staff.get(staff_name, 0) + price
+        bookings_by_staff[staff_name] = bookings_by_staff.get(staff_name, 0) + 1
+    
+    # Daily trends
+    daily_revenue = {}
+    daily_bookings = {}
+    for a in appointments:
+        date = a.get("start_time", "")[:10]
+        price = a.get("total_price", 0) if a.get("status") in ["completed", "confirmed"] else 0
+        daily_revenue[date] = daily_revenue.get(date, 0) + price
+        daily_bookings[date] = daily_bookings.get(date, 0) + 1
+    
+    # Busiest hours
+    hourly_bookings = {}
+    for a in appointments:
+        try:
+            hour = int(a.get("start_time", "T10:")[11:13])
+            hourly_bookings[hour] = hourly_bookings.get(hour, 0) + 1
+        except:
+            pass
+    
+    return {
+        "period": {"start": start_date, "end": end_date},
+        "summary": {
+            "total_revenue": total_revenue,
+            "total_bookings": total_bookings,
+            "completed": completed,
+            "cancelled": cancelled,
+            "no_shows": no_shows,
+            "completion_rate": round(completed / total_bookings * 100, 1) if total_bookings > 0 else 0,
+            "average_booking_value": round(total_revenue / completed, 2) if completed > 0 else 0
+        },
+        "by_service": [{"name": k, "revenue": v, "bookings": bookings_by_service.get(k, 0)} for k, v in sorted(revenue_by_service.items(), key=lambda x: x[1], reverse=True)],
+        "by_staff": [{"name": k, "revenue": v, "bookings": bookings_by_staff.get(k, 0)} for k, v in sorted(revenue_by_staff.items(), key=lambda x: x[1], reverse=True)],
+        "daily_trends": [{"date": k, "revenue": daily_revenue.get(k, 0), "bookings": v} for k, v in sorted(daily_bookings.items())],
+        "busiest_hours": [{"hour": k, "bookings": v} for k, v in sorted(hourly_bookings.items())]
+    }
+
+@api_router.get("/reports/export")
+async def export_reports(
+    user: Dict = Depends(get_current_user),
+    format: str = "csv",
+    report_type: str = "appointments",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+):
+    """Export reports as CSV or PDF data"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    tenant_id = user["tenant_id"]
+    
+    # Default dates
+    if not end_date:
+        end_date = datetime.now(timezone.utc).date().isoformat()
+    if not start_date:
+        start_date = (datetime.now(timezone.utc) - timedelta(days=30)).date().isoformat()
+    
+    if report_type == "appointments":
+        # Get appointments with service and staff names
+        appointments = await db.appointments.find({
+            "tenant_id": tenant_id,
+            "start_time": {"$gte": start_date, "$lte": end_date + "T23:59:59"}
+        }, {"_id": 0}).to_list(5000)
+        
+        services = await db.services.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(100)
+        staff = await db.staff.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(100)
+        
+        services_map = {s["service_id"]: s["name"] for s in services}
+        staff_map = {s["staff_id"]: s["name"] for s in staff}
+        
+        export_data = []
+        for a in appointments:
+            export_data.append({
+                "Date": a.get("start_time", "")[:10],
+                "Time": a.get("start_time", "")[11:16],
+                "Client": a.get("client_name", "Walk-in"),
+                "Service": services_map.get(a.get("service_id"), "Unknown"),
+                "Staff": staff_map.get(a.get("staff_id"), "Unknown"),
+                "Status": a.get("status", "pending"),
+                "Price": a.get("total_price", 0),
+                "Notes": a.get("notes", "")
+            })
+        
+        if format == "csv":
+            # Generate CSV string
+            if not export_data:
+                return {"csv": "No data", "filename": f"appointments_{start_date}_{end_date}.csv"}
+            
+            headers = list(export_data[0].keys())
+            csv_lines = [",".join(headers)]
+            for row in export_data:
+                csv_lines.append(",".join([f'"{str(row.get(h, ""))}"' for h in headers]))
+            
+            return {
+                "csv": "\n".join(csv_lines),
+                "filename": f"appointments_{start_date}_{end_date}.csv",
+                "row_count": len(export_data)
+            }
+        else:  # PDF data (frontend will generate PDF)
+            return {
+                "data": export_data,
+                "title": f"Appointments Report ({start_date} to {end_date})",
+                "columns": ["Date", "Time", "Client", "Service", "Staff", "Status", "Price"],
+                "summary": {
+                    "total_appointments": len(export_data),
+                    "total_revenue": sum(d.get("Price", 0) for d in export_data),
+                    "period": f"{start_date} to {end_date}"
+                }
+            }
+    
+    elif report_type == "clients":
+        clients = await db.clients.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(5000)
+        
+        export_data = []
+        for c in clients:
+            export_data.append({
+                "Name": c.get("name", ""),
+                "Email": c.get("email", ""),
+                "Phone": c.get("phone", ""),
+                "VIP": "Yes" if c.get("is_vip") else "No",
+                "Total Visits": c.get("total_appointments", 0),
+                "Total Spent": c.get("total_spent", 0),
+                "Notes": c.get("notes", ""),
+                "Important Info": c.get("important_info", "")
+            })
+        
+        if format == "csv":
+            if not export_data:
+                return {"csv": "No data", "filename": f"clients_{end_date}.csv"}
+            
+            headers = list(export_data[0].keys())
+            csv_lines = [",".join(headers)]
+            for row in export_data:
+                csv_lines.append(",".join([f'"{str(row.get(h, ""))}"' for h in headers]))
+            
+            return {
+                "csv": "\n".join(csv_lines),
+                "filename": f"clients_{end_date}.csv",
+                "row_count": len(export_data)
+            }
+        else:
+            return {
+                "data": export_data,
+                "title": f"Clients Report",
+                "columns": ["Name", "Email", "Phone", "VIP", "Total Visits", "Total Spent"],
+                "summary": {
+                    "total_clients": len(export_data),
+                    "vip_clients": len([c for c in export_data if c.get("VIP") == "Yes"])
+                }
+            }
+    
+    elif report_type == "revenue":
+        # Get detailed report
+        detailed = await get_detailed_reports(user, start_date, end_date)
+        
+        if format == "csv":
+            # Revenue by service
+            csv_lines = ["Service,Revenue,Bookings"]
+            for item in detailed.get("by_service", []):
+                csv_lines.append(f'"{item["name"]}",{item["revenue"]},{item["bookings"]}')
+            
+            return {
+                "csv": "\n".join(csv_lines),
+                "filename": f"revenue_{start_date}_{end_date}.csv",
+                "row_count": len(detailed.get("by_service", []))
+            }
+        else:
+            return detailed
+    
+    return {"error": "Invalid report type"}
 
 # ================== NOTIFICATIONS & SMS ADD-ON ==================
 

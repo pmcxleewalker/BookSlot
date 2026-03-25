@@ -5,10 +5,12 @@ import axios from 'axios';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Checkbox } from '../../components/ui/checkbox';
 import { toast } from 'sonner';
-import { Plus, Search, User, Mail, Phone, Calendar, Edit2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, Search, User, Mail, Phone, Calendar, Edit2, Star, AlertCircle, Scissors, Trash2 } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 const ClientsPage = () => {
   const { token } = useAuth();
@@ -16,26 +18,40 @@ const ClientsPage = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showDialog, setShowDialog] = useState(false);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [filterVip, setFilterVip] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    notes: ''
+    notes: '',
+    is_vip: false,
+    service_notes: '',
+    important_info: '',
+    birthday: ''
   });
 
   useEffect(() => {
     fetchClients();
-  }, [search]);
+  }, [search, filterVip]);
 
   const fetchClients = async () => {
     try {
-      const params = search ? { search } : {};
+      const params = {};
+      if (search) params.search = search;
+      
       const response = await axios.get(`${API}/clients`, {
         params,
         headers: { Authorization: `Bearer ${token}` }
       });
-      setClients(response.data.clients || []);
+      
+      let data = response.data.clients || [];
+      if (filterVip) {
+        data = data.filter(c => c.is_vip);
+      }
+      setClients(data);
     } catch (error) {
       console.error('Failed to load clients:', error);
     } finally {
@@ -50,13 +66,31 @@ const ClientsPage = () => {
         name: client.name,
         email: client.email || '',
         phone: client.phone || '',
-        notes: client.notes || ''
+        notes: client.notes || '',
+        is_vip: client.is_vip || false,
+        service_notes: client.service_notes || '',
+        important_info: client.important_info || '',
+        birthday: client.birthday || ''
       });
     } else {
       setEditingClient(null);
-      setFormData({ name: '', email: '', phone: '', notes: '' });
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        notes: '',
+        is_vip: false,
+        service_notes: '',
+        important_info: '',
+        birthday: ''
+      });
     }
     setShowDialog(true);
+  };
+
+  const viewClientDetail = (client) => {
+    setSelectedClient(client);
+    setShowDetailDialog(true);
   };
 
   const handleSubmit = async () => {
@@ -84,173 +118,250 @@ const ClientsPage = () => {
     }
   };
 
+  const toggleVip = async (client) => {
+    try {
+      await axios.put(`${API}/clients/${client.client_id}`, {
+        is_vip: !client.is_vip
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(client.is_vip ? 'VIP status removed' : 'Marked as VIP');
+      fetchClients();
+    } catch (error) {
+      toast.error('Failed to update VIP status');
+    }
+  };
+
+  const deleteClient = async (clientId) => {
+    if (!window.confirm('Are you sure you want to delete this client?')) return;
+    
+    try {
+      await axios.delete(`${API}/clients/${clientId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Client deleted');
+      fetchClients();
+    } catch (error) {
+      toast.error('Failed to delete client');
+    }
+  };
+
+  const vipCount = clients.filter(c => c.is_vip).length;
+
   return (
     <TenantLayout title="Clients">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666666]" />
-          <Input
-            placeholder="Search clients..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-            data-testid="search-clients"
-          />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666666]" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search clients..."
+              className="pl-10 w-64"
+              data-testid="search-clients"
+            />
+          </div>
+          <Button
+            variant={filterVip ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterVip(!filterVip)}
+            className={filterVip ? "bg-yellow-500 hover:bg-yellow-600" : ""}
+            data-testid="filter-vip"
+          >
+            <Star className={`w-4 h-4 mr-1 ${filterVip ? 'fill-white' : ''}`} />
+            VIP ({vipCount})
+          </Button>
         </div>
-        <Button 
-          onClick={() => openDialog()} 
-          className="btn-primary flex items-center gap-2"
-          data-testid="add-client-btn"
-        >
+        <Button onClick={() => openDialog()} className="btn-primary flex items-center gap-2" data-testid="add-client-btn">
           <Plus className="w-4 h-4" />
           Add Client
         </Button>
       </div>
 
-      {/* Clients Table */}
-      <div className="card-flat overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="table-header">
-                <th className="text-left p-4">Client</th>
-                <th className="text-left p-4">Contact</th>
-                <th className="text-left p-4">Appointments</th>
-                <th className="text-left p-4">Total Spent</th>
-                <th className="text-right p-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-[#666666]">Loading...</td>
-                </tr>
-              ) : clients.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-[#666666]">
-                    {search ? 'No clients found' : 'No clients yet'}
-                  </td>
-                </tr>
-              ) : (
-                clients.map((client) => (
-                  <tr key={client.client_id} className="table-row" data-testid={`client-${client.client_id}`}>
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#121212] rounded-full flex items-center justify-center text-white text-sm font-medium">
-                          {client.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-[#0A0A0A]">{client.name}</p>
-                          {client.tags?.length > 0 && (
-                            <div className="flex gap-1 mt-1">
-                              {client.tags.map((tag, idx) => (
-                                <span key={idx} className="text-xs bg-[#FAFAFA] px-2 py-0.5 text-[#666666]">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      {client.email && (
-                        <div className="flex items-center gap-2 text-sm text-[#666666]">
-                          <Mail className="w-4 h-4" />
-                          {client.email}
-                        </div>
-                      )}
-                      {client.phone && (
-                        <div className="flex items-center gap-2 text-sm text-[#666666] mt-1">
-                          <Phone className="w-4 h-4" />
-                          {client.phone}
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <span className="font-mono text-[#0A0A0A]">{client.total_appointments || 0}</span>
-                      {client.last_visit && (
-                        <p className="text-xs text-[#666666] mt-1">
-                          Last: {format(new Date(client.last_visit), 'MMM d, yyyy')}
-                        </p>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <span className="font-mono font-semibold text-[#0A0A0A]">
-                        €{client.total_spent || 0}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => openDialog(client)}
-                        data-testid={`edit-client-${client.client_id}`}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Client List */}
+      {loading ? (
+        <div className="py-12 text-center text-[#666666]">Loading...</div>
+      ) : clients.length === 0 ? (
+        <div className="card-flat py-12 text-center">
+          <User className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
+          <h3 className="font-semibold text-[#0A0A0A] mb-2">No clients found</h3>
+          <p className="text-[#666666] mb-4">
+            {search || filterVip ? 'Try adjusting your filters' : 'Add your first client to get started'}
+          </p>
+          {!search && !filterVip && (
+            <Button onClick={() => openDialog()} className="btn-primary">Add First Client</Button>
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {clients.map((client) => (
+            <div 
+              key={client.client_id} 
+              className="card-hover cursor-pointer relative"
+              onClick={() => viewClientDetail(client)}
+              data-testid={`client-${client.client_id}`}
+            >
+              {/* VIP Badge */}
+              {client.is_vip && (
+                <div className="absolute -top-2 -right-2 bg-yellow-500 text-white p-1 rounded-full">
+                  <Star className="w-4 h-4 fill-white" />
+                </div>
+              )}
 
-      {/* Add/Edit Dialog */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#FAFAFA] border border-[#E5E5E5] rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-[#666666]" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-[#0A0A0A]">{client.name}</h3>
+                    {client.is_vip && <span className="text-xs text-yellow-600 font-medium">VIP Client</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 text-sm">
+                {client.email && (
+                  <div className="flex items-center gap-2 text-[#666666]">
+                    <Mail className="w-4 h-4" />
+                    <span className="truncate">{client.email}</span>
+                  </div>
+                )}
+                {client.phone && (
+                  <div className="flex items-center gap-2 text-[#666666]">
+                    <Phone className="w-4 h-4" />
+                    {client.phone}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-[#666666]">
+                  <Calendar className="w-4 h-4" />
+                  {client.total_appointments || 0} visits • €{(client.total_spent || 0).toFixed(0)} spent
+                </div>
+              </div>
+
+              {/* Important Info Warning */}
+              {client.important_info && (
+                <div className="mt-3 pt-3 border-t border-[#E5E5E5]">
+                  <div className="flex items-start gap-2 text-amber-600 text-xs">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span className="line-clamp-2">{client.important_info}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Service Notes Preview */}
+              {client.service_notes && (
+                <div className="mt-2 flex items-start gap-2 text-[#666666] text-xs">
+                  <Scissors className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                  <span className="line-clamp-1">{client.service_notes}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add/Edit Client Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingClient ? 'Edit Client' : 'Add Client'}</DialogTitle>
+            <DialogTitle>{editingClient ? 'Edit Client' : 'Add New Client'}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label>Name *</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="Jane Smith"
+                  data-testid="client-name"
+                />
+              </div>
+
+              <div>
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  placeholder="jane@email.com"
+                />
+              </div>
+
+              <div>
+                <Label>Phone</Label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  placeholder="+1 555 123 4567"
+                />
+              </div>
+            </div>
+
             <div>
-              <Label className="text-sm font-medium">Name *</Label>
+              <Label>Birthday</Label>
               <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Full name"
-                className="mt-1.5"
-                data-testid="client-name-input"
+                type="date"
+                value={formData.birthday}
+                onChange={(e) => setFormData({...formData, birthday: e.target.value})}
+              />
+            </div>
+
+            {/* VIP Checkbox */}
+            <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <Checkbox
+                id="vip"
+                checked={formData.is_vip}
+                onCheckedChange={(checked) => setFormData({...formData, is_vip: checked})}
+                data-testid="vip-checkbox"
+              />
+              <div>
+                <label htmlFor="vip" className="font-medium text-[#0A0A0A] cursor-pointer flex items-center gap-2">
+                  <Star className="w-4 h-4 text-yellow-500" />
+                  VIP Client
+                </label>
+                <p className="text-xs text-[#666666]">Mark as VIP for priority treatment</p>
+              </div>
+            </div>
+
+            <div>
+              <Label className="flex items-center gap-2">
+                <Scissors className="w-4 h-4" />
+                Service Notes
+              </Label>
+              <Textarea
+                value={formData.service_notes}
+                onChange={(e) => setFormData({...formData, service_notes: e.target.value})}
+                placeholder="Preferred services, usual style, color preferences..."
+                rows={2}
               />
             </div>
 
             <div>
-              <Label className="text-sm font-medium">Email</Label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="client@email.com"
-                className="mt-1.5"
-                data-testid="client-email-input"
+              <Label className="flex items-center gap-2 text-amber-600">
+                <AlertCircle className="w-4 h-4" />
+                Important Information
+              </Label>
+              <Textarea
+                value={formData.important_info}
+                onChange={(e) => setFormData({...formData, important_info: e.target.value})}
+                placeholder="Allergies, sensitivities, special requirements..."
+                rows={2}
+                className="border-amber-200 focus:border-amber-400"
               />
             </div>
 
             <div>
-              <Label className="text-sm font-medium">Phone</Label>
-              <Input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+1 234 567 8900"
-                className="mt-1.5"
-                data-testid="client-phone-input"
-              />
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium">Notes</Label>
-              <textarea
+              <Label>General Notes</Label>
+              <Textarea
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Any notes about this client..."
-                rows={3}
-                className="mt-1.5 input-swiss resize-none"
-                data-testid="client-notes-input"
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                placeholder="Any other notes about this client..."
+                rows={2}
               />
             </div>
 
@@ -263,6 +374,118 @@ const ClientsPage = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Client Detail Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedClient?.is_vip && <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />}
+              {selectedClient?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedClient && (
+            <div className="mt-4 space-y-4">
+              {/* Contact Info */}
+              <div className="space-y-2">
+                {selectedClient.email && (
+                  <div className="flex items-center gap-2 text-[#666666]">
+                    <Mail className="w-4 h-4" />
+                    {selectedClient.email}
+                  </div>
+                )}
+                {selectedClient.phone && (
+                  <div className="flex items-center gap-2 text-[#666666]">
+                    <Phone className="w-4 h-4" />
+                    {selectedClient.phone}
+                  </div>
+                )}
+                {selectedClient.birthday && (
+                  <div className="flex items-center gap-2 text-[#666666]">
+                    <Calendar className="w-4 h-4" />
+                    Birthday: {selectedClient.birthday}
+                  </div>
+                )}
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-[#FAFAFA] rounded">
+                <div>
+                  <p className="text-2xl font-bold text-[#0A0A0A]">{selectedClient.total_appointments || 0}</p>
+                  <p className="text-xs text-[#666666]">Total Visits</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-[#E34A33]">€{(selectedClient.total_spent || 0).toFixed(0)}</p>
+                  <p className="text-xs text-[#666666]">Total Spent</p>
+                </div>
+              </div>
+
+              {/* Important Info */}
+              {selectedClient.important_info && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded">
+                  <div className="flex items-center gap-2 text-amber-700 font-medium mb-1">
+                    <AlertCircle className="w-4 h-4" />
+                    Important Information
+                  </div>
+                  <p className="text-sm text-amber-800">{selectedClient.important_info}</p>
+                </div>
+              )}
+
+              {/* Service Notes */}
+              {selectedClient.service_notes && (
+                <div className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] rounded">
+                  <div className="flex items-center gap-2 text-[#666666] font-medium mb-1">
+                    <Scissors className="w-4 h-4" />
+                    Service Preferences
+                  </div>
+                  <p className="text-sm">{selectedClient.service_notes}</p>
+                </div>
+              )}
+
+              {/* General Notes */}
+              {selectedClient.notes && (
+                <div>
+                  <p className="text-sm font-medium text-[#666666] mb-1">Notes</p>
+                  <p className="text-sm">{selectedClient.notes}</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4 border-t border-[#E5E5E5]">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => toggleVip(selectedClient)}
+                >
+                  <Star className={`w-4 h-4 mr-2 ${selectedClient.is_vip ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                  {selectedClient.is_vip ? 'Remove VIP' : 'Make VIP'}
+                </Button>
+                <Button 
+                  className="flex-1 btn-primary"
+                  onClick={() => {
+                    setShowDetailDialog(false);
+                    openDialog(selectedClient);
+                  }}
+                >
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="text-red-500 border-red-200"
+                  onClick={() => {
+                    deleteClient(selectedClient.client_id);
+                    setShowDetailDialog(false);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </TenantLayout>

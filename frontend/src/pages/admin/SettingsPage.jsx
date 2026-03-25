@@ -7,24 +7,32 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { toast } from 'sonner';
-import { Building2, Globe, Clock, Shield, Bell, MessageSquare, Mail, Smartphone, Check } from 'lucide-react';
+import { Building2, Globe, Clock, Shield, Bell, MessageSquare, Mail, Smartphone, Check, Palette, Upload, Eye } from 'lucide-react';
 
 const SettingsPage = () => {
   const { tenant, token, updateTenant } = useAuth();
   const [saving, setSaving] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState(null);
   const [loadingNotifications, setLoadingNotifications] = useState(true);
+  const [branding, setBranding] = useState({
+    primary_color: '#E34A33',
+    secondary_color: '#0A0A0A',
+    accent_color: '#4F46E5',
+    show_powered_by: true
+  });
   const [formData, setFormData] = useState({
     name: tenant?.name || '',
     email: tenant?.email || '',
     phone: tenant?.phone || '',
     address: tenant?.address || '',
     timezone: tenant?.timezone || 'Europe/Dublin',
-    currency: tenant?.currency || 'EUR'
+    currency: tenant?.currency || 'EUR',
+    logo_url: tenant?.logo_url || ''
   });
 
   useEffect(() => {
     fetchNotificationSettings();
+    fetchBranding();
   }, []);
 
   const fetchNotificationSettings = async () => {
@@ -40,6 +48,22 @@ const SettingsPage = () => {
     }
   };
 
+  const fetchBranding = async () => {
+    try {
+      const response = await axios.get(`${API}/tenants/me/branding`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.branding) {
+        setBranding(response.data.branding);
+      }
+      if (response.data.logo_url) {
+        setFormData(prev => ({ ...prev, logo_url: response.data.logo_url }));
+      }
+    } catch (error) {
+      console.error('Failed to load branding');
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -49,6 +73,17 @@ const SettingsPage = () => {
       toast.error('Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveBranding = async () => {
+    try {
+      await axios.put(`${API}/tenants/me/branding`, branding, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Branding updated');
+    } catch (error) {
+      toast.error('Failed to update branding');
     }
   };
 
@@ -195,6 +230,138 @@ const SettingsPage = () => {
                 ))}
               </select>
             </div>
+          </div>
+        </div>
+
+        {/* Branding & Customization */}
+        <div className="card-flat mb-6" data-testid="branding-settings">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center">
+              <Palette className="w-5 h-5 text-[#666666]" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-[#0A0A0A]">Branding & Customization</h3>
+              <p className="text-sm text-[#666666]">Customize colors and appearance</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {/* Logo URL */}
+            <div>
+              <Label className="text-sm font-medium">Logo URL</Label>
+              <div className="flex gap-2 mt-1.5">
+                <Input
+                  value={formData.logo_url}
+                  onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                  placeholder="https://your-logo-url.com/logo.png"
+                  className="flex-1"
+                />
+                {formData.logo_url && (
+                  <div className="w-10 h-10 border border-[#E5E5E5] rounded flex items-center justify-center overflow-hidden">
+                    <img src={formData.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-[#666666] mt-1">Enter a URL to your logo image</p>
+            </div>
+
+            {/* Color Pickers */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Primary Color</Label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input
+                    type="color"
+                    value={branding.primary_color}
+                    onChange={(e) => setBranding({ ...branding, primary_color: e.target.value })}
+                    className="w-10 h-10 rounded border border-[#E5E5E5] cursor-pointer"
+                  />
+                  <Input
+                    value={branding.primary_color}
+                    onChange={(e) => setBranding({ ...branding, primary_color: e.target.value })}
+                    className="flex-1 font-mono text-sm"
+                    placeholder="#E34A33"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Secondary Color</Label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input
+                    type="color"
+                    value={branding.secondary_color}
+                    onChange={(e) => setBranding({ ...branding, secondary_color: e.target.value })}
+                    className="w-10 h-10 rounded border border-[#E5E5E5] cursor-pointer"
+                  />
+                  <Input
+                    value={branding.secondary_color}
+                    onChange={(e) => setBranding({ ...branding, secondary_color: e.target.value })}
+                    className="flex-1 font-mono text-sm"
+                    placeholder="#0A0A0A"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Accent Color</Label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input
+                    type="color"
+                    value={branding.accent_color}
+                    onChange={(e) => setBranding({ ...branding, accent_color: e.target.value })}
+                    className="w-10 h-10 rounded border border-[#E5E5E5] cursor-pointer"
+                  />
+                  <Input
+                    value={branding.accent_color}
+                    onChange={(e) => setBranding({ ...branding, accent_color: e.target.value })}
+                    className="flex-1 font-mono text-sm"
+                    placeholder="#4F46E5"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="p-4 border border-[#E5E5E5] rounded">
+              <p className="text-xs text-[#666666] mb-2">Preview</p>
+              <div className="flex items-center gap-4">
+                <div 
+                  className="px-4 py-2 rounded text-white text-sm font-medium"
+                  style={{ backgroundColor: branding.primary_color }}
+                >
+                  Primary Button
+                </div>
+                <div 
+                  className="px-4 py-2 rounded text-white text-sm font-medium"
+                  style={{ backgroundColor: branding.secondary_color }}
+                >
+                  Secondary
+                </div>
+                <div 
+                  className="px-4 py-2 rounded text-white text-sm font-medium"
+                  style={{ backgroundColor: branding.accent_color }}
+                >
+                  Accent
+                </div>
+              </div>
+            </div>
+
+            {/* Powered by BookSlot */}
+            <div className="flex items-center justify-between py-3 border-t border-[#E5E5E5]">
+              <div>
+                <p className="font-medium text-[#0A0A0A]">Show "Powered by BookSlot"</p>
+                <p className="text-sm text-[#666666]">Display branding on public booking pages</p>
+              </div>
+              <Switch
+                checked={branding.show_powered_by}
+                onCheckedChange={(checked) => setBranding({ ...branding, show_powered_by: checked })}
+              />
+            </div>
+
+            <Button onClick={saveBranding} className="btn-primary w-full">
+              Save Branding
+            </Button>
           </div>
         </div>
 
