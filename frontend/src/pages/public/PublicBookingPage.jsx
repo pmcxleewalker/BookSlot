@@ -8,11 +8,9 @@ import { Calendar } from '../../components/ui/calendar';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, Clock, User, Check, MapPin, Phone } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
+import { themes } from '../../context/ThemeContext';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
-
-// Elite by Caitlin logo
-const ELITE_LOGO = 'https://customer-assets.emergentagent.com/job_b51cdde9-aca8-4bc9-8629-803189777585/artifacts/nyi83tyj_image.png';
 
 const PublicBookingPage = () => {
   const { slug } = useParams();
@@ -22,6 +20,7 @@ const PublicBookingPage = () => {
   const [business, setBusiness] = useState(null);
   const [services, setServices] = useState([]);
   const [staff, setStaff] = useState([]);
+  const [tenantTheme, setTenantTheme] = useState('default');
   
   // Booking selections
   const [selectedService, setSelectedService] = useState(null);
@@ -56,6 +55,10 @@ const PublicBookingPage = () => {
       setBusiness(response.data.tenant);
       setServices(response.data.services);
       setStaff(response.data.staff);
+      // Set tenant's theme if they have one
+      if (response.data.tenant?.branding?.theme) {
+        setTenantTheme(response.data.tenant.branding.theme);
+      }
     } catch (error) {
       toast.error('Business not found');
     } finally {
@@ -133,42 +136,67 @@ const PublicBookingPage = () => {
     );
   }
 
+  // Get theme colors based on tenant's selected theme
+  const theme = themes[tenantTheme] || themes.default;
+  const isDark = ['elite', 'modern'].includes(tenantTheme);
+  const bgMain = theme.colors.background;
+  const bgCard = theme.colors.card;
+  const borderColor = theme.colors.border;
+  const textPrimary = theme.colors.text;
+  const textSecondary = theme.colors.textSecondary;
+  const accentColor = theme.colors.accent;
+  const logoUrl = theme.logoUrl || business?.branding?.logo_url || business?.logo_url;
+
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
+    <div className="min-h-screen" style={{ backgroundColor: bgMain }}>
       {/* Header */}
-      <header className="bg-[#141414] border-b border-[#2A2A2A] px-6 py-4">
+      <header style={{ backgroundColor: bgCard, borderColor }} className="border-b px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <img src={ELITE_LOGO} alt="Elite by Caitlin" className="h-14 w-auto" data-testid="booking-logo" />
+            {logoUrl && (
+              <img src={logoUrl} alt={business.name} className="h-14 w-auto" data-testid="booking-logo" />
+            )}
             <div>
-              <h1 className="text-xl font-semibold text-[#D4AF37]" style={{ fontFamily: "'Playfair Display', serif" }} data-testid="business-name">{business.name}</h1>
+              <h1 
+                className="text-xl font-semibold" 
+                style={{ color: isDark ? accentColor : textPrimary, fontFamily: isDark ? "'Playfair Display', serif" : 'inherit' }} 
+                data-testid="business-name"
+              >
+                {business.name}
+              </h1>
               {business.address && (
-                <p className="text-sm text-[#B8B8B8] flex items-center gap-1 mt-1">
+                <p className="text-sm flex items-center gap-1 mt-1" style={{ color: textSecondary }}>
                   <MapPin className="w-3 h-3" />
                   {business.address}
                 </p>
               )}
             </div>
           </div>
-          <span className="text-xs text-[#666666] px-3 py-1 bg-[#0A0A0A] border border-[#2A2A2A]">
+          <span className="text-xs px-3 py-1 border" style={{ color: textSecondary, borderColor, backgroundColor: bgMain }}>
             Powered by BookSlot
           </span>
         </div>
       </header>
 
       {/* Progress Steps */}
-      <div className="bg-[#141414] border-b border-[#2A2A2A] px-6 py-3">
+      <div style={{ backgroundColor: bgCard, borderColor }} className="border-b px-6 py-3">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-2">
             {['Service', 'Staff', 'Date & Time', 'Details', 'Confirmed'].map((label, idx) => (
               <React.Fragment key={idx}>
-                <div className={`flex items-center gap-2 ${step > idx + 1 ? 'text-white' : step === idx + 1 ? 'text-white' : 'text-[#666666]'}`}>
-                  <div className={`w-6 h-6 flex items-center justify-center text-xs font-medium ${step > idx + 1 ? 'bg-[#D4AF37] text-[#0A0A0A]' : step === idx + 1 ? 'bg-[#D4AF37] text-[#0A0A0A]' : 'bg-[#2A2A2A] text-[#666666]'}`}>
+                <div className="flex items-center gap-2" style={{ color: step >= idx + 1 ? textPrimary : textSecondary }}>
+                  <div 
+                    className="w-6 h-6 flex items-center justify-center text-xs font-medium"
+                    style={{ 
+                      backgroundColor: step > idx + 1 ? accentColor : step === idx + 1 ? accentColor : borderColor,
+                      color: step >= idx + 1 ? (isDark ? bgMain : '#FFFFFF') : textSecondary
+                    }}
+                  >
                     {step > idx + 1 ? <Check className="w-3 h-3" /> : idx + 1}
                   </div>
                   <span className="text-sm hidden sm:inline">{label}</span>
                 </div>
-                {idx < 4 && <div className={`flex-1 h-px ${step > idx + 1 ? 'bg-[#D4AF37]' : 'bg-[#2A2A2A]'}`} />}
+                {idx < 4 && <div className="flex-1 h-px" style={{ backgroundColor: step > idx + 1 ? accentColor : borderColor }} />}
               </React.Fragment>
             ))}
           </div>
@@ -180,7 +208,13 @@ const PublicBookingPage = () => {
         {/* Step 1: Select Service */}
         {step === 1 && (
           <div className="animate-fade-in">
-            <h2 className="text-2xl font-semibold text-[#D4AF37] mb-6" style={{ fontFamily: "'Playfair Display', serif" }} data-testid="step-title">Select a service</h2>
+            <h2 
+              className="text-2xl font-semibold mb-6" 
+              style={{ color: isDark ? accentColor : textPrimary, fontFamily: isDark ? "'Playfair Display', serif" : 'inherit' }} 
+              data-testid="step-title"
+            >
+              Select a service
+            </h2>
             <div className="space-y-3">
               {services.map((service) => (
                 <button
@@ -189,18 +223,25 @@ const PublicBookingPage = () => {
                     setSelectedService(service);
                     setStep(2);
                   }}
-                  className="w-full bg-[#141414] border border-[#2A2A2A] p-4 text-left flex justify-between items-center hover:border-[#D4AF37] transition-colors"
+                  className="w-full p-4 text-left flex justify-between items-center border transition-colors"
+                  style={{ 
+                    backgroundColor: bgCard, 
+                    borderColor,
+                    color: textPrimary
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = accentColor}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = borderColor}
                   data-testid={`service-${service.service_id}`}
                 >
                   <div>
-                    <h3 className="font-medium text-white">{service.name}</h3>
-                    <p className="text-sm text-[#B8B8B8] flex items-center gap-2 mt-1">
+                    <h3 className="font-medium">{service.name}</h3>
+                    <p className="text-sm flex items-center gap-2 mt-1" style={{ color: textSecondary }}>
                       <Clock className="w-3 h-3" />
                       {service.duration} min
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-[#D4AF37]">€{service.price}</p>
+                    <p className="font-semibold" style={{ color: accentColor }}>€{service.price}</p>
                   </div>
                 </button>
               ))}
@@ -215,7 +256,12 @@ const PublicBookingPage = () => {
               <ArrowLeft className="w-4 h-4" />
               Back to services
             </button>
-            <h2 className="text-2xl font-semibold text-[#D4AF37] mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>Select a team member</h2>
+            <h2 
+              className="text-2xl font-semibold mb-6" 
+              style={{ color: isDark ? accentColor : textPrimary, fontFamily: isDark ? "'Playfair Display', serif" : 'inherit' }}
+            >
+              Select a team member
+            </h2>
             <div className="space-y-3">
               {staff.map((member) => (
                 <button
@@ -224,15 +270,21 @@ const PublicBookingPage = () => {
                     setSelectedStaff(member);
                     setStep(3);
                   }}
-                  className="w-full bg-[#141414] border border-[#2A2A2A] p-4 text-left flex items-center gap-4 hover:border-[#D4AF37] transition-colors"
+                  className="w-full p-4 text-left flex items-center gap-4 border transition-colors"
+                  style={{ backgroundColor: bgCard, borderColor }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = accentColor}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = borderColor}
                   data-testid={`staff-${member.staff_id}`}
                 >
-                  <div className="w-12 h-12 bg-[#D4AF37] rounded-full flex items-center justify-center text-[#0A0A0A] font-medium">
+                  <div 
+                    className="w-12 h-12 rounded-full flex items-center justify-center font-medium"
+                    style={{ backgroundColor: accentColor, color: isDark ? bgMain : '#FFFFFF' }}
+                  >
                     {member.name.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="font-medium text-white">{member.name}</h3>
-                    {member.title && <p className="text-sm text-[#B8B8B8]">{member.title}</p>}
+                    <h3 className="font-medium" style={{ color: textPrimary }}>{member.name}</h3>
+                    {member.title && <p className="text-sm" style={{ color: textSecondary }}>{member.title}</p>}
                   </div>
                 </button>
               ))}
@@ -243,14 +295,25 @@ const PublicBookingPage = () => {
         {/* Step 3: Select Date & Time */}
         {step === 3 && (
           <div className="animate-fade-in">
-            <button onClick={() => setStep(2)} className="flex items-center gap-2 text-sm text-[#B8B8B8] hover:text-[#D4AF37] mb-6">
+            <button 
+              onClick={() => setStep(2)} 
+              className="flex items-center gap-2 text-sm mb-6"
+              style={{ color: textSecondary }}
+              onMouseEnter={(e) => e.currentTarget.style.color = accentColor}
+              onMouseLeave={(e) => e.currentTarget.style.color = textSecondary}
+            >
               <ArrowLeft className="w-4 h-4" />
               Back to staff
             </button>
-            <h2 className="text-2xl font-semibold text-[#D4AF37] mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>Select date & time</h2>
+            <h2 
+              className="text-2xl font-semibold mb-6" 
+              style={{ color: isDark ? accentColor : textPrimary, fontFamily: isDark ? "'Playfair Display', serif" : 'inherit' }}
+            >
+              Select date & time
+            </h2>
             
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-[#141414] border border-[#2A2A2A] p-4">
+              <div className="p-4 border" style={{ backgroundColor: bgCard, borderColor }}>
                 <Calendar
                   mode="single"
                   selected={selectedDate}
@@ -261,21 +324,21 @@ const PublicBookingPage = () => {
                 />
               </div>
 
-              <div className="bg-[#141414] border border-[#2A2A2A] p-4">
-                <h3 className="font-medium text-white mb-4">
+              <div className="p-4 border" style={{ backgroundColor: bgCard, borderColor }}>
+                <h3 className="font-medium mb-4" style={{ color: textPrimary }}>
                   {selectedDate ? format(selectedDate, 'EEEE, MMMM d') : 'Select a date'}
                 </h3>
                 
                 {!selectedDate && (
-                  <p className="text-[#B8B8B8] text-sm">Please select a date to see available times</p>
+                  <p className="text-sm" style={{ color: textSecondary }}>Please select a date to see available times</p>
                 )}
 
                 {selectedDate && slotsLoading && (
-                  <p className="text-[#B8B8B8] text-sm">Loading available times...</p>
+                  <p className="text-sm" style={{ color: textSecondary }}>Loading available times...</p>
                 )}
 
                 {selectedDate && !slotsLoading && availableSlots.length === 0 && (
-                  <p className="text-[#B8B8B8] text-sm">No available times for this date</p>
+                  <p className="text-sm" style={{ color: textSecondary }}>No available times for this date</p>
                 )}
 
                 {selectedDate && !slotsLoading && availableSlots.length > 0 && (

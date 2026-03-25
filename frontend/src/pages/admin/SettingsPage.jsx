@@ -197,6 +197,8 @@ const SettingsPage = () => {
       await axios.put(`${API}/tenants/me/branding`, branding, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      // Also update the theme in context
+      setTheme(branding.theme || 'default');
       toast.success('Branding updated');
     } catch (error) {
       toast.error('Failed to update branding');

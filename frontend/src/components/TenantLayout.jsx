@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, themes } from '../context/ThemeContext';
 import {
   LayoutDashboard,
   Calendar,
@@ -21,9 +21,6 @@ import {
 import NotificationBell from './NotificationBell';
 import HelpPanel from './HelpSystem';
 
-// Elite by Caitlin logo
-const ELITE_LOGO = 'https://customer-assets.emergentagent.com/job_b51cdde9-aca8-4bc9-8629-803189777585/artifacts/nyi83tyj_image.png';
-
 // Streamlined navigation - merged Appointments into Calendar, removed Resources, moved Messages to AI Receptionist, moved Integrations to Settings
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -39,26 +36,40 @@ const navItems = [
 
 const TenantLayout = ({ children, title }) => {
   const { user, tenant, logout } = useAuth();
-  const { currentTheme, theme } = useTheme();
+  const { currentTheme, setTheme, theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  // Load tenant's theme from their branding settings
+  useEffect(() => {
+    if (tenant?.branding?.theme) {
+      setTheme(tenant.branding.theme);
+    } else {
+      setTheme('default');
+    }
+  }, [tenant, setTheme]);
+
   const handleLogout = async () => {
+    setTheme('default'); // Reset theme on logout
     await logout();
     navigate('/');
   };
 
   // Theme-specific classes
   const isElite = currentTheme === 'elite';
-  const bgMain = isElite ? 'bg-[#0A0A0A]' : 'bg-[#FAFAFA]';
-  const bgCard = isElite ? 'bg-[#141414]' : 'bg-white';
-  const borderColor = isElite ? 'border-[#2A2A2A]' : 'border-[#E5E5E5]';
-  const textPrimary = isElite ? 'text-white' : 'text-[#0A0A0A]';
-  const textSecondary = isElite ? 'text-[#B8B8B8]' : 'text-[#666666]';
-  const accentColor = isElite ? 'text-[#D4AF37]' : 'text-[#E34A33]';
+  const isDark = ['elite', 'modern'].includes(currentTheme);
+  const bgMain = isDark ? 'bg-[#0A0A0A]' : 'bg-[#FAFAFA]';
+  const bgCard = isDark ? 'bg-[#141414]' : 'bg-white';
+  const borderColor = isDark ? 'border-[#2A2A2A]' : 'border-[#E5E5E5]';
+  const textPrimary = isDark ? 'text-white' : 'text-[#0A0A0A]';
+  const textSecondary = isDark ? 'text-[#B8B8B8]' : 'text-[#666666]';
+  const accentColor = theme.colors.accent;
+
+  // Get logo URL from theme or tenant branding
+  const logoUrl = theme.logoUrl || tenant?.branding?.logo_url || tenant?.logo_url;
 
   return (
     <div className={`min-h-screen ${bgMain}`}>
@@ -96,12 +107,14 @@ const TenantLayout = ({ children, title }) => {
         {/* Logo */}
         <div className={`h-20 flex items-center justify-between px-4 border-b ${borderColor}`}>
           <Link to="/dashboard" className="flex items-center gap-3">
-            {isElite ? (
+            {logoUrl ? (
               <>
-                <img src={ELITE_LOGO} alt="Elite by Caitlin" className="h-12 w-auto" />
-                <span className="text-[#D4AF37] text-sm font-medium" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  Elite by Caitlin
-                </span>
+                <img src={logoUrl} alt={tenant?.name} className="h-12 w-auto" />
+                {isDark && (
+                  <span className="text-sm font-medium" style={{ color: accentColor, fontFamily: "'Playfair Display', serif" }}>
+                    {tenant?.name}
+                  </span>
+                )}
               </>
             ) : (
               <span className={`font-semibold text-lg ${textPrimary}`}>
@@ -129,16 +142,17 @@ const TenantLayout = ({ children, title }) => {
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-md transition-colors duration-200 ${
                   isActive 
-                    ? isElite 
-                      ? 'bg-[#1A1A1A] text-[#D4AF37] font-medium' 
+                    ? isDark 
+                      ? `bg-[#1A1A1A] font-medium` 
                       : 'bg-[#FAFAFA] text-[#0A0A0A] font-medium'
-                    : isElite
-                      ? 'text-[#B8B8B8] hover:text-[#D4AF37] hover:bg-[#1A1A1A]'
+                    : isDark
+                      ? 'text-[#B8B8B8] hover:bg-[#1A1A1A]'
                       : 'text-[#666666] hover:text-[#0A0A0A] hover:bg-[#FAFAFA]'
                 }`}
+                style={isActive && isDark ? { color: accentColor } : (isDark && !isActive ? {} : {})}
                 data-testid={`nav-${item.label.toLowerCase()}`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-5 h-5" style={isActive && isDark ? { color: accentColor } : {}} />
                 <span>{item.label}</span>
               </Link>
             );
@@ -150,10 +164,13 @@ const TenantLayout = ({ children, title }) => {
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${isElite ? 'hover:bg-[#1A1A1A]' : 'hover:bg-[#FAFAFA]'}`}
+              className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${isDark ? 'hover:bg-[#1A1A1A]' : 'hover:bg-[#FAFAFA]'}`}
               data-testid="user-menu-button"
             >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${isElite ? 'bg-[#D4AF37] text-[#0A0A0A]' : 'bg-[#121212] text-white'}`}>
+              <div 
+                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                style={{ backgroundColor: isDark ? accentColor : '#121212', color: isDark ? '#0A0A0A' : '#FFFFFF' }}
+              >
                 {user?.name?.charAt(0) || 'U'}
               </div>
               <div className="flex-1 text-left">
@@ -167,7 +184,8 @@ const TenantLayout = ({ children, title }) => {
               <div className={`absolute bottom-full left-0 right-0 mb-2 ${bgCard} border ${borderColor} rounded-md shadow-lg overflow-hidden`}>
                 <button
                   onClick={handleLogout}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isElite ? 'hover:bg-[#1A1A1A] text-[#D4AF37]' : 'hover:bg-[#FAFAFA] text-[#E34A33]'}`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors`}
+                  style={{ color: isDark ? accentColor : '#E34A33' }}
                   data-testid="logout-button"
                 >
                   <LogOut className="w-4 h-4" />
@@ -183,12 +201,18 @@ const TenantLayout = ({ children, title }) => {
       <main className={`lg:ml-64 min-h-screen pt-16 lg:pt-0 ${bgMain}`}>
         {/* Page Header */}
         <div className={`${bgCard} border-b ${borderColor} px-6 py-4 flex items-center justify-between`}>
-          <h1 className={`text-xl font-semibold ${isElite ? 'text-[#D4AF37]' : textPrimary}`} style={isElite ? { fontFamily: "'Playfair Display', serif" } : {}} data-testid="page-title">{title}</h1>
+          <h1 
+            className={`text-xl font-semibold`} 
+            style={{ color: isDark ? accentColor : '#0A0A0A', fontFamily: isDark ? "'Playfair Display', serif" : 'inherit' }} 
+            data-testid="page-title"
+          >
+            {title}
+          </h1>
           <div className="hidden lg:flex items-center gap-2">
             <NotificationBell />
             <button
               onClick={() => setHelpOpen(true)}
-              className={`p-2 rounded-md transition-colors ${isElite ? 'hover:bg-[#1A1A1A]' : 'hover:bg-[#FAFAFA]'}`}
+              className={`p-2 rounded-md transition-colors ${isDark ? 'hover:bg-[#1A1A1A]' : 'hover:bg-[#FAFAFA]'}`}
               data-testid="help-button"
               title="Help"
             >

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// Available themes
+// Available themes for tenants to choose from
 export const themes = {
   default: {
     id: 'default',
@@ -41,7 +41,8 @@ export const themes = {
       buttonPrimaryText: '#0A0A0A'
     },
     hasBorder: true,
-    borderStyle: 'elite-gold-waves'
+    borderStyle: 'elite-gold-waves',
+    logoUrl: 'https://customer-assets.emergentagent.com/job_b51cdde9-aca8-4bc9-8629-803189777585/artifacts/nyi83tyj_image.png'
   },
   modern: {
     id: 'modern',
@@ -127,22 +128,18 @@ export const themes = {
 
 const ThemeContext = createContext();
 
-export const ThemeProvider = ({ children, initialTheme = 'default' }) => {
-  // Load theme from localStorage or use initial
-  const [currentTheme, setCurrentTheme] = useState(() => {
-    const saved = localStorage.getItem('bookslot_theme');
-    return saved || initialTheme;
-  });
+export const ThemeProvider = ({ children }) => {
+  const [currentTheme, setCurrentTheme] = useState('default');
   const theme = themes[currentTheme] || themes.default;
 
-  // Save theme to localStorage when changed
+  // Function to set theme - called when tenant data loads
   const setTheme = (themeName) => {
-    setCurrentTheme(themeName);
-    localStorage.setItem('bookslot_theme', themeName);
+    const validTheme = themes[themeName] ? themeName : 'default';
+    setCurrentTheme(validTheme);
   };
 
   useEffect(() => {
-    // Apply CSS variables
+    // Apply CSS variables for the current theme
     const root = document.documentElement;
     const colors = theme.colors;
     
@@ -159,8 +156,12 @@ export const ThemeProvider = ({ children, initialTheme = 'default' }) => {
     root.style.setProperty('--theme-button-primary', colors.buttonPrimary);
     root.style.setProperty('--theme-button-primary-text', colors.buttonPrimaryText);
 
-    // Apply theme class to body
-    document.body.className = `theme-${currentTheme}`;
+    // Apply theme class to body only for non-default themes
+    if (currentTheme !== 'default') {
+      document.body.className = `theme-${currentTheme}`;
+    } else {
+      document.body.className = '';
+    }
     
     // Set data attribute for border style
     if (theme.hasBorder) {
