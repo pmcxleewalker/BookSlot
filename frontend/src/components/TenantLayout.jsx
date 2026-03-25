@@ -21,6 +21,9 @@ import {
 import NotificationBell from './NotificationBell';
 import HelpPanel from './HelpSystem';
 
+// Elite by Caitlin logo
+const ELITE_LOGO = 'https://customer-assets.emergentagent.com/job_b51cdde9-aca8-4bc9-8629-803189777585/artifacts/nyi83tyj_image.png';
+
 // Streamlined navigation - merged Appointments into Calendar, removed Resources, moved Messages to AI Receptionist, moved Integrations to Settings
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -91,9 +94,20 @@ const TenantLayout = ({ children, title }) => {
         }`}
       >
         {/* Logo */}
-        <div className={`h-16 flex items-center justify-between px-6 border-b ${borderColor}`}>
-          <Link to="/dashboard" className={`font-semibold text-lg ${isElite ? 'text-[#D4AF37]' : textPrimary}`} style={isElite ? { fontFamily: "'Playfair Display', serif" } : {}}>
-            {tenant?.name || 'BookSlot'}
+        <div className={`h-20 flex items-center justify-between px-4 border-b ${borderColor}`}>
+          <Link to="/dashboard" className="flex items-center gap-3">
+            {isElite ? (
+              <>
+                <img src={ELITE_LOGO} alt="Elite by Caitlin" className="h-12 w-auto" />
+                <span className="text-[#D4AF37] text-sm font-medium" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  Elite by Caitlin
+                </span>
+              </>
+            ) : (
+              <span className={`font-semibold text-lg ${textPrimary}`}>
+                {tenant?.name || 'BookSlot'}
+              </span>
+            )}
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -104,7 +118,7 @@ const TenantLayout = ({ children, title }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-8rem)]">
+        <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-9rem)]">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;

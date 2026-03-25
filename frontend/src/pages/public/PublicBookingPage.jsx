@@ -11,6 +11,9 @@ import { format, addMinutes } from 'date-fns';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
+// Elite by Caitlin logo
+const ELITE_LOGO = 'https://customer-assets.emergentagent.com/job_b51cdde9-aca8-4bc9-8629-803189777585/artifacts/nyi83tyj_image.png';
+
 const PublicBookingPage = () => {
   const { slug } = useParams();
   const [loading, setLoading] = useState(true);
@@ -131,38 +134,41 @@ const PublicBookingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#0A0A0A]">
       {/* Header */}
-      <header className="bg-white border-b border-[#E5E5E5] px-6 py-4">
+      <header className="bg-[#141414] border-b border-[#2A2A2A] px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-[#0A0A0A]" data-testid="business-name">{business.name}</h1>
-            {business.address && (
-              <p className="text-sm text-[#666666] flex items-center gap-1 mt-1">
-                <MapPin className="w-3 h-3" />
-                {business.address}
-              </p>
-            )}
+          <div className="flex items-center gap-4">
+            <img src={ELITE_LOGO} alt="Elite by Caitlin" className="h-14 w-auto" data-testid="booking-logo" />
+            <div>
+              <h1 className="text-xl font-semibold text-[#D4AF37]" style={{ fontFamily: "'Playfair Display', serif" }} data-testid="business-name">{business.name}</h1>
+              {business.address && (
+                <p className="text-sm text-[#B8B8B8] flex items-center gap-1 mt-1">
+                  <MapPin className="w-3 h-3" />
+                  {business.address}
+                </p>
+              )}
+            </div>
           </div>
-          <span className="text-xs text-[#666666] px-3 py-1 bg-[#FAFAFA] border border-[#E5E5E5]">
+          <span className="text-xs text-[#666666] px-3 py-1 bg-[#0A0A0A] border border-[#2A2A2A]">
             Powered by BookSlot
           </span>
         </div>
       </header>
 
       {/* Progress Steps */}
-      <div className="bg-white border-b border-[#E5E5E5] px-6 py-3">
+      <div className="bg-[#141414] border-b border-[#2A2A2A] px-6 py-3">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-2">
             {['Service', 'Staff', 'Date & Time', 'Details', 'Confirmed'].map((label, idx) => (
               <React.Fragment key={idx}>
-                <div className={`flex items-center gap-2 ${step > idx + 1 ? 'text-[#0A0A0A]' : step === idx + 1 ? 'text-[#0A0A0A]' : 'text-[#666666]'}`}>
-                  <div className={`w-6 h-6 flex items-center justify-center text-xs font-medium ${step > idx + 1 ? 'bg-[#121212] text-white' : step === idx + 1 ? 'bg-[#121212] text-white' : 'bg-[#E5E5E5] text-[#666666]'}`}>
+                <div className={`flex items-center gap-2 ${step > idx + 1 ? 'text-white' : step === idx + 1 ? 'text-white' : 'text-[#666666]'}`}>
+                  <div className={`w-6 h-6 flex items-center justify-center text-xs font-medium ${step > idx + 1 ? 'bg-[#D4AF37] text-[#0A0A0A]' : step === idx + 1 ? 'bg-[#D4AF37] text-[#0A0A0A]' : 'bg-[#2A2A2A] text-[#666666]'}`}>
                     {step > idx + 1 ? <Check className="w-3 h-3" /> : idx + 1}
                   </div>
                   <span className="text-sm hidden sm:inline">{label}</span>
                 </div>
-                {idx < 4 && <div className={`flex-1 h-px ${step > idx + 1 ? 'bg-[#121212]' : 'bg-[#E5E5E5]'}`} />}
+                {idx < 4 && <div className={`flex-1 h-px ${step > idx + 1 ? 'bg-[#D4AF37]' : 'bg-[#2A2A2A]'}`} />}
               </React.Fragment>
             ))}
           </div>
@@ -174,7 +180,7 @@ const PublicBookingPage = () => {
         {/* Step 1: Select Service */}
         {step === 1 && (
           <div className="animate-fade-in">
-            <h2 className="text-2xl font-semibold text-[#0A0A0A] mb-6" data-testid="step-title">Select a service</h2>
+            <h2 className="text-2xl font-semibold text-[#D4AF37] mb-6" style={{ fontFamily: "'Playfair Display', serif" }} data-testid="step-title">Select a service</h2>
             <div className="space-y-3">
               {services.map((service) => (
                 <button
@@ -183,18 +189,18 @@ const PublicBookingPage = () => {
                     setSelectedService(service);
                     setStep(2);
                   }}
-                  className={`w-full card-hover text-left flex justify-between items-center`}
+                  className="w-full bg-[#141414] border border-[#2A2A2A] p-4 text-left flex justify-between items-center hover:border-[#D4AF37] transition-colors"
                   data-testid={`service-${service.service_id}`}
                 >
                   <div>
-                    <h3 className="font-medium text-[#0A0A0A]">{service.name}</h3>
-                    <p className="text-sm text-[#666666] flex items-center gap-2 mt-1">
+                    <h3 className="font-medium text-white">{service.name}</h3>
+                    <p className="text-sm text-[#B8B8B8] flex items-center gap-2 mt-1">
                       <Clock className="w-3 h-3" />
                       {service.duration} min
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-[#0A0A0A]">€{service.price}</p>
+                    <p className="font-semibold text-[#D4AF37]">€{service.price}</p>
                   </div>
                 </button>
               ))}
@@ -205,11 +211,11 @@ const PublicBookingPage = () => {
         {/* Step 2: Select Staff */}
         {step === 2 && (
           <div className="animate-fade-in">
-            <button onClick={() => setStep(1)} className="flex items-center gap-2 text-sm text-[#666666] hover:text-[#0A0A0A] mb-6">
+            <button onClick={() => setStep(1)} className="flex items-center gap-2 text-sm text-[#B8B8B8] hover:text-[#D4AF37] mb-6">
               <ArrowLeft className="w-4 h-4" />
               Back to services
             </button>
-            <h2 className="text-2xl font-semibold text-[#0A0A0A] mb-6">Select a team member</h2>
+            <h2 className="text-2xl font-semibold text-[#D4AF37] mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>Select a team member</h2>
             <div className="space-y-3">
               {staff.map((member) => (
                 <button
@@ -218,15 +224,15 @@ const PublicBookingPage = () => {
                     setSelectedStaff(member);
                     setStep(3);
                   }}
-                  className="w-full card-hover text-left flex items-center gap-4"
+                  className="w-full bg-[#141414] border border-[#2A2A2A] p-4 text-left flex items-center gap-4 hover:border-[#D4AF37] transition-colors"
                   data-testid={`staff-${member.staff_id}`}
                 >
-                  <div className="w-12 h-12 bg-[#121212] rounded-full flex items-center justify-center text-white font-medium">
+                  <div className="w-12 h-12 bg-[#D4AF37] rounded-full flex items-center justify-center text-[#0A0A0A] font-medium">
                     {member.name.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="font-medium text-[#0A0A0A]">{member.name}</h3>
-                    {member.title && <p className="text-sm text-[#666666]">{member.title}</p>}
+                    <h3 className="font-medium text-white">{member.name}</h3>
+                    {member.title && <p className="text-sm text-[#B8B8B8]">{member.title}</p>}
                   </div>
                 </button>
               ))}
@@ -237,14 +243,14 @@ const PublicBookingPage = () => {
         {/* Step 3: Select Date & Time */}
         {step === 3 && (
           <div className="animate-fade-in">
-            <button onClick={() => setStep(2)} className="flex items-center gap-2 text-sm text-[#666666] hover:text-[#0A0A0A] mb-6">
+            <button onClick={() => setStep(2)} className="flex items-center gap-2 text-sm text-[#B8B8B8] hover:text-[#D4AF37] mb-6">
               <ArrowLeft className="w-4 h-4" />
               Back to staff
             </button>
-            <h2 className="text-2xl font-semibold text-[#0A0A0A] mb-6">Select date & time</h2>
+            <h2 className="text-2xl font-semibold text-[#D4AF37] mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>Select date & time</h2>
             
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="card-flat">
+              <div className="bg-[#141414] border border-[#2A2A2A] p-4">
                 <Calendar
                   mode="single"
                   selected={selectedDate}
@@ -255,21 +261,21 @@ const PublicBookingPage = () => {
                 />
               </div>
 
-              <div className="card-flat">
-                <h3 className="font-medium text-[#0A0A0A] mb-4">
+              <div className="bg-[#141414] border border-[#2A2A2A] p-4">
+                <h3 className="font-medium text-white mb-4">
                   {selectedDate ? format(selectedDate, 'EEEE, MMMM d') : 'Select a date'}
                 </h3>
                 
                 {!selectedDate && (
-                  <p className="text-[#666666] text-sm">Please select a date to see available times</p>
+                  <p className="text-[#B8B8B8] text-sm">Please select a date to see available times</p>
                 )}
 
                 {selectedDate && slotsLoading && (
-                  <p className="text-[#666666] text-sm">Loading available times...</p>
+                  <p className="text-[#B8B8B8] text-sm">Loading available times...</p>
                 )}
 
                 {selectedDate && !slotsLoading && availableSlots.length === 0 && (
-                  <p className="text-[#666666] text-sm">No available times for this date</p>
+                  <p className="text-[#B8B8B8] text-sm">No available times for this date</p>
                 )}
 
                 {selectedDate && !slotsLoading && availableSlots.length > 0 && (
