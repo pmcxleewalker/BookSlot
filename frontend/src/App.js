@@ -15,16 +15,12 @@ import ManageBookingPage from './pages/public/ManageBookingPage';
 // Pages - Admin
 import DashboardPage from './pages/admin/DashboardPage';
 import CalendarPage from './pages/admin/CalendarPage';
-import AppointmentsPage from './pages/admin/AppointmentsPage';
 import StaffPage from './pages/admin/StaffPage';
 import ServicesPage from './pages/admin/ServicesPage';
-import ResourcesPage from './pages/admin/ResourcesPage';
 import ClientsPage from './pages/admin/ClientsPage';
 import FormsPage from './pages/admin/FormsPage';
-import MessagesPage from './pages/admin/MessagesPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import SettingsPage from './pages/admin/SettingsPage';
-import IntegrationsPage from './pages/admin/IntegrationsPage';
 import OnboardingPage from './pages/admin/OnboardingPage';
 import MoltbotPage from './pages/admin/MoltbotPage';
 
@@ -240,17 +236,19 @@ const AppRouter = () => {
       <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
-      <Route path="/appointments" element={<ProtectedRoute><AppointmentsPage /></ProtectedRoute>} />
       <Route path="/staff" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
       <Route path="/services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
-      <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
       <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
       <Route path="/forms" element={<ProtectedRoute><FormsPage /></ProtectedRoute>} />
-      <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-      <Route path="/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
       <Route path="/moltbot" element={<ProtectedRoute><MoltbotPage /></ProtectedRoute>} />
+      
+      {/* Redirects for removed pages */}
+      <Route path="/appointments" element={<Navigate to="/calendar" replace />} />
+      <Route path="/resources" element={<Navigate to="/settings" replace />} />
+      <Route path="/messages" element={<Navigate to="/moltbot" replace />} />
+      <Route path="/integrations" element={<Navigate to="/settings" replace />} />
 
       {/* Super Admin Routes */}
       <Route path="/admin" element={<AdminLoginPage />} />

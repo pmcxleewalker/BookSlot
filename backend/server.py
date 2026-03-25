@@ -893,6 +893,54 @@ async def get_file(file_id: str, auth: str = Query(None)):
         logger.error(f"File retrieval failed: {e}")
         raise HTTPException(status_code=500, detail="File retrieval failed")
 
+# ================== WEB PUSH SUBSCRIPTIONS ==================
+
+@api_router.post("/push/subscribe")
+async def subscribe_to_push(subscription: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Subscribe to web push notifications"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # Store subscription with user and tenant info
+    push_sub = {
+        "subscription_id": f"push_{uuid.uuid4().hex[:12]}",
+        "user_id": user["user_id"],
+        "tenant_id": user["tenant_id"],
+        "endpoint": subscription.get("endpoint"),
+        "keys": subscription.get("keys", {}),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "is_active": True
+    }
+    
+    # Upsert - update if endpoint exists, otherwise insert
+    await db.push_subscriptions.update_one(
+        {"endpoint": subscription.get("endpoint"), "user_id": user["user_id"]},
+        {"$set": push_sub},
+        upsert=True
+    )
+    
+    return {"message": "Subscribed to push notifications", "subscription_id": push_sub["subscription_id"]}
+
+@api_router.delete("/push/unsubscribe")
+async def unsubscribe_from_push(body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Unsubscribe from web push notifications"""
+    endpoint = body.get("endpoint")
+    if endpoint:
+        await db.push_subscriptions.update_one(
+            {"endpoint": endpoint, "user_id": user["user_id"]},
+            {"$set": {"is_active": False}}
+        )
+    return {"message": "Unsubscribed from push notifications"}
+
+@api_router.get("/push/vapid-public-key")
+async def get_vapid_public_key():
+    """Get VAPID public key for push notifications"""
+    # For web push, we use a static public key
+    # In production, you'd generate proper VAPID keys
+    return {
+        "publicKey": "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U"
+    }
+
 # ================== NOTIFICATIONS SYSTEM ==================
 
 @api_router.get("/notifications")
@@ -1212,7 +1260,7 @@ async def create_staff(staff_data: StaffCreate, user: Dict = Depends(get_current
     
     limits = {"starter": 2, "growth": 8, "pro": 999}
     if staff_count >= limits.get(tenant.get("plan", "starter"), 2):
-        raise HTTPException(status_code=403, detail=f"Staff limit reached for your plan")
+        raise HTTPException(status_code=403, detail="Staff limit reached for your plan")
     
     staff = Staff(**staff_data.model_dump(), tenant_id=user["tenant_id"])
     staff_dict = staff.model_dump()
@@ -2015,6 +2063,15 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
     # Send booking confirmation notifications
     await send_booking_confirmation(appt_dict, tenant)
     
+    # Create staff notification for new booking
+    await create_notification(
+        tenant["tenant_id"],
+        "new_booking",
+        "New Booking",
+        f"New appointment booked by {appt_dict.get('client_name', 'Customer')} for {service.get('name', 'Service')}",
+        {"appointment_id": appt_dict["appointment_id"], "client_name": appt_dict.get("client_name"), "start_time": appt_dict["start_time"]}
+    )
+    
     return {
         "appointment": appt_dict,
         "confirmation_code": appointment.appointment_id,
@@ -2064,6 +2121,15 @@ async def cancel_booking_by_code(confirmation_code: str, body: Dict[str, Any] = 
     updated = await db.appointments.find_one({"appointment_id": confirmation_code}, {"_id": 0})
     
     await trigger_webhook(appointment["tenant_id"], WebhookEvent.BOOKING_CANCELLED, updated)
+    
+    # Create staff notification for cancellation
+    await create_notification(
+        appointment["tenant_id"],
+        "booking_cancelled",
+        "Booking Cancelled",
+        f"Appointment cancelled by {appointment.get('client_name', 'Customer')}",
+        {"appointment_id": confirmation_code, "client_name": appointment.get("client_name"), "reason": reason}
+    )
     
     return {"message": "Booking cancelled", "appointment": updated}
 
@@ -2375,7 +2441,7 @@ async def export_reports(
         else:
             return {
                 "data": export_data,
-                "title": f"Clients Report",
+                "title": "Clients Report",
                 "columns": ["Name", "Email", "Phone", "VIP", "Total Visits", "Total Spent"],
                 "summary": {
                     "total_clients": len(export_data),

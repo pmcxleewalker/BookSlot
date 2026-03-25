@@ -1,41 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import {
   LayoutDashboard,
   Calendar,
-  Clock,
   Users,
   Briefcase,
-  Box,
   UserCircle,
   FileText,
-  Mail,
   BarChart3,
   Settings,
-  Puzzle,
   LogOut,
   Menu,
   X,
   ChevronDown,
-  Bot
+  Bot,
+  HelpCircle
 } from 'lucide-react';
-import { useState } from 'react';
+import NotificationBell from './NotificationBell';
+import HelpPanel from './HelpSystem';
 
+// Streamlined navigation - merged Appointments into Calendar, removed Resources, moved Messages to AI Receptionist, moved Integrations to Settings
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
-  { path: '/appointments', label: 'Appointments', icon: Clock },
   { path: '/staff', label: 'Staff', icon: Users },
   { path: '/services', label: 'Services', icon: Briefcase },
-  { path: '/resources', label: 'Resources', icon: Box },
   { path: '/clients', label: 'Clients', icon: UserCircle },
   { path: '/forms', label: 'Forms', icon: FileText },
-  { path: '/messages', label: 'Messages', icon: Mail },
   { path: '/moltbot', label: 'AI Receptionist', icon: Bot },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
-  { path: '/integrations', label: 'Integrations', icon: Puzzle },
 ];
 
 const TenantLayout = ({ children, title }) => {
@@ -44,6 +39,7 @@ const TenantLayout = ({ children, title }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -64,7 +60,9 @@ const TenantLayout = ({ children, title }) => {
         <Link to="/dashboard" className="font-semibold text-lg text-[#0A0A0A]">
           {tenant?.name || 'BookSlot'}
         </Link>
-        <div className="w-10" />
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+        </div>
       </header>
 
       {/* Mobile Sidebar Overlay */}
@@ -151,8 +149,19 @@ const TenantLayout = ({ children, title }) => {
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
         {/* Page Header */}
-        <div className="bg-white border-b border-[#E5E5E5] px-6 py-4">
+        <div className="bg-white border-b border-[#E5E5E5] px-6 py-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-[#0A0A0A]" data-testid="page-title">{title}</h1>
+          <div className="hidden lg:flex items-center gap-2">
+            <NotificationBell />
+            <button
+              onClick={() => setHelpOpen(true)}
+              className="p-2 hover:bg-[#FAFAFA] rounded-md transition-colors"
+              data-testid="help-button"
+              title="Help"
+            >
+              <HelpCircle className="w-5 h-5 text-[#666666]" />
+            </button>
+          </div>
         </div>
 
         {/* Page Content */}
@@ -160,6 +169,9 @@ const TenantLayout = ({ children, title }) => {
           {children}
         </div>
       </main>
+
+      {/* Help Panel */}
+      <HelpPanel isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 };

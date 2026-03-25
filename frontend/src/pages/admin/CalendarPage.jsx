@@ -7,15 +7,17 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Plus, X, GripVertical, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, GripVertical, Clock, Calendar, List, MoreVertical, Check, Search, Filter } from 'lucide-react';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, addMinutes, differenceInMinutes } from 'date-fns';
 
 const CalendarPage = () => {
   const { token } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState('week');
+  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'list'
   const [appointments, setAppointments] = useState([]);
+  const [allAppointments, setAllAppointments] = useState([]);
   const [staff, setStaff] = useState([]);
   const [services, setServices] = useState([]);
   const [clients, setClients] = useState([]);
@@ -24,6 +26,8 @@ const CalendarPage = () => {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [draggedAppointment, setDraggedAppointment] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // New appointment form
   const [newAppt, setNewAppt] = useState({
@@ -39,16 +43,20 @@ const CalendarPage = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentDate]);
+  }, [currentDate, viewMode]);
 
   const fetchData = async () => {
     try {
       const weekStart = format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const weekEnd = format(addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), 6), 'yyyy-MM-dd');
 
+      const params = viewMode === 'calendar' 
+        ? { start_date: weekStart, end_date: weekEnd + 'T23:59:59' }
+        : {}; // Get all for list view
+
       const [apptRes, staffRes, servicesRes, clientsRes] = await Promise.all([
         axios.get(`${API}/appointments`, {
-          params: { start_date: weekStart, end_date: weekEnd + 'T23:59:59' },
+          params,
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${API}/staff`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -56,7 +64,9 @@ const CalendarPage = () => {
         axios.get(`${API}/clients`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
-      setAppointments(apptRes.data.appointments || []);
+      const appts = apptRes.data.appointments || [];
+      setAppointments(appts);
+      setAllAppointments(appts);
       setStaff(staffRes.data.staff || []);
       setServices(servicesRes.data.services || []);
       setClients(clientsRes.data.clients || []);
@@ -65,6 +75,45 @@ const CalendarPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Filter appointments for list view
+  const filteredAppointments = allAppointments.filter(appt => {
+    const matchesSearch = !searchQuery || 
+      appt.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appt.client_email?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || appt.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleStatusChange = async (appointmentId, newStatus) => {
+    try {
+      if (newStatus === 'cancelled') {
+        await axios.post(`${API}/appointments/${appointmentId}/cancel`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        await axios.put(`${API}/appointments/${appointmentId}`, { status: newStatus }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      toast.success(`Appointment ${newStatus}`);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to update appointment');
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const badges = {
+      pending: 'bg-amber-100 text-amber-700',
+      pending_approval: 'bg-orange-100 text-orange-700',
+      confirmed: 'bg-blue-100 text-blue-700',
+      completed: 'bg-green-100 text-green-700',
+      cancelled: 'bg-red-100 text-red-700',
+      no_show: 'bg-gray-100 text-gray-700'
+    };
+    return badges[status] || 'bg-gray-100 text-gray-700';
   };
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
@@ -208,21 +257,45 @@ const CalendarPage = () => {
 
   return (
     <TenantLayout title="Calendar">
-      {/* Calendar Header */}
+      {/* Header with View Toggle */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePrevWeek} data-testid="prev-week">
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleToday} data-testid="today-btn">
-            Today
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleNextWeek} data-testid="next-week">
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-          <span className="ml-4 font-semibold text-[#0A0A0A]" data-testid="current-week">
-            {format(weekStart, 'MMM d')} - {format(addDays(weekStart, 6), 'MMM d, yyyy')}
-          </span>
+        <div className="flex items-center gap-4">
+          {/* View Mode Toggle */}
+          <div className="flex border border-[#E5E5E5] rounded-md overflow-hidden">
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`px-3 py-1.5 flex items-center gap-1.5 text-sm ${viewMode === 'calendar' ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#666666] hover:bg-[#FAFAFA]'}`}
+              data-testid="view-calendar"
+            >
+              <Calendar className="w-4 h-4" />
+              Calendar
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 flex items-center gap-1.5 text-sm ${viewMode === 'list' ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#666666] hover:bg-[#FAFAFA]'}`}
+              data-testid="view-list"
+            >
+              <List className="w-4 h-4" />
+              List
+            </button>
+          </div>
+
+          {viewMode === 'calendar' && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handlePrevWeek} data-testid="prev-week">
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleToday} data-testid="today-btn">
+                Today
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleNextWeek} data-testid="next-week">
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <span className="ml-2 font-semibold text-[#0A0A0A]" data-testid="current-week">
+                {format(weekStart, 'MMM d')} - {format(addDays(weekStart, 6), 'MMM d, yyyy')}
+              </span>
+            </div>
+          )}
         </div>
         <Button 
           onClick={() => setShowNewAppointment(true)} 
@@ -234,39 +307,175 @@ const CalendarPage = () => {
         </Button>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="card-flat overflow-x-auto">
-        <div className="min-w-[800px]">
-          {/* Day Headers */}
-          <div className="grid grid-cols-8 border-b border-[#E5E5E5]">
-            <div className="p-3 text-sm font-medium text-[#666666]">Time</div>
-            {weekDays.map((day, idx) => {
-              const isToday = isSameDay(day, new Date());
-              return (
-                <div 
-                  key={idx} 
-                  className={`p-3 text-center ${isToday ? 'bg-[#FAFAFA]' : ''}`}
+      {/* List View */}
+      {viewMode === 'list' && (
+        <>
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666666]" />
+              <Input
+                placeholder="Search by client name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="search-appointments"
+              />
+            </div>
+            <div className="flex gap-2">
+              {['all', 'pending', 'confirmed', 'completed', 'cancelled'].map((status) => (
+                <Button
+                  key={status}
+                  variant={statusFilter === status ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter(status)}
+                  className={statusFilter === status ? 'btn-primary' : ''}
+                  data-testid={`filter-${status}`}
                 >
-                  <p className="text-xs text-[#666666] uppercase">{format(day, 'EEE')}</p>
-                  <p className={`text-lg font-semibold ${isToday ? 'text-[#E34A33]' : 'text-[#0A0A0A]'}`}>
-                    {format(day, 'd')}
-                  </p>
-                </div>
-              );
-            })}
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </Button>
+              ))}
+            </div>
           </div>
 
-          {/* Time Slots */}
-          {hours.map((hour) => (
-            <div key={hour} className="grid grid-cols-8 border-b border-[#E5E5E5] last:border-0">
-              <div className="p-2 text-xs font-mono text-[#666666] border-r border-[#E5E5E5]">
-                {hour.toString().padStart(2, '0')}:00
-              </div>
-              {weekDays.map((day, dayIdx) => {
-                const slotAppointments = getAppointmentsForSlot(day, hour);
+          {/* Appointments Table */}
+          <div className="card-flat overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-[#FAFAFA] border-b border-[#E5E5E5]">
+                    <th className="text-left p-4 text-sm font-medium text-[#666666]">Client</th>
+                    <th className="text-left p-4 text-sm font-medium text-[#666666]">Date & Time</th>
+                    <th className="text-left p-4 text-sm font-medium text-[#666666]">Service</th>
+                    <th className="text-left p-4 text-sm font-medium text-[#666666]">Status</th>
+                    <th className="text-left p-4 text-sm font-medium text-[#666666]">Price</th>
+                    <th className="text-right p-4 text-sm font-medium text-[#666666]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-[#666666]">Loading...</td>
+                    </tr>
+                  ) : filteredAppointments.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-[#666666]">No appointments found</td>
+                    </tr>
+                  ) : (
+                    filteredAppointments.map((appt) => {
+                      const service = services.find(s => s.service_id === appt.service_id);
+                      return (
+                        <tr key={appt.appointment_id} className="border-b border-[#E5E5E5] last:border-0 hover:bg-[#FAFAFA]" data-testid={`appt-row-${appt.appointment_id}`}>
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-[#121212] rounded-full flex items-center justify-center text-white text-sm font-medium">
+                                {appt.client_name?.charAt(0) || '?'}
+                              </div>
+                              <div>
+                                <p className="font-medium text-[#0A0A0A]">{appt.client_name || 'Walk-in'}</p>
+                                <p className="text-sm text-[#666666]">{appt.client_email || '-'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-[#666666]" />
+                              <span className="text-[#0A0A0A]">
+                                {format(parseISO(appt.start_time), 'MMM d, yyyy')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Clock className="w-4 h-4 text-[#666666]" />
+                              <span className="text-sm text-[#666666]">
+                                {format(parseISO(appt.start_time), 'h:mm a')}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <span className="text-[#0A0A0A]">{service?.name || '-'}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(appt.status)}`}>
+                              {appt.status}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <span className="font-mono text-[#0A0A0A]">€{appt.total_price || 0}</span>
+                          </td>
+                          <td className="p-4 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" data-testid={`appt-actions-${appt.appointment_id}`}>
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {appt.status === 'pending' && (
+                                  <DropdownMenuItem onClick={() => handleStatusChange(appt.appointment_id, 'confirmed')}>
+                                    <Check className="w-4 h-4 mr-2" /> Confirm
+                                  </DropdownMenuItem>
+                                )}
+                                {(appt.status === 'pending' || appt.status === 'confirmed') && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleStatusChange(appt.appointment_id, 'completed')}>
+                                      <Check className="w-4 h-4 mr-2" /> Mark Complete
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleStatusChange(appt.appointment_id, 'cancelled')}
+                                      className="text-red-600"
+                                    >
+                                      <X className="w-4 h-4 mr-2" /> Cancel
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Calendar View */}
+      {viewMode === 'calendar' && (
+        <div className="card-flat overflow-x-auto">
+          <div className="min-w-[800px]">
+            {/* Day Headers */}
+            <div className="grid grid-cols-8 border-b border-[#E5E5E5]">
+              <div className="p-3 text-sm font-medium text-[#666666]">Time</div>
+              {weekDays.map((day, idx) => {
                 const isToday = isSameDay(day, new Date());
-                const targetKey = `${format(day, 'yyyy-MM-dd')}-${hour}`;
-                const isDropTarget = dropTarget === targetKey;
+                return (
+                  <div 
+                    key={idx} 
+                    className={`p-3 text-center ${isToday ? 'bg-[#FAFAFA]' : ''}`}
+                  >
+                    <p className="text-xs text-[#666666] uppercase">{format(day, 'EEE')}</p>
+                    <p className={`text-lg font-semibold ${isToday ? 'text-[#E34A33]' : 'text-[#0A0A0A]'}`}>
+                      {format(day, 'd')}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Time Slots */}
+            {hours.map((hour) => (
+              <div key={hour} className="grid grid-cols-8 border-b border-[#E5E5E5] last:border-0">
+                <div className="p-2 text-xs font-mono text-[#666666] border-r border-[#E5E5E5]">
+                  {hour.toString().padStart(2, '0')}:00
+                </div>
+                {weekDays.map((day, dayIdx) => {
+                  const slotAppointments = getAppointmentsForSlot(day, hour);
+                  const isToday = isSameDay(day, new Date());
+                  const targetKey = `${format(day, 'yyyy-MM-dd')}-${hour}`;
+                  const isDropTarget = dropTarget === targetKey;
                 
                 return (
                   <div
@@ -307,8 +516,9 @@ const CalendarPage = () => {
               })}
             </div>
           ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* New Appointment Dialog */}
       <Dialog open={showNewAppointment} onOpenChange={setShowNewAppointment}>
