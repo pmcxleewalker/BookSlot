@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, File, UploadFile
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -19,6 +19,7 @@ import hmac
 import asyncio
 import json
 import re
+import requests
 
 # Resend and Twilio imports (optional - graceful fallback if not configured)
 try:
@@ -68,6 +69,52 @@ if TWILIO_AVAILABLE and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
 # Moltbot AI Configuration
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 MOLTBOT_ENABLED = os.environ.get('MOLTBOT_ENABLED', 'true').lower() == 'true'
+
+# Object Storage Configuration
+STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+APP_NAME = "bookslot"
+storage_key = None
+
+def init_storage():
+    """Initialize object storage - call once at startup"""
+    global storage_key
+    if storage_key:
+        return storage_key
+    if not EMERGENT_LLM_KEY:
+        return None
+    try:
+        resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_LLM_KEY}, timeout=30)
+        resp.raise_for_status()
+        storage_key = resp.json()["storage_key"]
+        return storage_key
+    except Exception as e:
+        logging.error(f"Storage init failed: {e}")
+        return None
+
+def put_object(path: str, data: bytes, content_type: str) -> dict:
+    """Upload file to object storage"""
+    key = init_storage()
+    if not key:
+        raise Exception("Storage not initialized")
+    resp = requests.put(
+        f"{STORAGE_URL}/objects/{path}",
+        headers={"X-Storage-Key": key, "Content-Type": content_type},
+        data=data, timeout=120
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+def get_object(path: str) -> tuple:
+    """Download file from object storage"""
+    key = init_storage()
+    if not key:
+        raise Exception("Storage not initialized")
+    resp = requests.get(
+        f"{STORAGE_URL}/objects/{path}",
+        headers={"X-Storage-Key": key}, timeout=60
+    )
+    resp.raise_for_status()
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 168  # 7 days
@@ -773,6 +820,374 @@ async def get_tenant_branding(user: Dict = Depends(get_current_user)):
     }
     
     return {"branding": tenant.get("branding", default_branding), "logo_url": tenant.get("logo_url")}
+
+# ================== FILE UPLOAD ==================
+
+ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+@api_router.post("/upload/image")
+async def upload_image(file: UploadFile = File(...), user: Dict = Depends(get_current_user)):
+    """Upload image file (logo, etc.)"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # Validate file extension
+    ext = file.filename.split(".")[-1].lower() if "." in file.filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}")
+    
+    # Read and validate size
+    data = await file.read()
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Maximum 5MB allowed.")
+    
+    # Generate storage path
+    file_id = uuid.uuid4().hex
+    path = f"{APP_NAME}/uploads/{user['tenant_id']}/{file_id}.{ext}"
+    
+    # Determine content type
+    content_types = {
+        "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
+        "gif": "image/gif", "webp": "image/webp"
+    }
+    content_type = content_types.get(ext, "application/octet-stream")
+    
+    try:
+        result = put_object(path, data, content_type)
+        
+        # Store reference in database
+        file_record = {
+            "file_id": file_id,
+            "tenant_id": user["tenant_id"],
+            "storage_path": result["path"],
+            "original_filename": file.filename,
+            "content_type": content_type,
+            "size": result.get("size", len(data)),
+            "is_deleted": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.files.insert_one({**file_record})
+        
+        return {
+            "file_id": file_id,
+            "path": result["path"],
+            "url": f"/api/files/{file_id}"
+        }
+    except Exception as e:
+        logger.error(f"Upload failed: {e}")
+        raise HTTPException(status_code=500, detail="Upload failed")
+
+@api_router.get("/files/{file_id}")
+async def get_file(file_id: str, auth: str = Query(None)):
+    """Get uploaded file"""
+    # Find file record
+    record = await db.files.find_one({"file_id": file_id, "is_deleted": False}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    try:
+        data, content_type = get_object(record["storage_path"])
+        return Response(content=data, media_type=record.get("content_type", content_type))
+    except Exception as e:
+        logger.error(f"File retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail="File retrieval failed")
+
+# ================== NOTIFICATIONS SYSTEM ==================
+
+@api_router.get("/notifications")
+async def get_notifications(user: Dict = Depends(get_current_user), limit: int = 20, unread_only: bool = False):
+    """Get notifications for current user/tenant"""
+    if not user.get("tenant_id"):
+        return {"notifications": [], "unread_count": 0}
+    
+    query = {"tenant_id": user["tenant_id"]}
+    if unread_only:
+        query["read"] = False
+    
+    notifications = await db.notifications.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    
+    unread_count = await db.notifications.count_documents({
+        "tenant_id": user["tenant_id"],
+        "read": False
+    })
+    
+    return {"notifications": notifications, "unread_count": unread_count}
+
+@api_router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, user: Dict = Depends(get_current_user)):
+    """Mark notification as read"""
+    await db.notifications.update_one(
+        {"notification_id": notification_id, "tenant_id": user.get("tenant_id")},
+        {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Marked as read"}
+
+@api_router.post("/notifications/read-all")
+async def mark_all_notifications_read(user: Dict = Depends(get_current_user)):
+    """Mark all notifications as read"""
+    if not user.get("tenant_id"):
+        return {"message": "No notifications"}
+    
+    await db.notifications.update_many(
+        {"tenant_id": user["tenant_id"], "read": False},
+        {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "All marked as read"}
+
+async def create_notification(tenant_id: str, notif_type: str, title: str, message: str, data: Dict = None):
+    """Create a notification for a tenant"""
+    notification = {
+        "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
+        "tenant_id": tenant_id,
+        "type": notif_type,  # booking, cancellation, approval_needed, etc.
+        "title": title,
+        "message": message,
+        "data": data or {},
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one({**notification})
+    return notification
+
+# ================== SMART BOOKING (Staff Recommendations) ==================
+
+@api_router.get("/public/booking/{slug}/smart-availability")
+async def get_smart_availability(
+    slug: str,
+    service_id: str,
+    preferred_staff_id: Optional[str] = None,
+    date: str = None
+):
+    """Get availability with staff recommendations if preferred is unavailable"""
+    tenant = await db.tenants.find_one({"booking_url_slug": slug, "is_active": True}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    if not date:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    service = await db.services.find_one({"service_id": service_id}, {"_id": 0})
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    
+    duration = service.get("duration", 30)
+    
+    # Get all staff who can perform this service
+    all_staff = await db.staff.find({"tenant_id": tenant["tenant_id"], "is_active": True}, {"_id": 0}).to_list(100)
+    eligible_staff = [s for s in all_staff if not s.get("services") or service_id in s.get("services", [])]
+    
+    if not eligible_staff:
+        return {"available": False, "message": "No staff available for this service", "alternatives": []}
+    
+    # Get existing appointments for the day
+    start_of_day = f"{date}T00:00:00"
+    end_of_day = f"{date}T23:59:59"
+    
+    existing_appointments = await db.appointments.find({
+        "tenant_id": tenant["tenant_id"],
+        "status": {"$nin": ["cancelled"]},
+        "start_time": {"$gte": start_of_day, "$lte": end_of_day}
+    }, {"_id": 0}).to_list(500)
+    
+    # Get time blocks (leave, lunch, etc.)
+    time_blocks = await db.time_blocks.find({
+        "tenant_id": tenant["tenant_id"],
+        "$or": [
+            {"start_date": {"$lte": date}, "end_date": {"$gte": date}},
+            {"start_date": date}
+        ]
+    }, {"_id": 0}).to_list(200)
+    
+    # Build availability map for each staff
+    staff_availability = {}
+    
+    for staff in eligible_staff:
+        staff_id = staff["staff_id"]
+        working_hours = staff.get("working_hours", {})
+        
+        # Get day of week
+        try:
+            date_obj = datetime.strptime(date, "%Y-%m-%d")
+            day_name = date_obj.strftime("%A").lower()
+        except:
+            continue
+        
+        day_schedule = working_hours.get(day_name, {"enabled": True, "start": "09:00", "end": "17:00"})
+        
+        if not day_schedule.get("enabled", True):
+            staff_availability[staff_id] = {"available": False, "reason": "Not working this day", "slots": []}
+            continue
+        
+        # Check for time blocks (leave, etc.)
+        staff_blocked = False
+        for block in time_blocks:
+            if block.get("staff_id") == staff_id and block.get("all_day"):
+                staff_blocked = True
+                break
+        
+        if staff_blocked:
+            staff_availability[staff_id] = {"available": False, "reason": "On leave", "slots": []}
+            continue
+        
+        # Calculate available slots
+        start_hour, start_min = map(int, day_schedule.get("start", "09:00").split(":"))
+        end_hour, end_min = map(int, day_schedule.get("end", "17:00").split(":"))
+        
+        slots = []
+        current = datetime(date_obj.year, date_obj.month, date_obj.day, start_hour, start_min)
+        end_time = datetime(date_obj.year, date_obj.month, date_obj.day, end_hour, end_min)
+        
+        while current < end_time:
+            slot_start = current.strftime(f"{date}T%H:%M:%S")
+            slot_end = (current + timedelta(minutes=duration)).strftime(f"{date}T%H:%M:%S")
+            
+            # Check for conflicts
+            conflict = False
+            for appt in existing_appointments:
+                if appt.get("staff_id") == staff_id:
+                    if appt["start_time"] < slot_end and appt["end_time"] > slot_start:
+                        conflict = True
+                        break
+            
+            if not conflict:
+                slots.append({"start": slot_start, "end": slot_end})
+            
+            current += timedelta(minutes=30)
+        
+        staff_availability[staff_id] = {
+            "available": len(slots) > 0,
+            "slots": slots,
+            "staff_name": staff["name"],
+            "staff_title": staff.get("title", "")
+        }
+    
+    # Check preferred staff first
+    preferred_available = False
+    preferred_slots = []
+    
+    if preferred_staff_id and preferred_staff_id in staff_availability:
+        pref = staff_availability[preferred_staff_id]
+        preferred_available = pref["available"]
+        preferred_slots = pref.get("slots", [])
+    
+    # Build alternatives if preferred not available
+    alternatives = []
+    if not preferred_available or not preferred_slots:
+        for staff_id, avail in staff_availability.items():
+            if staff_id != preferred_staff_id and avail["available"] and avail.get("slots"):
+                alternatives.append({
+                    "staff_id": staff_id,
+                    "staff_name": avail["staff_name"],
+                    "staff_title": avail.get("staff_title", ""),
+                    "available_slots": avail["slots"][:5]  # First 5 slots
+                })
+    
+    # Suggest alternative days if no one available today
+    alternative_days = []
+    if not preferred_available and not alternatives:
+        for days_ahead in range(1, 8):  # Check next 7 days
+            future_date = (datetime.strptime(date, "%Y-%m-%d") + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+            alternative_days.append(future_date)
+    
+    return {
+        "date": date,
+        "service": service["name"],
+        "preferred_staff_available": preferred_available,
+        "preferred_slots": preferred_slots[:10] if preferred_slots else [],
+        "alternative_staff": alternatives[:3],  # Top 3 alternatives
+        "alternative_days": alternative_days[:5] if alternative_days else [],
+        "message": "Preferred staff available" if preferred_available else "Preferred staff unavailable - see alternatives"
+    }
+
+# ================== BOOKING APPROVAL SYSTEM ==================
+
+@api_router.get("/appointments/pending-approval")
+async def get_pending_approvals(user: Dict = Depends(get_current_user)):
+    """Get appointments pending approval"""
+    if not user.get("tenant_id"):
+        return {"appointments": []}
+    
+    # Get tenant settings for approval threshold
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    approval_threshold = tenant.get("settings", {}).get("approval_threshold_minutes", 60)
+    
+    # Find pending appointments
+    appointments = await db.appointments.find({
+        "tenant_id": user["tenant_id"],
+        "status": "pending_approval"
+    }, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Enrich with service and staff names
+    services = {s["service_id"]: s for s in await db.services.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(100)}
+    staff = {s["staff_id"]: s for s in await db.staff.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(100)}
+    
+    for appt in appointments:
+        appt["service_name"] = services.get(appt.get("service_id"), {}).get("name", "Unknown")
+        appt["staff_name"] = staff.get(appt.get("staff_id"), {}).get("name", "Unknown")
+    
+    return {"appointments": appointments, "approval_threshold": approval_threshold}
+
+@api_router.post("/appointments/{appointment_id}/approve")
+async def approve_appointment(appointment_id: str, user: Dict = Depends(get_current_user)):
+    """Approve a pending appointment"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    result = await db.appointments.update_one(
+        {"appointment_id": appointment_id, "tenant_id": user["tenant_id"], "status": "pending_approval"},
+        {"$set": {"status": "confirmed", "approved_at": datetime.now(timezone.utc).isoformat(), "approved_by": user["user_id"]}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Appointment not found or already processed")
+    
+    # Create notification
+    appt = await db.appointments.find_one({"appointment_id": appointment_id}, {"_id": 0})
+    await create_notification(
+        user["tenant_id"],
+        "booking_approved",
+        "Booking Approved",
+        f"Appointment for {appt.get('client_name', 'Customer')} has been approved",
+        {"appointment_id": appointment_id}
+    )
+    
+    return {"message": "Appointment approved", "status": "confirmed"}
+
+@api_router.post("/appointments/{appointment_id}/reject")
+async def reject_appointment(appointment_id: str, body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Reject a pending appointment"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    reason = body.get("reason", "Rejected by staff")
+    
+    result = await db.appointments.update_one(
+        {"appointment_id": appointment_id, "tenant_id": user["tenant_id"], "status": "pending_approval"},
+        {"$set": {"status": "cancelled", "cancellation_reason": reason, "cancelled_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Appointment not found or already processed")
+    
+    return {"message": "Appointment rejected", "status": "cancelled"}
+
+@api_router.put("/tenants/me/settings/approval")
+async def update_approval_settings(body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Update approval threshold settings"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    threshold = body.get("approval_threshold_minutes", 60)
+    
+    await db.tenants.update_one(
+        {"tenant_id": user["tenant_id"]},
+        {"$set": {"settings.approval_threshold_minutes": threshold}}
+    )
+    
+    return {"message": "Settings updated", "approval_threshold_minutes": threshold}
 
 # ================== STAFF ENDPOINTS ==================
 
@@ -3894,6 +4309,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup"""
+    try:
+        init_storage()
+        logger.info("Object storage initialized")
+    except Exception as e:
+        logger.error(f"Storage init failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
