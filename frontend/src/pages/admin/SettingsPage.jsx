@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
+import { useTheme, themes } from '../../context/ThemeContext';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -9,10 +10,11 @@ import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Checkbox } from '../../components/ui/checkbox';
 import { toast } from 'sonner';
-import { Building2, Globe, Clock, Shield, Bell, MessageSquare, Mail, Smartphone, Check, Palette, Upload, Eye, Puzzle, Plus, Trash2, Copy, Calendar, Bot, CreditCard, Webhook, Image } from 'lucide-react';
+import { Building2, Globe, Clock, Shield, Bell, MessageSquare, Mail, Smartphone, Check, Palette, Upload, Eye, Puzzle, Plus, Trash2, Copy, Calendar, Bot, CreditCard, Webhook, Image, Sparkles } from 'lucide-react';
 
 const SettingsPage = () => {
   const { tenant, token, updateTenant } = useAuth();
+  const { currentTheme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('general');
   const [saving, setSaving] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState(null);
@@ -27,7 +29,8 @@ const SettingsPage = () => {
     primary_color: '#E34A33',
     secondary_color: '#0A0A0A',
     accent_color: '#4F46E5',
-    show_powered_by: true
+    show_powered_by: true,
+    theme: 'default'
   });
   const [formData, setFormData] = useState({
     name: tenant?.name || '',
@@ -468,7 +471,61 @@ const SettingsPage = () => {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Theme Selector */}
+              <div>
+                <Label className="text-sm font-medium flex items-center gap-2 mb-3">
+                  <Sparkles className="w-4 h-4" />
+                  Select Theme
+                </Label>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  {Object.values(themes).map((themeOption) => (
+                    <button
+                      key={themeOption.id}
+                      onClick={() => {
+                        setTheme(themeOption.id);
+                        setBranding({ ...branding, theme: themeOption.id });
+                        toast.success(`Theme changed to ${themeOption.name}`);
+                      }}
+                      className={`p-4 border-2 rounded-lg text-left transition-all ${
+                        currentTheme === themeOption.id
+                          ? 'border-[#E34A33] ring-2 ring-[#E34A33]/20'
+                          : 'border-[#E5E5E5] hover:border-[#999]'
+                      }`}
+                      data-testid={`theme-${themeOption.id}`}
+                    >
+                      {/* Theme preview colors */}
+                      <div className="flex gap-1 mb-2">
+                        <div 
+                          className="w-6 h-6 rounded-full border border-white/20"
+                          style={{ backgroundColor: themeOption.colors.background }}
+                        />
+                        <div 
+                          className="w-6 h-6 rounded-full border border-white/20"
+                          style={{ backgroundColor: themeOption.colors.accent }}
+                        />
+                        <div 
+                          className="w-6 h-6 rounded-full border border-white/20"
+                          style={{ backgroundColor: themeOption.colors.text }}
+                        />
+                      </div>
+                      <p className="font-medium text-sm text-[#0A0A0A]">{themeOption.name}</p>
+                      <p className="text-xs text-[#666666]">{themeOption.description}</p>
+                      {themeOption.id === 'elite' && (
+                        <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded">
+                          ✨ Premium
+                        </span>
+                      )}
+                      {currentTheme === themeOption.id && (
+                        <span className="inline-block mt-1 ml-1 text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                          Active
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Logo Upload */}
               <div>
                 <Label className="text-sm font-medium">Business Logo</Label>

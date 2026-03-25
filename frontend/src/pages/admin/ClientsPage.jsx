@@ -126,6 +126,7 @@ const ClientsPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success(client.is_vip ? 'VIP status removed' : 'Marked as VIP');
+      setShowDetailDialog(false); // Close dialog after action
       fetchClients();
     } catch (error) {
       toast.error('Failed to update VIP status');

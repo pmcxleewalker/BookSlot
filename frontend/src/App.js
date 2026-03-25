@@ -33,6 +33,10 @@ import AdminTenantDetailPage from './pages/superadmin/AdminTenantDetailPage';
 // Components
 import AuthCallback from './components/auth/AuthCallback';
 import AIReceptionistWidget from './components/AIReceptionistWidget';
+import EliteBorder from './components/EliteBorder';
+
+// Context
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -266,9 +270,12 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Toaster position="top-right" richColors closeButton />
-        <AppRouter />
-        <AIReceptionistWidget />
+        <ThemeProvider initialTheme="default">
+          <Toaster position="top-right" richColors closeButton />
+          <EliteBorder />
+          <AppRouter />
+          <AIReceptionistWidget />
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   );
