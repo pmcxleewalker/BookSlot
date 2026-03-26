@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { 
   ArrowLeft, Building2, Users, Briefcase, Calendar, 
-  Mail, Phone, MapPin, Globe, Check, X, UserCog, Save
+  Mail, Phone, MapPin, Globe, Check, X, UserCog, Save,
+  Power, PowerOff, Trash2, AlertTriangle
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -51,6 +52,8 @@ const AdminTenantDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -130,6 +133,54 @@ const AdminTenantDetailPage = () => {
       window.open('/dashboard', '_blank');
     } catch (error) {
       toast.error('Failed to impersonate user');
+    }
+  };
+
+  const handleActivate = async () => {
+    setActionLoading('activate');
+    const token = localStorage.getItem('admin_token');
+    try {
+      await axios.post(`${API}/admin/tenants/${tenantId}/activate`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setTenant({ ...tenant, is_active: true });
+      toast.success('Tenant activated successfully');
+    } catch (error) {
+      toast.error('Failed to activate tenant');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    setActionLoading('deactivate');
+    const token = localStorage.getItem('admin_token');
+    try {
+      await axios.post(`${API}/admin/tenants/${tenantId}/deactivate`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setTenant({ ...tenant, is_active: false });
+      toast.success('Tenant deactivated successfully');
+    } catch (error) {
+      toast.error('Failed to deactivate tenant');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleTerminate = async () => {
+    setActionLoading('terminate');
+    const token = localStorage.getItem('admin_token');
+    try {
+      await axios.post(`${API}/admin/tenants/${tenantId}/terminate`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Tenant permanently terminated');
+      navigate('/admin/tenants');
+    } catch (error) {
+      toast.error('Failed to terminate tenant');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -390,13 +441,79 @@ const AdminTenantDetailPage = () => {
 
           {/* Status */}
           <div className="bg-[#121212] border border-white/10 p-6">
-            <h3 className="font-semibold text-white mb-4">Status</h3>
-            <div className={`p-3 text-center ${tenant?.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+            <h3 className="font-semibold text-white mb-4">Status & Actions</h3>
+            <div className={`p-3 text-center mb-4 ${tenant?.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
               {tenant?.is_active ? 'Active' : 'Inactive'}
             </div>
-            <p className="text-xs text-white/40 mt-2">
+            <p className="text-xs text-white/40 mb-4">
               Created: {new Date(tenant?.created_at).toLocaleDateString()}
             </p>
+            
+            {/* Lifecycle Actions */}
+            <div className="space-y-2">
+              {tenant?.is_active ? (
+                <Button 
+                  variant="outline" 
+                  className="w-full border-amber-500/30 text-amber-400 hover:bg-amber-500/10 flex items-center justify-center gap-2"
+                  onClick={handleDeactivate}
+                  disabled={actionLoading}
+                  data-testid="deactivate-tenant-btn"
+                >
+                  <PowerOff className="w-4 h-4" />
+                  {actionLoading === 'deactivate' ? 'Deactivating...' : 'Deactivate Tenant'}
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  className="w-full border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 flex items-center justify-center gap-2"
+                  onClick={handleActivate}
+                  disabled={actionLoading}
+                  data-testid="activate-tenant-btn"
+                >
+                  <Power className="w-4 h-4" />
+                  {actionLoading === 'activate' ? 'Activating...' : 'Activate Tenant'}
+                </Button>
+              )}
+              
+              {!showTerminateConfirm ? (
+                <Button 
+                  variant="outline" 
+                  className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 flex items-center justify-center gap-2"
+                  onClick={() => setShowTerminateConfirm(true)}
+                  data-testid="terminate-tenant-btn"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Terminate Tenant
+                </Button>
+              ) : (
+                <div className="border border-red-500/30 p-3 space-y-3">
+                  <div className="flex items-center gap-2 text-red-400">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-sm font-medium">Permanent Deletion</span>
+                  </div>
+                  <p className="text-xs text-white/60">
+                    This will permanently delete the tenant and ALL associated data (users, staff, services, appointments, clients). This action cannot be undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 border-white/10 text-white hover:bg-white/5"
+                      onClick={() => setShowTerminateConfirm(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                      onClick={handleTerminate}
+                      disabled={actionLoading}
+                      data-testid="confirm-terminate-btn"
+                    >
+                      {actionLoading === 'terminate' ? 'Deleting...' : 'Confirm Delete'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

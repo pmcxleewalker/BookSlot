@@ -794,7 +794,7 @@ async def update_tenant_branding(branding: Dict[str, Any], user: Dict = Depends(
     if not user.get("tenant_id"):
         raise HTTPException(status_code=404, detail="No business found")
     
-    allowed_fields = ["primary_color", "secondary_color", "accent_color", "show_powered_by"]
+    allowed_fields = ["business_name", "primary_color", "secondary_color", "accent_color", "show_powered_by"]
     clean_branding = {k: v for k, v in branding.items() if k in allowed_fields}
     
     await db.tenants.update_one(
@@ -4210,6 +4210,46 @@ async def admin_activate_tenant(tenant_id: str, admin: Dict = Depends(get_super_
     )
     
     return {"message": "Tenant activated"}
+
+@api_router.post("/admin/tenants/{tenant_id}/deactivate")
+async def admin_deactivate_tenant(tenant_id: str, admin: Dict = Depends(get_super_admin)):
+    """Deactivate tenant (soft disable - super admin only)"""
+    result = await db.tenants.update_one(
+        {"tenant_id": tenant_id},
+        {"$set": {"is_active": False, "status": "deactivated", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Deactivate all users for this tenant
+    await db.users.update_many(
+        {"tenant_id": tenant_id},
+        {"$set": {"is_active": False}}
+    )
+    
+    return {"message": "Tenant deactivated"}
+
+@api_router.post("/admin/tenants/{tenant_id}/terminate")
+async def admin_terminate_tenant(tenant_id: str, admin: Dict = Depends(get_super_admin)):
+    """Permanently terminate and delete tenant (super admin only)"""
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Delete all related data
+    await db.users.delete_many({"tenant_id": tenant_id})
+    await db.staff.delete_many({"tenant_id": tenant_id})
+    await db.services.delete_many({"tenant_id": tenant_id})
+    await db.appointments.delete_many({"tenant_id": tenant_id})
+    await db.clients.delete_many({"tenant_id": tenant_id})
+    await db.webhooks.delete_many({"tenant_id": tenant_id})
+    await db.conversations.delete_many({"tenant_id": tenant_id})
+    
+    # Finally delete the tenant
+    await db.tenants.delete_one({"tenant_id": tenant_id})
+    
+    return {"message": "Tenant permanently terminated and all data deleted"}
 
 @api_router.get("/admin/stats")
 async def admin_get_stats(admin: Dict = Depends(get_super_admin)):

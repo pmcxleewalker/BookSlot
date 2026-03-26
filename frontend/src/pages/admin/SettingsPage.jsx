@@ -15,6 +15,7 @@ const SettingsPage = () => {
   const [notificationSettings, setNotificationSettings] = useState(null);
   const [loadingNotifications, setLoadingNotifications] = useState(true);
   const [branding, setBranding] = useState({
+    business_name: '',
     primary_color: '#E34A33',
     secondary_color: '#0A0A0A',
     accent_color: '#4F46E5',
@@ -246,6 +247,18 @@ const SettingsPage = () => {
           </div>
 
           <div className="space-y-4">
+            {/* Custom Business Name */}
+            <div>
+              <Label className="text-sm font-medium">Display Name</Label>
+              <Input
+                value={branding.business_name}
+                onChange={(e) => setBranding({ ...branding, business_name: e.target.value })}
+                placeholder={tenant?.name || 'Your Business Name'}
+                className="mt-1.5"
+              />
+              <p className="text-xs text-[#666666] mt-1">Custom name shown in the sidebar (leave empty to use account name)</p>
+            </div>
+
             {/* Logo URL */}
             <div>
               <Label className="text-sm font-medium">Logo URL</Label>

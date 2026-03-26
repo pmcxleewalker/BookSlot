@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import {
@@ -7,13 +7,10 @@ import {
   Clock,
   Users,
   Briefcase,
-  Box,
   UserCircle,
   FileText,
-  Mail,
   BarChart3,
   Settings,
-  Puzzle,
   LogOut,
   Menu,
   X,
@@ -28,14 +25,11 @@ const navItems = [
   { path: '/appointments', label: 'Appointments', icon: Clock },
   { path: '/staff', label: 'Staff', icon: Users },
   { path: '/services', label: 'Services', icon: Briefcase },
-  { path: '/resources', label: 'Resources', icon: Box },
   { path: '/clients', label: 'Clients', icon: UserCircle },
   { path: '/forms', label: 'Forms', icon: FileText },
-  { path: '/messages', label: 'Messages', icon: Mail },
   { path: '/moltbot', label: 'AI Receptionist', icon: Bot },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
-  { path: '/integrations', label: 'Integrations', icon: Puzzle },
 ];
 
 const TenantLayout = ({ children, title }) => {
@@ -44,10 +38,50 @@ const TenantLayout = ({ children, title }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  
+  // Apply custom branding from tenant settings
+  useEffect(() => {
+    if (tenant?.branding) {
+      const { primary_color, secondary_color, accent_color } = tenant.branding;
+      const root = document.documentElement;
+      
+      if (primary_color) {
+        root.style.setProperty('--brand-primary', primary_color);
+      }
+      if (secondary_color) {
+        root.style.setProperty('--brand-secondary', secondary_color);
+      }
+      if (accent_color) {
+        root.style.setProperty('--brand-accent', accent_color);
+      }
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      const root = document.documentElement;
+      root.style.removeProperty('--brand-primary');
+      root.style.removeProperty('--brand-secondary');
+      root.style.removeProperty('--brand-accent');
+    };
+  }, [tenant?.branding]);
+
+  // Get branding color for active state
+  const primaryColor = tenant?.branding?.primary_color || '#121212';
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
+  };
+
+  // Style for sidebar items
+  const getSidebarItemStyle = (isActive) => {
+    if (isActive) {
+      return {
+        backgroundColor: primaryColor,
+        color: '#FFFFFF'
+      };
+    }
+    return {};
   };
 
   return (
@@ -61,8 +95,8 @@ const TenantLayout = ({ children, title }) => {
         >
           <Menu className="w-6 h-6 text-[#0A0A0A]" />
         </button>
-        <Link to="/dashboard" className="font-semibold text-lg text-[#0A0A0A]">
-          {tenant?.name || 'BookSlot'}
+        <Link to="/dashboard" className="font-semibold text-lg" style={{ color: primaryColor }}>
+          {tenant?.branding?.business_name || tenant?.name || 'BookSlot'}
         </Link>
         <div className="w-10" />
       </header>
@@ -83,8 +117,8 @@ const TenantLayout = ({ children, title }) => {
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-[#E5E5E5]">
-          <Link to="/dashboard" className="font-semibold text-lg text-[#0A0A0A]">
-            {tenant?.name || 'BookSlot'}
+          <Link to="/dashboard" className="font-semibold text-lg" style={{ color: primaryColor }}>
+            {tenant?.branding?.business_name || tenant?.name || 'BookSlot'}
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -104,7 +138,12 @@ const TenantLayout = ({ children, title }) => {
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className={isActive ? 'sidebar-item-active' : 'sidebar-item'}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-md transition-colors ${
+                  isActive 
+                    ? 'text-white' 
+                    : 'text-[#666666] hover:text-[#0A0A0A] hover:bg-[#FAFAFA]'
+                }`}
+                style={getSidebarItemStyle(isActive)}
                 data-testid={`nav-${item.label.toLowerCase()}`}
               >
                 <Icon className="w-5 h-5" />
@@ -122,7 +161,10 @@ const TenantLayout = ({ children, title }) => {
               className="w-full flex items-center gap-3 p-2 hover:bg-[#FAFAFA] rounded-md transition-colors"
               data-testid="user-menu-button"
             >
-              <div className="w-8 h-8 bg-[#121212] rounded-full flex items-center justify-center text-white text-sm font-medium">
+              <div 
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                style={{ backgroundColor: primaryColor }}
+              >
                 {user?.name?.charAt(0) || 'U'}
               </div>
               <div className="flex-1 text-left">
@@ -136,7 +178,8 @@ const TenantLayout = ({ children, title }) => {
               <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-[#E5E5E5] rounded-md shadow-lg overflow-hidden">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAFA] transition-colors text-[#E34A33]"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAFA] transition-colors"
+                  style={{ color: primaryColor }}
                   data-testid="logout-button"
                 >
                   <LogOut className="w-4 h-4" />

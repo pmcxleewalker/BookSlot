@@ -94,6 +94,7 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - Business details
   - Regional settings
   - Booking settings
+  - **Custom branding (display name, colors, logo URL)**
   - **Notification settings:**
     - Email reminders toggle (FREE - Included)
     - SMS add-on toggle (+€10/month)
@@ -106,6 +107,9 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - Tenants List with search/filter (/admin/tenants)
   - Create Tenant Dialog with plan selection
   - Tenant Detail Page with plan editor (/admin/tenants/{id})
+  - **Tenant Lifecycle Controls (activate/deactivate/terminate)**
+  - **Black & White theme for Super Admin (no orange accents)**
+  - **Renamed "Super Admin" → "Tenant Control Centre"**
 
 - [x] **Moltbot AI Conversation System:**
   - Full conversation understanding via GPT-4o-mini
@@ -122,7 +126,8 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - Colors: #0A0A0A (primary), #E34A33 (accent), #4F46E5 (AI widget)
 - Sharp-edged buttons and cards
 - Mobile-responsive
-- **Super Admin Dark Theme:** #121212 background with white/60 text, plan badges with color coding
+- **Super Admin Dark Theme:** Black & white only (#0A0A0A bg, white text, no colored accents)
+- **Tenant Custom Branding:** Dynamic primary/secondary/accent colors from tenant settings
 
 ## Pricing Tiers & Features
 | Feature | Starter (€29) | Growth (€79) | Pro (€149) |
@@ -197,9 +202,13 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
    - Cost: ~$0.0079/SMS (passed through to tenant via +€10/month add-on)
 
 ## Next Tasks
-1. Add Stripe payment integration for deposits
-2. Implement Google Calendar sync
-3. Build custom forms builder
+1. **UI Tab Cleanup** - Remove Resources, move Messages→AI Receptionist, move Integrations→Settings, add Help button
+2. **Merge Appointments into Calendar** - With approval workflow (configurable time limit)
+3. **File Upload for Branding** - Enable device uploads using Object Storage
+4. **Smart Booking & Notification Bell** - Staff/time recommendations + alert bell
+5. Add Stripe payment integration for deposits
+6. Implement Google Calendar sync
+7. Build custom forms builder
 
 ## Moltbot AI Activation Guide (When Ready)
 To activate Moltbot for incoming SMS/Email:
