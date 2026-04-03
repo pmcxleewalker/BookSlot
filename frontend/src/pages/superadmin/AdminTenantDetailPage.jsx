@@ -308,8 +308,17 @@ const AdminTenantDetailPage = () => {
                 )}
                 <div className="flex items-center gap-3 text-[#666666]">
                   <Globe className="w-4 h-4" />
-                  <span className="text-[#999999]">Booking URL:</span>
-                  <code className="text-xs bg-[#FAFAFA] px-2 py-1 border border-[#E5E5E5] rounded">/book/{tenant?.booking_url_slug}</code>
+                  <span className="text-[#999999]">Public Booking:</span>
+                  <code className="text-xs bg-[#FAFAFA] px-2 py-1 border border-[#E5E5E5] rounded">{window.location.origin}/book/{tenant?.booking_url_slug}</code>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/book/${tenant?.booking_url_slug}`);
+                      toast.success('Booking URL copied!');
+                    }}
+                    className="text-xs text-[#666666] hover:text-[#0A0A0A] underline"
+                  >
+                    Copy
+                  </button>
                 </div>
               </div>
             )}

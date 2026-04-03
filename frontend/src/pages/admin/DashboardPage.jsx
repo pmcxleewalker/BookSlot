@@ -35,10 +35,13 @@ const DashboardPage = () => {
     }
   };
 
-  const copyBookingLink = () => {
-    const link = `${window.location.origin}/book/${tenant?.booking_url_slug}`;
-    navigator.clipboard.writeText(link);
-    toast.success('Booking link copied!');
+  const baseUrl = window.location.origin;
+  const bookingUrl = `${baseUrl}/book/${tenant?.booking_url_slug}`;
+  const dashboardUrl = `${baseUrl}/dashboard`;
+
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied!`);
   };
 
   const statCards = [
@@ -70,34 +73,70 @@ const DashboardPage = () => {
 
   return (
     <TenantLayout title="Dashboard">
-      {/* Quick Actions */}
-      <div className="card-flat mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="font-semibold text-[#0A0A0A] mb-1">Your booking page</h2>
-          <p className="text-sm text-[#666666]">Share this link with your clients</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <code className="px-3 py-2 bg-[#FAFAFA] border border-[#E5E5E5] text-sm font-mono text-[#666666] truncate max-w-[200px] sm:max-w-[300px]">
-            /book/{tenant?.booking_url_slug}
-          </code>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={copyBookingLink}
-            className="flex items-center gap-1"
-            data-testid="copy-booking-link"
-          >
-            <Copy className="w-4 h-4" />
-          </Button>
-          <a 
-            href={`/book/${tenant?.booking_url_slug}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-          >
-            <Button variant="outline" size="sm" className="flex items-center gap-1">
-              <ExternalLink className="w-4 h-4" />
-            </Button>
-          </a>
+      {/* Your URLs Card */}
+      <div className="bg-white border border-[#E5E5E5] rounded-lg p-6 mb-6">
+        <h2 className="font-semibold text-[#0A0A0A] mb-4 flex items-center gap-2">
+          <ExternalLink className="w-5 h-5" />
+          Your URLs
+        </h2>
+        
+        <div className="space-y-4">
+          {/* Public Booking URL */}
+          <div className="p-4 bg-[#FAFAFA] rounded-lg border border-[#E5E5E5]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-[#0A0A0A]">Public Booking Page</span>
+              <span className="text-xs bg-emerald-100 text-emerald-600 px-2 py-1 rounded">Share with clients</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 bg-white border border-[#E5E5E5] text-sm font-mono text-[#0A0A0A] rounded truncate">
+                {bookingUrl}
+              </code>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => copyToClipboard(bookingUrl, 'Booking URL')}
+                className="flex items-center gap-1 shrink-0"
+                data-testid="copy-booking-url"
+              >
+                <Copy className="w-4 h-4" />
+                Copy
+              </Button>
+              <a 
+                href={bookingUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="sm" className="flex items-center gap-1 shrink-0">
+                  <ExternalLink className="w-4 h-4" />
+                  Open
+                </Button>
+              </a>
+            </div>
+          </div>
+
+          {/* Franchise Dashboard URL */}
+          <div className="p-4 bg-[#FAFAFA] rounded-lg border border-[#E5E5E5]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-[#0A0A0A]">Your Dashboard</span>
+              <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">Staff access</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 bg-white border border-[#E5E5E5] text-sm font-mono text-[#0A0A0A] rounded truncate">
+                {dashboardUrl}
+              </code>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => copyToClipboard(dashboardUrl, 'Dashboard URL')}
+                className="flex items-center gap-1 shrink-0"
+                data-testid="copy-dashboard-url"
+              >
+                <Copy className="w-4 h-4" />
+                Copy
+              </Button>
+            </div>
+            <p className="text-xs text-[#999999] mt-2">Staff can log in at {baseUrl}/login with their credentials</p>
+          </div>
         </div>
       </div>
 
