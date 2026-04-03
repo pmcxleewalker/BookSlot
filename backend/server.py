@@ -599,6 +599,65 @@ async def login(credentials: UserLogin, response: Response):
         "token": token
     }
 
+class TenantLogin(BaseModel):
+    email: str
+    password: str
+    tenant_slug: str
+
+@api_router.post("/auth/tenant-login")
+async def tenant_login(credentials: TenantLogin, response: Response):
+    """Login with email/password for a specific tenant"""
+    # Find tenant by slug
+    tenant = await db.tenants.find_one({"booking_url_slug": credentials.tenant_slug, "is_active": True}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    # Find user in this tenant
+    user = await db.users.find_one({
+        "email": credentials.email, 
+        "tenant_id": tenant["tenant_id"]
+    }, {"_id": 0})
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not user.get("password_hash"):
+        raise HTTPException(status_code=401, detail="Please use Google login")
+    
+    if not verify_password(credentials.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_jwt_token(user["user_id"], user.get("tenant_id"))
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        max_age=JWT_EXPIRATION_HOURS * 3600
+    )
+    
+    return {
+        "user": UserResponse(**user).model_dump(),
+        "token": token,
+        "tenant_slug": credentials.tenant_slug
+    }
+
+@api_router.get("/public/tenant/{slug}")
+async def get_public_tenant_info(slug: str):
+    """Get public tenant info by slug"""
+    tenant = await db.tenants.find_one({"booking_url_slug": slug, "is_active": True}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    return {
+        "name": tenant.get("name"),
+        "industry": tenant.get("industry"),
+        "branding": tenant.get("branding", {}),
+        "booking_url_slug": tenant.get("booking_url_slug")
+    }
+
 @api_router.post("/auth/session")
 async def google_auth_session(request: Request, response: Response):
     """Exchange Google OAuth session_id for user session"""

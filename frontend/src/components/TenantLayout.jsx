@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../App';
 import {
   LayoutDashboard,
@@ -19,25 +19,29 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-const navItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/calendar', label: 'Calendar', icon: Calendar },
-  { path: '/appointments', label: 'Appointments', icon: Clock },
-  { path: '/staff', label: 'Staff', icon: Users },
-  { path: '/services', label: 'Services', icon: Briefcase },
-  { path: '/clients', label: 'Clients', icon: UserCircle },
-  { path: '/forms', label: 'Forms', icon: FileText },
-  { path: '/moltbot', label: 'AI Receptionist', icon: Bot },
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/settings', label: 'Settings', icon: Settings },
-];
-
 const TenantLayout = ({ children, title }) => {
   const { user, tenant, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { tenantSlug } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  
+  // Determine URL prefix based on whether we're on tenant-scoped routes
+  const urlPrefix = tenantSlug ? `/${tenantSlug}` : '';
+  
+  const navItems = [
+    { path: `${urlPrefix}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
+    { path: `${urlPrefix}/calendar`, label: 'Calendar', icon: Calendar },
+    { path: `${urlPrefix}/appointments`, label: 'Appointments', icon: Clock },
+    { path: `${urlPrefix}/staff`, label: 'Staff', icon: Users },
+    { path: `${urlPrefix}/services`, label: 'Services', icon: Briefcase },
+    { path: `${urlPrefix}/clients`, label: 'Clients', icon: UserCircle },
+    { path: `${urlPrefix}/forms`, label: 'Forms', icon: FileText },
+    { path: `${urlPrefix}/moltbot`, label: 'AI Receptionist', icon: Bot },
+    { path: `${urlPrefix}/reports`, label: 'Reports', icon: BarChart3 },
+    { path: `${urlPrefix}/settings`, label: 'Settings', icon: Settings },
+  ];
   
   // Apply custom branding from tenant settings
   useEffect(() => {
@@ -70,7 +74,11 @@ const TenantLayout = ({ children, title }) => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/');
+    if (tenantSlug) {
+      navigate(`/${tenantSlug}/login`);
+    } else {
+      navigate('/');
+    }
   };
 
   // Style for sidebar items
@@ -95,7 +103,7 @@ const TenantLayout = ({ children, title }) => {
         >
           <Menu className="w-6 h-6 text-[#0A0A0A]" />
         </button>
-        <Link to="/dashboard" className="font-semibold text-lg" style={{ color: primaryColor }}>
+        <Link to={`${urlPrefix}/dashboard`} className="font-semibold text-lg" style={{ color: primaryColor }}>
           {tenant?.branding?.business_name || tenant?.name || 'BookSlot'}
         </Link>
         <div className="w-10" />
@@ -117,7 +125,7 @@ const TenantLayout = ({ children, title }) => {
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-[#E5E5E5]">
-          <Link to="/dashboard" className="font-semibold text-lg" style={{ color: primaryColor }}>
+          <Link to={`${urlPrefix}/dashboard`} className="font-semibold text-lg" style={{ color: primaryColor }}>
             {tenant?.branding?.business_name || tenant?.name || 'BookSlot'}
           </Link>
           <button

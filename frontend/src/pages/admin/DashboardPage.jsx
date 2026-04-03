@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { 
   Calendar, Clock, Users, DollarSign, TrendingUp, 
   ArrowRight, Copy, ExternalLink, Plus
@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 
 const DashboardPage = () => {
   const { tenant, token } = useAuth();
+  const { tenantSlug } = useParams();
   const [stats, setStats] = useState(null);
   const [upcoming, setUpcoming] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,8 +37,10 @@ const DashboardPage = () => {
   };
 
   const baseUrl = window.location.origin;
-  const bookingUrl = `${baseUrl}/book/${tenant?.booking_url_slug}`;
-  const dashboardUrl = `${baseUrl}/dashboard`;
+  const slug = tenantSlug || tenant?.booking_url_slug;
+  const bookingUrl = `${baseUrl}/book/${slug}`;
+  const loginUrl = `${baseUrl}/${slug}/login`;
+  const dashboardUrl = `${baseUrl}/${slug}/dashboard`;
 
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text);
@@ -117,17 +120,17 @@ const DashboardPage = () => {
           {/* Franchise Dashboard URL */}
           <div className="p-4 bg-[#FAFAFA] rounded-lg border border-[#E5E5E5]">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-[#0A0A0A]">Your Dashboard</span>
+              <span className="text-sm font-medium text-[#0A0A0A]">Staff Login</span>
               <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">Staff access</span>
             </div>
             <div className="flex items-center gap-2">
               <code className="flex-1 px-3 py-2 bg-white border border-[#E5E5E5] text-sm font-mono text-[#0A0A0A] rounded truncate">
-                {dashboardUrl}
+                {loginUrl}
               </code>
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => copyToClipboard(dashboardUrl, 'Dashboard URL')}
+                onClick={() => copyToClipboard(loginUrl, 'Login URL')}
                 className="flex items-center gap-1 shrink-0"
                 data-testid="copy-dashboard-url"
               >
@@ -135,7 +138,7 @@ const DashboardPage = () => {
                 Copy
               </Button>
             </div>
-            <p className="text-xs text-[#999999] mt-2">Staff can log in at {baseUrl}/login with their credentials</p>
+            <p className="text-xs text-[#999999] mt-2">Staff can login at this URL to access the dashboard</p>
           </div>
         </div>
       </div>

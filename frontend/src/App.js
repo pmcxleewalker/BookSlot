@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Toaster, toast } from 'sonner';
 
@@ -11,6 +11,7 @@ import LoginPage from './pages/public/LoginPage';
 import SignupPage from './pages/public/SignupPage';
 import PublicBookingPage from './pages/public/PublicBookingPage';
 import ManageBookingPage from './pages/public/ManageBookingPage';
+import TenantLoginPage from './pages/public/TenantLoginPage';
 
 // Pages - Admin
 import DashboardPage from './pages/admin/DashboardPage';
@@ -215,6 +216,32 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Tenant-scoped protected route - validates user belongs to the tenant in URL
+const TenantScopedRoute = ({ children }) => {
+  const { user, loading, tenant } = useAuth();
+  const location = useLocation();
+  const { tenantSlug } = useParams();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-pulse text-[#666666]">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to={`/${tenantSlug}/login`} state={{ from: location }} replace />;
+  }
+
+  // Verify user belongs to this tenant
+  if (tenant?.booking_url_slug !== tenantSlug) {
+    return <Navigate to={`/${tenantSlug}/login`} replace />;
+  }
+
+  return children;
+};
+
 // App Router Component
 const AppRouter = () => {
   const location = useLocation();
@@ -251,6 +278,19 @@ const AppRouter = () => {
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
       <Route path="/moltbot" element={<ProtectedRoute><MoltbotPage /></ProtectedRoute>} />
+
+      {/* Tenant-Scoped Routes - Independent franchise URLs */}
+      <Route path="/:tenantSlug/login" element={<TenantLoginPage />} />
+      <Route path="/:tenantSlug/dashboard" element={<TenantScopedRoute><DashboardPage /></TenantScopedRoute>} />
+      <Route path="/:tenantSlug/calendar" element={<TenantScopedRoute><CalendarPage /></TenantScopedRoute>} />
+      <Route path="/:tenantSlug/appointments" element={<TenantScopedRoute><AppointmentsPage /></TenantScopedRoute>} />
+      <Route path="/:tenantSlug/staff" element={<TenantScopedRoute><StaffPage /></TenantScopedRoute>} />
+      <Route path="/:tenantSlug/services" element={<TenantScopedRoute><ServicesPage /></TenantScopedRoute>} />
+      <Route path="/:tenantSlug/clients" element={<TenantScopedRoute><ClientsPage /></TenantScopedRoute>} />
+      <Route path="/:tenantSlug/forms" element={<TenantScopedRoute><FormsPage /></TenantScopedRoute>} />
+      <Route path="/:tenantSlug/reports" element={<TenantScopedRoute><ReportsPage /></TenantScopedRoute>} />
+      <Route path="/:tenantSlug/settings" element={<TenantScopedRoute><SettingsPage /></TenantScopedRoute>} />
+      <Route path="/:tenantSlug/moltbot" element={<TenantScopedRoute><MoltbotPage /></TenantScopedRoute>} />
 
       {/* Super Admin Routes */}
       <Route path="/admin" element={<AdminLoginPage />} />
