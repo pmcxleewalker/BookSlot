@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
-import { Shield, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -49,11 +49,8 @@ const AdminLoginPage = () => {
     <div className="min-h-screen bg-[#121212] flex items-center justify-center px-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#E34A33] flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-semibold text-white mb-2">Super Admin</h1>
-          <p className="text-white/60">BookSlot Platform Administration</p>
+          <h1 className="text-3xl font-bold text-white mb-2">BookSlot</h1>
+          <p className="text-white/60">Tenant Control Centre</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white p-8 space-y-4">
