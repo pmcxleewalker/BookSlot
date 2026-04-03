@@ -7,7 +7,7 @@ const PricingPage = () => {
   const plans = [
     {
       name: 'Starter',
-      price: '29',
+      price: '69',
       period: '/month',
       description: 'For small businesses just getting started',
       features: [
@@ -24,16 +24,16 @@ const PricingPage = () => {
     },
     {
       name: 'Growth',
-      price: '79',
+      price: '119',
       period: '/month',
       description: 'For growing businesses with more needs',
       features: [
         '1 location',
         'Up to 8 staff members',
         'Everything in Starter, plus:',
+        'AI Receptionist (Moltbot)',
         'Waitlist management',
         'Service packages',
-        'AI Receptionist (Moltbot)',
         'SMS automations',
         'Advanced reports',
         'Priority support'
@@ -43,13 +43,14 @@ const PricingPage = () => {
     },
     {
       name: 'Pro',
-      price: '149',
+      price: '189',
       period: '/month',
       description: 'For established businesses scaling up',
       features: [
         'Multi-location support',
         'Unlimited staff',
         'Everything in Growth, plus:',
+        'AI Receptionist (Moltbot)',
         'Advanced permissions',
         'Resource booking',
         'Custom intake forms',

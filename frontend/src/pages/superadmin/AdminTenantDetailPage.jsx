@@ -17,15 +17,15 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const PLAN_FEATURES = {
   starter: {
-    name: "Starter", price: 29, max_staff: 2,
+    name: "Starter", price: 69, max_staff: 2,
     features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: false, ai_assistant: false, resource_booking: false, custom_forms: false, api_webhooks: false }
   },
   growth: {
-    name: "Growth", price: 79, max_staff: 8,
+    name: "Growth", price: 119, max_staff: 8,
     features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: true, ai_assistant: true, resource_booking: false, custom_forms: false, api_webhooks: false }
   },
   pro: {
-    name: "Pro", price: 149, max_staff: 999,
+    name: "Pro", price: 189, max_staff: 999,
     features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: true, ai_assistant: true, resource_booking: true, custom_forms: true, api_webhooks: true }
   }
 };
@@ -187,7 +187,7 @@ const AdminTenantDetailPage = () => {
   if (loading) {
     return (
       <SuperAdminLayout title="Tenant Details">
-        <div className="text-white/60">Loading...</div>
+        <div className="text-[#666666]">Loading...</div>
       </SuperAdminLayout>
     );
   }
@@ -197,7 +197,7 @@ const AdminTenantDetailPage = () => {
   return (
     <SuperAdminLayout title="Tenant Details">
       <div className="mb-6">
-        <Link to="/admin/tenants" className="flex items-center gap-2 text-white/60 hover:text-white text-sm">
+        <Link to="/admin/tenants" className="flex items-center gap-2 text-[#666666] hover:text-[#0A0A0A] text-sm">
           <ArrowLeft className="w-4 h-4" />
           Back to Tenants
         </Link>
@@ -207,22 +207,22 @@ const AdminTenantDetailPage = () => {
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Business Details Card */}
-          <div className="bg-[#121212] border border-white/10 p-6">
+          <div className="bg-white border border-[#E5E5E5] rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/10 flex items-center justify-center text-white text-xl font-semibold">
+                <div className="w-12 h-12 bg-[#0A0A0A] rounded-lg flex items-center justify-center text-white text-xl font-semibold">
                   {tenant?.name?.charAt(0)}
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-white">{tenant?.name}</h2>
-                  <p className="text-sm text-white/40 capitalize">{tenant?.industry}</p>
+                  <h2 className="text-xl font-semibold text-[#0A0A0A]">{tenant?.name}</h2>
+                  <p className="text-sm text-[#999999] capitalize">{tenant?.industry}</p>
                 </div>
               </div>
               <div className="flex gap-2">
                 {!editMode ? (
                   <Button 
                     variant="outline" 
-                    className="border-white/10 text-white hover:bg-white/5"
+                    className="border-[#E5E5E5] text-[#0A0A0A] hover:bg-[#FAFAFA]"
                     onClick={() => setEditMode(true)}
                     data-testid="edit-tenant-btn"
                   >
@@ -232,13 +232,13 @@ const AdminTenantDetailPage = () => {
                   <>
                     <Button 
                       variant="outline" 
-                      className="border-white/10 text-white hover:bg-white/5"
+                      className="border-[#E5E5E5] text-[#0A0A0A] hover:bg-[#FAFAFA]"
                       onClick={() => setEditMode(false)}
                     >
                       Cancel
                     </Button>
                     <Button 
-                      className="bg-[#E34A33] hover:bg-[#c73d2a] text-white flex items-center gap-2"
+                      className="bg-[#0A0A0A] hover:bg-[#333333] text-white flex items-center gap-2"
                       onClick={handleSave}
                       disabled={saving}
                       data-testid="save-tenant-btn"
@@ -254,98 +254,98 @@ const AdminTenantDetailPage = () => {
             {editMode ? (
               <div className="space-y-4">
                 <div>
-                  <Label className="text-sm text-white/60">Business Name</Label>
+                  <Label className="text-sm text-[#666666]">Business Name</Label>
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="mt-1 bg-white/5 border-white/10 text-white"
+                    className="mt-1 bg-white border-[#E5E5E5] text-[#0A0A0A]"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm text-white/60">Email</Label>
+                    <Label className="text-sm text-[#666666]">Email</Label>
                     <Input
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="mt-1 bg-white/5 border-white/10 text-white"
+                      className="mt-1 bg-white border-[#E5E5E5] text-[#0A0A0A]"
                     />
                   </div>
                   <div>
-                    <Label className="text-sm text-white/60">Phone</Label>
+                    <Label className="text-sm text-[#666666]">Phone</Label>
                     <Input
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="mt-1 bg-white/5 border-white/10 text-white"
+                      className="mt-1 bg-white border-[#E5E5E5] text-[#0A0A0A]"
                     />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm text-white/60">Address</Label>
+                  <Label className="text-sm text-[#666666]">Address</Label>
                   <Input
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="mt-1 bg-white/5 border-white/10 text-white"
+                    className="mt-1 bg-white border-[#E5E5E5] text-[#0A0A0A]"
                   />
                 </div>
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex items-center gap-3 text-white/60">
+                <div className="flex items-center gap-3 text-[#666666]">
                   <Mail className="w-4 h-4" />
                   {tenant?.email}
                 </div>
                 {tenant?.phone && (
-                  <div className="flex items-center gap-3 text-white/60">
+                  <div className="flex items-center gap-3 text-[#666666]">
                     <Phone className="w-4 h-4" />
                     {tenant.phone}
                   </div>
                 )}
                 {tenant?.address && (
-                  <div className="flex items-center gap-3 text-white/60">
+                  <div className="flex items-center gap-3 text-[#666666]">
                     <MapPin className="w-4 h-4" />
                     {tenant.address}
                   </div>
                 )}
-                <div className="flex items-center gap-3 text-white/60">
+                <div className="flex items-center gap-3 text-[#666666]">
                   <Globe className="w-4 h-4" />
-                  <span className="text-white/40">Booking URL:</span>
-                  <code className="text-xs bg-white/5 px-2 py-1">/book/{tenant?.booking_url_slug}</code>
+                  <span className="text-[#999999]">Booking URL:</span>
+                  <code className="text-xs bg-[#FAFAFA] px-2 py-1 border border-[#E5E5E5] rounded">/book/{tenant?.booking_url_slug}</code>
                 </div>
               </div>
             )}
           </div>
 
           {/* Plan & Features Card */}
-          <div className="bg-[#121212] border border-white/10 p-6">
-            <h3 className="font-semibold text-white mb-4">Plan & Features</h3>
+          <div className="bg-white border border-[#E5E5E5] rounded-lg p-6">
+            <h3 className="font-semibold text-[#0A0A0A] mb-4">Plan & Features</h3>
             
             {editMode ? (
               <div className="mb-6">
-                <Label className="text-sm text-white/60">Select Plan</Label>
+                <Label className="text-sm text-[#666666]">Select Plan</Label>
                 <Select 
                   value={formData.plan} 
                   onValueChange={(v) => setFormData({ ...formData, plan: v })}
                 >
-                  <SelectTrigger className="mt-1 bg-white/5 border-white/10 text-white" data-testid="select-plan">
+                  <SelectTrigger className="mt-1 bg-white border-[#E5E5E5] text-[#0A0A0A]" data-testid="select-plan">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="starter">Starter (€29/mo)</SelectItem>
-                    <SelectItem value="growth">Growth (€79/mo)</SelectItem>
-                    <SelectItem value="pro">Pro (€149/mo)</SelectItem>
+                    <SelectItem value="starter">Starter (€69/mo)</SelectItem>
+                    <SelectItem value="growth">Growth (€119/mo)</SelectItem>
+                    <SelectItem value="pro">Pro (€189/mo)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             ) : (
               <div className="flex items-center gap-3 mb-6">
-                <span className={`text-lg px-3 py-1 capitalize font-semibold ${
-                  tenant?.plan === 'pro' ? 'bg-amber-500/20 text-amber-400' :
-                  tenant?.plan === 'growth' ? 'bg-blue-500/20 text-blue-400' :
-                  'bg-gray-500/20 text-gray-300'
+                <span className={`text-lg px-3 py-1 rounded capitalize font-semibold ${
+                  tenant?.plan === 'pro' ? 'bg-amber-100 text-amber-600' :
+                  tenant?.plan === 'growth' ? 'bg-blue-100 text-blue-600' :
+                  'bg-gray-100 text-gray-600'
                 }`}>
                   {tenant?.plan}
                 </span>
-                <span className="text-white/40">€{PLAN_FEATURES[tenant?.plan]?.price}/month</span>
+                <span className="text-[#999999]">€{PLAN_FEATURES[tenant?.plan]?.price}/month</span>
               </div>
             )}
 
@@ -355,23 +355,23 @@ const AdminTenantDetailPage = () => {
                 return (
                   <div 
                     key={key} 
-                    className={`flex items-center gap-2 p-3 border ${enabled ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-white/5'}`}
+                    className={`flex items-center gap-2 p-3 rounded border ${enabled ? 'border-emerald-200 bg-emerald-50' : 'border-[#E5E5E5] bg-[#FAFAFA]'}`}
                   >
                     {enabled ? (
-                      <Check className="w-4 h-4 text-emerald-400" />
+                      <Check className="w-4 h-4 text-emerald-500" />
                     ) : (
-                      <X className="w-4 h-4 text-white/30" />
+                      <X className="w-4 h-4 text-[#CCCCCC]" />
                     )}
-                    <span className={enabled ? 'text-white' : 'text-white/40'}>{label}</span>
+                    <span className={enabled ? 'text-[#0A0A0A]' : 'text-[#999999]'}>{label}</span>
                   </div>
                 );
               })}
             </div>
 
-            <div className="mt-4 p-3 bg-white/5 border border-white/10">
-              <p className="text-sm text-white/60">
-                Staff Limit: <span className="text-white font-mono">{PLAN_FEATURES[formData.plan]?.max_staff === 999 ? 'Unlimited' : PLAN_FEATURES[formData.plan]?.max_staff}</span>
-                <span className="text-white/40 ml-2">(Currently using: {stats?.staff_count || 0})</span>
+            <div className="mt-4 p-3 bg-[#FAFAFA] border border-[#E5E5E5] rounded">
+              <p className="text-sm text-[#666666]">
+                Staff Limit: <span className="text-[#0A0A0A] font-mono">{PLAN_FEATURES[formData.plan]?.max_staff === 999 ? 'Unlimited' : PLAN_FEATURES[formData.plan]?.max_staff}</span>
+                <span className="text-[#999999] ml-2">(Currently using: {stats?.staff_count || 0})</span>
               </p>
             </div>
           </div>
@@ -380,56 +380,56 @@ const AdminTenantDetailPage = () => {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Stats */}
-          <div className="bg-[#121212] border border-white/10 p-6">
-            <h3 className="font-semibold text-white mb-4">Statistics</h3>
+          <div className="bg-white border border-[#E5E5E5] rounded-lg p-6">
+            <h3 className="font-semibold text-[#0A0A0A] mb-4">Statistics</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-white/60">
+                <div className="flex items-center gap-2 text-[#666666]">
                   <Users className="w-4 h-4" />
                   Staff
                 </div>
-                <span className="text-white font-mono">{stats?.staff_count || 0}</span>
+                <span className="text-[#0A0A0A] font-mono">{stats?.staff_count || 0}</span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-white/60">
+                <div className="flex items-center gap-2 text-[#666666]">
                   <Briefcase className="w-4 h-4" />
                   Services
                 </div>
-                <span className="text-white font-mono">{stats?.services_count || 0}</span>
+                <span className="text-[#0A0A0A] font-mono">{stats?.services_count || 0}</span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-white/60">
+                <div className="flex items-center gap-2 text-[#666666]">
                   <Users className="w-4 h-4" />
                   Clients
                 </div>
-                <span className="text-white font-mono">{stats?.client_count || 0}</span>
+                <span className="text-[#0A0A0A] font-mono">{stats?.client_count || 0}</span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-white/60">
+                <div className="flex items-center gap-2 text-[#666666]">
                   <Calendar className="w-4 h-4" />
                   Total Appointments
                 </div>
-                <span className="text-white font-mono">{stats?.total_appointments || 0}</span>
+                <span className="text-[#0A0A0A] font-mono">{stats?.total_appointments || 0}</span>
               </div>
             </div>
           </div>
 
           {/* Owner Info */}
           {owner && (
-            <div className="bg-[#121212] border border-white/10 p-6">
-              <h3 className="font-semibold text-white mb-4">Owner Account</h3>
+            <div className="bg-white border border-[#E5E5E5] rounded-lg p-6">
+              <h3 className="font-semibold text-[#0A0A0A] mb-4">Owner Account</h3>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white font-medium">
+                <div className="w-10 h-10 bg-[#0A0A0A] rounded-full flex items-center justify-center text-white font-medium">
                   {owner.name?.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-white">{owner.name}</p>
-                  <p className="text-sm text-white/40">{owner.email}</p>
+                  <p className="text-[#0A0A0A]">{owner.name}</p>
+                  <p className="text-sm text-[#999999]">{owner.email}</p>
                 </div>
               </div>
               <Button 
                 variant="outline" 
-                className="w-full border-white/10 text-white hover:bg-white/5 flex items-center justify-center gap-2"
+                className="w-full border-[#E5E5E5] text-[#0A0A0A] hover:bg-[#FAFAFA] flex items-center justify-center gap-2"
                 onClick={handleImpersonate}
                 data-testid="impersonate-btn"
               >
@@ -440,12 +440,12 @@ const AdminTenantDetailPage = () => {
           )}
 
           {/* Status */}
-          <div className="bg-[#121212] border border-white/10 p-6">
-            <h3 className="font-semibold text-white mb-4">Status & Actions</h3>
-            <div className={`p-3 text-center mb-4 ${tenant?.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+          <div className="bg-white border border-[#E5E5E5] rounded-lg p-6">
+            <h3 className="font-semibold text-[#0A0A0A] mb-4">Status & Actions</h3>
+            <div className={`p-3 text-center rounded mb-4 ${tenant?.is_active ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
               {tenant?.is_active ? 'Active' : 'Inactive'}
             </div>
-            <p className="text-xs text-white/40 mb-4">
+            <p className="text-xs text-[#999999] mb-4">
               Created: {new Date(tenant?.created_at).toLocaleDateString()}
             </p>
             
@@ -454,7 +454,7 @@ const AdminTenantDetailPage = () => {
               {tenant?.is_active ? (
                 <Button 
                   variant="outline" 
-                  className="w-full border-amber-500/30 text-amber-400 hover:bg-amber-500/10 flex items-center justify-center gap-2"
+                  className="w-full border-amber-200 text-amber-600 hover:bg-amber-50 flex items-center justify-center gap-2"
                   onClick={handleDeactivate}
                   disabled={actionLoading}
                   data-testid="deactivate-tenant-btn"
@@ -465,7 +465,7 @@ const AdminTenantDetailPage = () => {
               ) : (
                 <Button 
                   variant="outline" 
-                  className="w-full border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 flex items-center justify-center gap-2"
+                  className="w-full border-emerald-200 text-emerald-600 hover:bg-emerald-50 flex items-center justify-center gap-2"
                   onClick={handleActivate}
                   disabled={actionLoading}
                   data-testid="activate-tenant-btn"
@@ -478,7 +478,7 @@ const AdminTenantDetailPage = () => {
               {!showTerminateConfirm ? (
                 <Button 
                   variant="outline" 
-                  className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 flex items-center justify-center gap-2"
+                  className="w-full border-red-200 text-red-600 hover:bg-red-50 flex items-center justify-center gap-2"
                   onClick={() => setShowTerminateConfirm(true)}
                   data-testid="terminate-tenant-btn"
                 >
@@ -486,18 +486,18 @@ const AdminTenantDetailPage = () => {
                   Terminate Tenant
                 </Button>
               ) : (
-                <div className="border border-red-500/30 p-3 space-y-3">
-                  <div className="flex items-center gap-2 text-red-400">
+                <div className="border border-red-200 rounded p-3 space-y-3 bg-red-50">
+                  <div className="flex items-center gap-2 text-red-600">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="text-sm font-medium">Permanent Deletion</span>
                   </div>
-                  <p className="text-xs text-white/60">
+                  <p className="text-xs text-[#666666]">
                     This will permanently delete the tenant and ALL associated data (users, staff, services, appointments, clients). This action cannot be undone.
                   </p>
                   <div className="flex gap-2">
                     <Button 
                       variant="outline" 
-                      className="flex-1 border-white/10 text-white hover:bg-white/5"
+                      className="flex-1 border-[#E5E5E5] text-[#0A0A0A] hover:bg-white"
                       onClick={() => setShowTerminateConfirm(false)}
                     >
                       Cancel

@@ -63,15 +63,15 @@ const AdminDashboardPage = () => {
   ];
 
   const planColors = {
-    starter: 'bg-gray-500/20 text-gray-300',
-    growth: 'bg-blue-500/20 text-blue-400',
-    pro: 'bg-amber-500/20 text-amber-400'
+    starter: 'bg-gray-100 text-gray-600',
+    growth: 'bg-blue-100 text-blue-600',
+    pro: 'bg-amber-100 text-amber-600'
   };
 
   return (
     <SuperAdminLayout title="Dashboard">
       {loading ? (
-        <div className="text-white/60">Loading...</div>
+        <div className="text-[#666666]">Loading...</div>
       ) : (
         <>
           {/* Stats Grid */}
@@ -79,15 +79,15 @@ const AdminDashboardPage = () => {
             {statCards.map((stat, idx) => {
               const Icon = stat.icon;
               return (
-                <div key={idx} className="bg-[#121212] border border-white/10 p-6" data-testid={`admin-stat-${idx}`}>
+                <div key={idx} className="bg-white border border-[#E5E5E5] p-6 rounded-lg" data-testid={`admin-stat-${idx}`}>
                   <div className="flex items-start justify-between mb-4">
-                    <div className={`w-10 h-10 ${stat.color} flex items-center justify-center`}>
+                    <div className={`w-10 h-10 ${stat.color} flex items-center justify-center rounded-lg`}>
                       <Icon className="w-5 h-5" />
                     </div>
                   </div>
-                  <p className="text-2xl font-semibold text-white font-mono">{stat.value}</p>
-                  <p className="text-sm text-white/60">{stat.label}</p>
-                  <p className="text-xs text-white/40 mt-1">{stat.sub}</p>
+                  <p className="text-2xl font-semibold text-[#0A0A0A] font-mono">{stat.value}</p>
+                  <p className="text-sm text-[#666666]">{stat.label}</p>
+                  <p className="text-xs text-[#999999] mt-1">{stat.sub}</p>
                 </div>
               );
             })}
@@ -95,8 +95,8 @@ const AdminDashboardPage = () => {
 
           {/* Plan Distribution */}
           <div className="grid lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-[#121212] border border-white/10 p-6">
-              <h3 className="font-semibold text-white mb-4">Plan Distribution</h3>
+            <div className="bg-white border border-[#E5E5E5] p-6 rounded-lg">
+              <h3 className="font-semibold text-[#0A0A0A] mb-4">Plan Distribution</h3>
               <div className="space-y-4">
                 {['starter', 'growth', 'pro'].map((plan) => {
                   const count = stats?.plans?.[plan] || 0;
@@ -105,10 +105,10 @@ const AdminDashboardPage = () => {
                   return (
                     <div key={plan}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-white/80 capitalize">{plan}</span>
-                        <span className="text-white/60">{count} tenants</span>
+                        <span className="text-[#0A0A0A] capitalize">{plan}</span>
+                        <span className="text-[#666666]">{count} tenants</span>
                       </div>
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-2 bg-[#E5E5E5] rounded-full overflow-hidden">
                         <div 
                           className={`h-full ${plan === 'starter' ? 'bg-gray-500' : plan === 'growth' ? 'bg-blue-500' : 'bg-amber-500'}`}
                           style={{ width: `${percentage}%` }}
@@ -120,23 +120,23 @@ const AdminDashboardPage = () => {
               </div>
             </div>
 
-            <div className="bg-[#121212] border border-white/10 p-6">
-              <h3 className="font-semibold text-white mb-4">Revenue Breakdown</h3>
+            <div className="bg-white border border-[#E5E5E5] p-6 rounded-lg">
+              <h3 className="font-semibold text-[#0A0A0A] mb-4">Revenue Breakdown</h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between py-2 border-b border-white/10">
-                  <span className="text-white/60">Starter (€29/mo)</span>
-                  <span className="text-white font-mono">€{(stats?.plans?.starter || 0) * 29}</span>
+                <div className="flex items-center justify-between py-2 border-b border-[#E5E5E5]">
+                  <span className="text-[#666666]">Starter (€69/mo)</span>
+                  <span className="text-[#0A0A0A] font-mono">€{(stats?.plans?.starter || 0) * 69}</span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-white/10">
-                  <span className="text-white/60">Growth (€79/mo)</span>
-                  <span className="text-white font-mono">€{(stats?.plans?.growth || 0) * 79}</span>
+                <div className="flex items-center justify-between py-2 border-b border-[#E5E5E5]">
+                  <span className="text-[#666666]">Growth (€119/mo)</span>
+                  <span className="text-[#0A0A0A] font-mono">€{(stats?.plans?.growth || 0) * 119}</span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-white/10">
-                  <span className="text-white/60">Pro (€149/mo)</span>
-                  <span className="text-white font-mono">€{(stats?.plans?.pro || 0) * 149}</span>
+                <div className="flex items-center justify-between py-2 border-b border-[#E5E5E5]">
+                  <span className="text-[#666666]">Pro (€189/mo)</span>
+                  <span className="text-[#0A0A0A] font-mono">€{(stats?.plans?.pro || 0) * 189}</span>
                 </div>
                 <div className="flex items-center justify-between py-2 pt-3">
-                  <span className="text-white font-semibold">Total MRR</span>
+                  <span className="text-[#0A0A0A] font-semibold">Total MRR</span>
                   <span className="text-[#E34A33] font-mono text-xl font-semibold">€{stats?.revenue?.mrr || 0}</span>
                 </div>
               </div>
@@ -144,17 +144,17 @@ const AdminDashboardPage = () => {
           </div>
 
           {/* Recent Tenants */}
-          <div className="bg-[#121212] border border-white/10 p-6">
+          <div className="bg-white border border-[#E5E5E5] p-6 rounded-lg">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-white">Recent Tenants</h3>
-              <Link to="/admin/tenants" className="text-sm text-white/60 hover:text-white flex items-center gap-1">
+              <h3 className="font-semibold text-[#0A0A0A]">Recent Tenants</h3>
+              <Link to="/admin/tenants" className="text-sm text-[#666666] hover:text-[#0A0A0A] flex items-center gap-1">
                 View all <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-white/40 text-sm">
+                  <tr className="text-left text-[#999999] text-sm">
                     <th className="pb-3">Business</th>
                     <th className="pb-3">Plan</th>
                     <th className="pb-3">Staff</th>
@@ -164,22 +164,22 @@ const AdminDashboardPage = () => {
                 </thead>
                 <tbody>
                   {recentTenants.map((tenant) => (
-                    <tr key={tenant.tenant_id} className="border-t border-white/5">
+                    <tr key={tenant.tenant_id} className="border-t border-[#E5E5E5]">
                       <td className="py-3">
-                        <Link to={`/admin/tenants/${tenant.tenant_id}`} className="text-white hover:text-[#E34A33]">
+                        <Link to={`/admin/tenants/${tenant.tenant_id}`} className="text-[#0A0A0A] hover:text-[#E34A33]">
                           {tenant.name}
                         </Link>
-                        <p className="text-xs text-white/40">{tenant.email}</p>
+                        <p className="text-xs text-[#999999]">{tenant.email}</p>
                       </td>
                       <td className="py-3">
-                        <span className={`text-xs px-2 py-1 ${planColors[tenant.plan]} capitalize`}>
+                        <span className={`text-xs px-2 py-1 rounded ${planColors[tenant.plan]} capitalize`}>
                           {tenant.plan}
                         </span>
                       </td>
-                      <td className="py-3 text-white/60 font-mono">{tenant.staff_count || 0}</td>
-                      <td className="py-3 text-white/60 font-mono">{tenant.client_count || 0}</td>
+                      <td className="py-3 text-[#666666] font-mono">{tenant.staff_count || 0}</td>
+                      <td className="py-3 text-[#666666] font-mono">{tenant.client_count || 0}</td>
                       <td className="py-3">
-                        <span className={`text-xs px-2 py-1 ${tenant.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                        <span className={`text-xs px-2 py-1 rounded ${tenant.is_active ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
                           {tenant.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>

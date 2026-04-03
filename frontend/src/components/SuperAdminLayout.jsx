@@ -58,20 +58,20 @@ const SuperAdminLayout = ({ children, title }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
-        <div className="text-white/60">Loading...</div>
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="text-[#666666]">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
+    <div className="min-h-screen bg-[#FAFAFA]">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#121212] border-b border-white/10 z-40 flex items-center justify-between px-4">
-        <button onClick={() => setSidebarOpen(true)} className="p-2 text-white">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-[#E5E5E5] z-40 flex items-center justify-between px-4">
+        <button onClick={() => setSidebarOpen(true)} className="p-2 text-[#0A0A0A]">
           <Menu className="w-6 h-6" />
         </button>
-        <span className="font-semibold text-white">
+        <span className="font-semibold text-[#0A0A0A]">
           BookSlot
         </span>
         <div className="w-10" />
@@ -79,17 +79,17 @@ const SuperAdminLayout = ({ children, title }) => {
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 bg-black/70 z-40" onClick={() => setSidebarOpen(false)} />
+        <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 h-full w-64 bg-[#121212] border-r border-white/10 z-50 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-white/20">
-          <Link to="/admin/dashboard" className="font-semibold text-white flex flex-col">
+      <aside className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-[#E5E5E5] z-50 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-[#E5E5E5]">
+          <Link to="/admin/dashboard" className="font-semibold text-[#0A0A0A] flex flex-col">
             <span className="text-lg">BookSlot</span>
-            <span className="text-xs text-white/50 font-normal">Franchise Command Centre</span>
+            <span className="text-xs text-[#666666] font-normal">Franchise Command Centre</span>
           </Link>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-white/60 hover:text-white">
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-[#666666] hover:text-[#0A0A0A]">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -105,8 +105,8 @@ const SuperAdminLayout = ({ children, title }) => {
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-md transition-colors ${
                   isActive 
-                    ? 'bg-white text-black' 
-                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                    ? 'bg-[#0A0A0A] text-white' 
+                    : 'text-[#666666] hover:text-[#0A0A0A] hover:bg-[#FAFAFA]'
                 }`}
                 data-testid={`admin-nav-${item.label.toLowerCase()}`}
               >
@@ -118,28 +118,28 @@ const SuperAdminLayout = ({ children, title }) => {
         </nav>
 
         {/* Admin User */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#E5E5E5]">
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="w-full flex items-center gap-3 p-2 hover:bg-white/5 rounded-md transition-colors"
+              className="w-full flex items-center gap-3 p-2 hover:bg-[#FAFAFA] rounded-md transition-colors"
               data-testid="admin-user-menu"
             >
-              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-black text-sm font-medium">
+              <div className="w-8 h-8 bg-[#0A0A0A] rounded-full flex items-center justify-center text-white text-sm font-medium">
                 {admin?.name?.charAt(0) || 'A'}
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-white truncate">{admin?.name}</p>
-                <p className="text-xs text-white/40 truncate">{admin?.email}</p>
+                <p className="text-sm font-medium text-[#0A0A0A] truncate">{admin?.name}</p>
+                <p className="text-xs text-[#666666] truncate">{admin?.email}</p>
               </div>
-              <ChevronDown className={`w-4 h-4 text-white/40 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-[#666666] transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {userMenuOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#1a1a1a] border border-white/10 rounded-md overflow-hidden">
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-[#E5E5E5] rounded-md shadow-lg overflow-hidden">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 text-white"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAFA] text-[#E34A33]"
                   data-testid="admin-logout"
                 >
                   <LogOut className="w-4 h-4" />
@@ -153,8 +153,8 @@ const SuperAdminLayout = ({ children, title }) => {
 
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
-        <div className="bg-[#121212] border-b border-white/10 px-6 py-4">
-          <h1 className="text-xl font-semibold text-white" data-testid="admin-page-title">{title}</h1>
+        <div className="bg-white border-b border-[#E5E5E5] px-6 py-4">
+          <h1 className="text-xl font-semibold text-[#0A0A0A]" data-testid="admin-page-title">{title}</h1>
         </div>
         <div className="p-6">
           {children}

@@ -46,14 +46,14 @@ const AdminLoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#121212] flex items-center justify-center px-6">
+    <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center px-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">BookSlot</h1>
-          <p className="text-white/60">Franchise Command Centre</p>
+          <h1 className="text-3xl font-bold text-[#0A0A0A] mb-2">BookSlot</h1>
+          <p className="text-[#666666]">Franchise Command Centre</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white p-8 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white border border-[#E5E5E5] rounded-lg p-8 space-y-4">
           <div>
             <Label className="text-sm font-medium text-[#0A0A0A]">Email</Label>
             <Input
@@ -83,7 +83,7 @@ const AdminLoginPage = () => {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full btn-primary flex items-center justify-center gap-2"
+            className="w-full bg-[#0A0A0A] hover:bg-[#333333] text-white flex items-center justify-center gap-2"
             data-testid="admin-login-submit"
           >
             {loading ? 'Signing in...' : 'Sign in to Admin'}
@@ -91,8 +91,8 @@ const AdminLoginPage = () => {
           </Button>
         </form>
 
-        <p className="text-center text-white/40 text-sm mt-6">
-          <Link to="/" className="hover:text-white transition-colors">← Back to main site</Link>
+        <p className="text-center text-[#999999] text-sm mt-6">
+          <Link to="/" className="hover:text-[#0A0A0A] transition-colors">← Back to main site</Link>
         </p>
       </div>
     </div>
