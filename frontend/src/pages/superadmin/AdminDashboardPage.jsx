@@ -36,28 +36,28 @@ const AdminDashboardPage = () => {
       label: 'Active Tenants', 
       value: stats?.tenants?.active || 0, 
       icon: Building2,
-      color: 'bg-emerald-500/20 text-emerald-400',
+      color: 'bg-emerald-100 text-emerald-600',
       sub: `${stats?.tenants?.new_this_month || 0} new this month`
     },
     { 
       label: 'Monthly Revenue', 
       value: `€${stats?.revenue?.mrr || 0}`, 
       icon: DollarSign,
-      color: 'bg-amber-500/20 text-amber-400',
+      color: 'bg-amber-100 text-amber-600',
       sub: 'MRR'
     },
     { 
       label: 'Total Users', 
       value: stats?.users?.total || 0, 
       icon: Users,
-      color: 'bg-blue-500/20 text-blue-400',
+      color: 'bg-blue-100 text-blue-600',
       sub: 'Across all tenants'
     },
     { 
       label: 'Appointments', 
       value: stats?.appointments?.this_month || 0, 
       icon: Calendar,
-      color: 'bg-purple-500/20 text-purple-400',
+      color: 'bg-purple-100 text-purple-600',
       sub: 'This month'
     },
   ];
