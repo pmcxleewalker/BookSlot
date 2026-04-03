@@ -17,15 +17,15 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const PLAN_FEATURES = {
   starter: {
-    name: "Starter", price: 69, max_staff: 2,
+    name: "Starter", price: 99, max_staff: 2,
     features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: false, ai_assistant: false, resource_booking: false, custom_forms: false, api_webhooks: false }
   },
   growth: {
-    name: "Growth", price: 119, max_staff: 8,
+    name: "Growth", price: 149, max_staff: 8,
     features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: true, ai_assistant: true, resource_booking: false, custom_forms: false, api_webhooks: false }
   },
   pro: {
-    name: "Pro", price: 189, max_staff: 999,
+    name: "Pro", price: 219, max_staff: 999,
     features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: true, ai_assistant: true, resource_booking: true, custom_forms: true, api_webhooks: true }
   }
 };
@@ -330,9 +330,9 @@ const AdminTenantDetailPage = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="starter">Starter (€69/mo)</SelectItem>
-                    <SelectItem value="growth">Growth (€119/mo)</SelectItem>
-                    <SelectItem value="pro">Pro (€189/mo)</SelectItem>
+                    <SelectItem value="starter">Starter (€99/mo)</SelectItem>
+                    <SelectItem value="growth">Growth (€149/mo)</SelectItem>
+                    <SelectItem value="pro">Pro (€219/mo)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -7,7 +7,7 @@ const PricingPage = () => {
   const plans = [
     {
       name: 'Starter',
-      price: '69',
+      price: '99',
       period: '/month',
       description: 'For small businesses just getting started',
       features: [
@@ -24,7 +24,7 @@ const PricingPage = () => {
     },
     {
       name: 'Growth',
-      price: '119',
+      price: '149',
       period: '/month',
       description: 'For growing businesses with more needs',
       features: [
@@ -43,7 +43,7 @@ const PricingPage = () => {
     },
     {
       name: 'Pro',
-      price: '189',
+      price: '219',
       period: '/month',
       description: 'For established businesses scaling up',
       features: [

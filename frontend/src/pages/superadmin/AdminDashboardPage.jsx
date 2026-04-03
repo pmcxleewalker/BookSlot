@@ -124,16 +124,16 @@ const AdminDashboardPage = () => {
               <h3 className="font-semibold text-[#0A0A0A] mb-4">Revenue Breakdown</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between py-2 border-b border-[#E5E5E5]">
-                  <span className="text-[#666666]">Starter (€69/mo)</span>
-                  <span className="text-[#0A0A0A] font-mono">€{(stats?.plans?.starter || 0) * 69}</span>
+                  <span className="text-[#666666]">Starter (€99/mo)</span>
+                  <span className="text-[#0A0A0A] font-mono">€{(stats?.plans?.starter || 0) * 99}</span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-[#E5E5E5]">
-                  <span className="text-[#666666]">Growth (€119/mo)</span>
-                  <span className="text-[#0A0A0A] font-mono">€{(stats?.plans?.growth || 0) * 119}</span>
+                  <span className="text-[#666666]">Growth (€149/mo)</span>
+                  <span className="text-[#0A0A0A] font-mono">€{(stats?.plans?.growth || 0) * 149}</span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-[#E5E5E5]">
-                  <span className="text-[#666666]">Pro (€189/mo)</span>
-                  <span className="text-[#0A0A0A] font-mono">€{(stats?.plans?.pro || 0) * 189}</span>
+                  <span className="text-[#666666]">Pro (€219/mo)</span>
+                  <span className="text-[#0A0A0A] font-mono">€{(stats?.plans?.pro || 0) * 219}</span>
                 </div>
                 <div className="flex items-center justify-between py-2 pt-3">
                   <span className="text-[#0A0A0A] font-semibold">Total MRR</span>

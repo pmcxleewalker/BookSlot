@@ -18,17 +18,17 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 const PLAN_FEATURES = {
   starter: {
     name: "Starter",
-    price: 69,
+    price: 99,
     features: ["1 location", "Up to 2 staff", "Online booking", "Reminders", "Deposits", "Calendar sync"]
   },
   growth: {
     name: "Growth", 
-    price: 119,
+    price: 149,
     features: ["1 location", "Up to 8 staff", "AI Assistant", "Waitlist", "Packages", "SMS automations", "Advanced reports"]
   },
   pro: {
     name: "Pro",
-    price: 189,
+    price: 219,
     features: ["Multi-location", "Unlimited staff", "AI Assistant", "Advanced permissions", "Resource booking", "Custom forms", "White-label", "API & Webhooks"]
   }
 };
