@@ -50,7 +50,7 @@ const AdminLoginPage = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">BookSlot</h1>
-          <p className="text-white/60">Tenant Control Centre</p>
+          <p className="text-white/60">Franchise Command Centre</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white p-8 space-y-4">

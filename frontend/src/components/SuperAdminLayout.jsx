@@ -87,7 +87,7 @@ const SuperAdminLayout = ({ children, title }) => {
         <div className="h-16 flex items-center justify-between px-6 border-b border-white/20">
           <Link to="/admin/dashboard" className="font-semibold text-white flex flex-col">
             <span className="text-lg">BookSlot</span>
-            <span className="text-xs text-white/50 font-normal">Tenant Control Centre</span>
+            <span className="text-xs text-white/50 font-normal">Franchise Command Centre</span>
           </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-white/60 hover:text-white">
             <X className="w-5 h-5" />
