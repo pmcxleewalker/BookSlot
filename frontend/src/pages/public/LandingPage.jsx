@@ -37,9 +37,6 @@ const LandingPage = () => {
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/login">
-              <Button variant="ghost" className="text-sm" data-testid="login-btn">Log in</Button>
-            </Link>
             <Link to="/signup">
               <Button className="btn-primary text-sm" data-testid="signup-btn">Start Free</Button>
             </Link>
@@ -224,7 +221,12 @@ const LandingPage = () => {
               <span>Privacy</span>
               <span>Terms</span>
             </div>
-            <p className="text-sm text-[#666666]">© 2026 BookSlot. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-[#666666]">© 2026 BookSlot. All rights reserved.</p>
+              <Link to="/admin" className="text-[#E5E5E5] hover:text-[#CCCCCC] transition-colors" title="Franchise Command Centre">
+                <span className="text-xs">◆</span>
+              </Link>
+            </div>
           </div>
         </div>
       </footer>
