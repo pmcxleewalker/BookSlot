@@ -18,28 +18,29 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 const PLAN_FEATURES = {
   starter: {
     name: "Starter", price: 99, max_staff: 2,
-    features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: false, ai_assistant: false, resource_booking: false, custom_forms: false, api_webhooks: false }
+    features: { online_booking: true, calendar: true, client_management: true, basic_reports: true, waitlist: false, ai_assistant: false, custom_forms: false, white_label: false, growth_analytics: false, pro_analytics: false }
   },
   growth: {
     name: "Growth", price: 149, max_staff: 8,
-    features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: true, ai_assistant: true, resource_booking: false, custom_forms: false, api_webhooks: false }
+    features: { online_booking: true, calendar: true, client_management: true, basic_reports: true, waitlist: true, ai_assistant: true, custom_forms: false, white_label: false, growth_analytics: true, pro_analytics: false }
   },
   pro: {
     name: "Pro", price: 219, max_staff: 999,
-    features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: true, ai_assistant: true, resource_booking: true, custom_forms: true, api_webhooks: true }
+    features: { online_booking: true, calendar: true, client_management: true, basic_reports: true, waitlist: true, ai_assistant: true, custom_forms: true, white_label: true, growth_analytics: true, pro_analytics: true }
   }
 };
 
 const featureLabels = {
   online_booking: "Online Booking",
-  reminders: "Email/SMS Reminders",
-  deposits: "Deposit Collection",
-  calendar_sync: "Calendar Sync",
+  calendar: "Drag-drop Calendar",
+  client_management: "Client Management",
+  basic_reports: "Basic Reports",
   waitlist: "Waitlist Management",
   ai_assistant: "AI Assistant (Moltbot)",
-  resource_booking: "Resource Booking",
   custom_forms: "Custom Forms",
-  api_webhooks: "API & Webhooks"
+  white_label: "White-label Branding",
+  growth_analytics: "Growth Analytics",
+  pro_analytics: "Pro Analytics Dashboard"
 };
 
 const AdminTenantDetailPage = () => {

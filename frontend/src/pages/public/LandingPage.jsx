@@ -1,16 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Calendar, Users, Clock, Bot, Shield, Zap, CheckCircle2, ChevronRight } from 'lucide-react';
+import { ArrowRight, Calendar, Users, Clock, Bot, Shield, Zap, CheckCircle2, ChevronRight, BarChart3, Palette, FileText, Bell } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 
 const LandingPage = () => {
   const features = [
-    { icon: Calendar, title: 'Smart Scheduling', desc: 'Drag-and-drop calendar with conflict detection' },
-    { icon: Users, title: 'Staff Management', desc: 'Manage schedules, services, and permissions' },
-    { icon: Clock, title: 'Online Booking', desc: 'Let clients book 24/7 from any device' },
-    { icon: Bot, title: 'AI Receptionist', desc: 'Moltbot handles bookings and inquiries' },
-    { icon: Shield, title: 'GDPR Compliant', desc: 'Built with privacy and security first' },
-    { icon: Zap, title: 'Fast Setup', desc: 'Go live in minutes, not days' },
+    { icon: Calendar, title: 'Smart Scheduling', desc: 'Drag-and-drop calendar with real-time availability and conflict detection' },
+    { icon: Users, title: 'Staff Management', desc: 'Manage working hours, services per staff, and permissions' },
+    { icon: Clock, title: 'Online Booking', desc: 'Let clients book 24/7 from any device with your branded booking page' },
+    { icon: Bot, title: 'AI Receptionist', desc: 'Moltbot answers questions and takes bookings automatically' },
+    { icon: BarChart3, title: 'Reports & Analytics', desc: 'Track revenue, appointments, and staff performance' },
+    { icon: Palette, title: 'Custom Branding', desc: 'Your logo, colors, and business name on all pages' },
+    { icon: FileText, title: 'Client Management', desc: 'VIP status, notes, and full booking history for every client' },
+    { icon: Bell, title: 'Waitlist', desc: 'Automatically fill cancellations from your waitlist' },
+    { icon: Shield, title: 'Multi-Tenant', desc: 'Perfect for franchises with isolated data per location' },
   ];
 
   const industries = [

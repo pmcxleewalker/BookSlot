@@ -19,17 +19,17 @@ const PLAN_FEATURES = {
   starter: {
     name: "Starter",
     price: 99,
-    features: ["1 location", "Up to 2 staff", "Online booking", "Reminders", "Deposits", "Calendar sync"]
+    features: ["1 location", "Up to 2 staff", "Online booking", "Drag-drop calendar", "Client management", "Basic reports"]
   },
   growth: {
     name: "Growth", 
     price: 149,
-    features: ["1 location", "Up to 8 staff", "AI Assistant", "Waitlist", "Packages", "SMS automations", "Advanced reports"]
+    features: ["1 location", "Up to 8 staff", "AI Receptionist", "Waitlist", "Packages", "Growth analytics", "Priority support"]
   },
   pro: {
     name: "Pro",
     price: 219,
-    features: ["Multi-location", "Unlimited staff", "AI Assistant", "Advanced permissions", "Resource booking", "Custom forms", "White-label", "API & Webhooks"]
+    features: ["Multi-location", "Unlimited staff", "Advanced permissions", "Custom forms", "White-label", "Pro analytics", "Account manager"]
   }
 };
 
@@ -38,6 +38,8 @@ const AdminTenantsPage = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('created_at');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
   
@@ -65,7 +67,7 @@ const AdminTenantsPage = () => {
 
   useEffect(() => {
     fetchTenants();
-  }, [search, planFilter]);
+  }, [search, planFilter, statusFilter, sortBy]);
 
   const fetchTenants = async () => {
     const token = localStorage.getItem('admin_token');
@@ -73,12 +75,31 @@ const AdminTenantsPage = () => {
       const params = {};
       if (search) params.search = search;
       if (planFilter !== 'all') params.plan = planFilter;
+      if (statusFilter !== 'all') params.status = statusFilter;
       
       const response = await axios.get(`${API}/admin/tenants`, {
         params,
         headers: { Authorization: `Bearer ${token}` }
       });
-      setTenants(response.data.tenants || []);
+      
+      let filteredTenants = response.data.tenants || [];
+      
+      // Client-side status filtering if not supported by API
+      if (statusFilter === 'active') {
+        filteredTenants = filteredTenants.filter(t => t.is_active);
+      } else if (statusFilter === 'inactive') {
+        filteredTenants = filteredTenants.filter(t => !t.is_active);
+      }
+      
+      // Sort tenants
+      filteredTenants.sort((a, b) => {
+        if (sortBy === 'name') return a.name.localeCompare(b.name);
+        if (sortBy === 'plan') return a.plan.localeCompare(b.plan);
+        if (sortBy === 'staff') return (b.staff_count || 0) - (a.staff_count || 0);
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+      
+      setTenants(filteredTenants);
     } catch (error) {
       console.error('Failed to load tenants:', error);
     } finally {
@@ -163,19 +184,39 @@ const AdminTenantsPage = () => {
 
   return (
     <SuperAdminLayout title="Tenants">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      {/* Summary Stats */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="bg-white border border-[#E5E5E5] rounded-lg p-4">
+          <p className="text-sm text-[#666666]">Total Franchises</p>
+          <p className="text-2xl font-semibold text-[#0A0A0A]">{tenants.length}</p>
+        </div>
+        <div className="bg-white border border-[#E5E5E5] rounded-lg p-4">
+          <p className="text-sm text-[#666666]">Active</p>
+          <p className="text-2xl font-semibold text-emerald-600">{tenants.filter(t => t.is_active).length}</p>
+        </div>
+        <div className="bg-white border border-[#E5E5E5] rounded-lg p-4">
+          <p className="text-sm text-[#666666]">Inactive</p>
+          <p className="text-2xl font-semibold text-red-600">{tenants.filter(t => !t.is_active).length}</p>
+        </div>
+        <div className="bg-white border border-[#E5E5E5] rounded-lg p-4">
+          <p className="text-sm text-[#666666]">Total Staff</p>
+          <p className="text-2xl font-semibold text-[#0A0A0A]">{tenants.reduce((sum, t) => sum + (t.staff_count || 0), 0)}</p>
+        </div>
+      </div>
+
+      {/* Filters & Actions */}
+      <div className="flex flex-col lg:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999999]" />
           <Input
-            placeholder="Search tenants..."
+            placeholder="Search by name, email, or industry..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10 bg-white border-[#E5E5E5] text-[#0A0A0A] placeholder:text-[#999999]"
             data-testid="search-tenants"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Select value={planFilter} onValueChange={setPlanFilter}>
             <SelectTrigger className="w-32 bg-white border-[#E5E5E5] text-[#0A0A0A]">
               <SelectValue placeholder="All Plans" />
@@ -187,13 +228,34 @@ const AdminTenantsPage = () => {
               <SelectItem value="pro">Pro</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-32 bg-white border-[#E5E5E5] text-[#0A0A0A]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-36 bg-white border-[#E5E5E5] text-[#0A0A0A]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="created_at">Newest First</SelectItem>
+              <SelectItem value="name">Name A-Z</SelectItem>
+              <SelectItem value="plan">Plan</SelectItem>
+              <SelectItem value="staff">Staff Count</SelectItem>
+            </SelectContent>
+          </Select>
           <Button 
             onClick={() => setShowCreateDialog(true)} 
             className="bg-[#0A0A0A] hover:bg-[#333333] text-white flex items-center gap-2"
             data-testid="create-tenant-btn"
           >
             <Plus className="w-4 h-4" />
-            Create Tenant
+            Create Franchise
           </Button>
         </div>
       </div>
@@ -204,11 +266,11 @@ const AdminTenantsPage = () => {
           <table className="w-full">
             <thead>
               <tr className="text-left text-[#999999] text-sm bg-[#FAFAFA]">
-                <th className="p-4">Business</th>
+                <th className="p-4">Franchise</th>
                 <th className="p-4">Plan</th>
+                <th className="p-4">URLs</th>
                 <th className="p-4">Staff</th>
                 <th className="p-4">Clients</th>
-                <th className="p-4">Appointments</th>
                 <th className="p-4">Status</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
@@ -221,7 +283,7 @@ const AdminTenantsPage = () => {
               ) : tenants.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-[#999999]">
-                    {search ? 'No tenants found' : 'No tenants yet'}
+                    {search ? 'No franchises found' : 'No franchises yet'}
                   </td>
                 </tr>
               ) : (
@@ -234,7 +296,7 @@ const AdminTenantsPage = () => {
                         </div>
                         <div>
                           <p className="font-medium text-[#0A0A0A]">{tenant.name}</p>
-                          <p className="text-xs text-[#999999]">{tenant.email}</p>
+                          <p className="text-xs text-[#999999]">{tenant.industry}</p>
                         </div>
                       </div>
                     </td>
@@ -243,9 +305,30 @@ const AdminTenantsPage = () => {
                         {tenant.plan}
                       </span>
                     </td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/${tenant.booking_url_slug}/login`);
+                            toast.success('Login URL copied!');
+                          }}
+                          className="text-xs text-blue-600 hover:underline block"
+                        >
+                          Copy Login URL
+                        </button>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/book/${tenant.booking_url_slug}`);
+                            toast.success('Booking URL copied!');
+                          }}
+                          className="text-xs text-emerald-600 hover:underline block"
+                        >
+                          Copy Booking URL
+                        </button>
+                      </div>
+                    </td>
                     <td className="p-4 text-[#666666] font-mono">{tenant.staff_count || 0}</td>
                     <td className="p-4 text-[#666666] font-mono">{tenant.client_count || 0}</td>
-                    <td className="p-4 text-[#666666] font-mono">{tenant.appointment_count || 0}</td>
                     <td className="p-4">
                       <button
                         onClick={() => handleToggleStatus(tenant.tenant_id, tenant.is_active)}
@@ -264,7 +347,7 @@ const AdminTenantsPage = () => {
                           data-testid={`view-tenant-${tenant.tenant_id}`}
                         >
                           <Eye className="w-4 h-4" />
-                          View
+                          Manage
                         </Link>
                         <button
                           onClick={() => handleDeleteTenant(tenant.tenant_id, tenant.name)}
