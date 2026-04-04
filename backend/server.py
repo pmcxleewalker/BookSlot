@@ -651,11 +651,17 @@ async def get_public_tenant_info(slug: str):
     if not tenant:
         raise HTTPException(status_code=404, detail="Business not found")
     
+    # Check if AI receptionist is enabled (growth/pro tiers)
+    plan = tenant.get("plan", "starter")
+    ai_receptionist_enabled = plan in ["growth", "pro"]
+    
     return {
         "name": tenant.get("name"),
         "industry": tenant.get("industry"),
         "branding": tenant.get("branding", {}),
-        "booking_url_slug": tenant.get("booking_url_slug")
+        "booking_url_slug": tenant.get("booking_url_slug"),
+        "tenant_id": tenant.get("tenant_id"),
+        "ai_receptionist_enabled": ai_receptionist_enabled
     }
 
 @api_router.post("/auth/session")
@@ -1841,6 +1847,10 @@ async def get_public_booking_page(slug: str):
     services = await db.services.find({"tenant_id": tenant["tenant_id"], "is_active": True}, {"_id": 0}).to_list(100)
     staff = await db.staff.find({"tenant_id": tenant["tenant_id"], "is_active": True}, {"_id": 0}).to_list(100)
     
+    # Check if AI receptionist is enabled (growth/pro tiers)
+    plan = tenant.get("plan", "starter")
+    ai_receptionist_enabled = plan in ["growth", "pro"]
+    
     # Remove sensitive data
     tenant_public = {
         "name": tenant["name"],
@@ -1848,7 +1858,10 @@ async def get_public_booking_page(slug: str):
         "logo_url": tenant.get("logo_url"),
         "address": tenant.get("address"),
         "phone": tenant.get("phone"),
-        "timezone": tenant.get("timezone")
+        "timezone": tenant.get("timezone"),
+        "branding": tenant.get("branding", {}),
+        "booking_url_slug": slug,
+        "ai_receptionist_enabled": ai_receptionist_enabled
     }
     
     # Include services info for each staff (which services they can perform)
@@ -3535,6 +3548,68 @@ async def process_moltbot_message(
             "conversation_id": conversation["conversation_id"],
             "error": str(e)
         }
+
+# === PUBLIC MOLTBOT CHAT ENDPOINT (for customer-facing widget) ===
+
+class PublicChatRequest(BaseModel):
+    message: str
+    conversation_id: Optional[str] = None
+    client_identifier: Optional[str] = None  # anonymous if not provided
+
+async def resolve_tenant(identifier: str) -> Optional[Dict[str, Any]]:
+    """Resolve tenant by slug OR tenant_id"""
+    # Try slug first
+    tenant = await db.tenants.find_one({"booking_url_slug": identifier, "is_active": True}, {"_id": 0})
+    if tenant:
+        return tenant
+    # Try tenant_id
+    tenant = await db.tenants.find_one({"tenant_id": identifier, "is_active": True}, {"_id": 0})
+    return tenant
+
+@api_router.post("/public/chat/{identifier}")
+async def public_moltbot_chat(identifier: str, request: PublicChatRequest):
+    """Public chat endpoint for AI receptionist widget - works with slug or tenant_id"""
+    
+    # Resolve tenant by slug or tenant_id
+    tenant = await resolve_tenant(identifier)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    tenant_id = tenant["tenant_id"]
+    plan = tenant.get("plan", "starter")
+    
+    # Check if AI receptionist is enabled for this plan
+    if plan not in ["growth", "pro"]:
+        return {
+            "response": "AI assistant is only available on Growth and Pro plans. Please contact the business directly for assistance.",
+            "conversation_id": None,
+            "ai_enabled": False
+        }
+    
+    # Use conversation_id if provided, or generate anonymous identifier
+    client_id = request.client_identifier or f"anon_{uuid.uuid4().hex[:8]}"
+    
+    # If conversation_id is provided, use it to continue the conversation
+    if request.conversation_id:
+        existing_conv = await db.moltbot_conversations.find_one({
+            "conversation_id": request.conversation_id,
+            "tenant_id": tenant_id
+        }, {"_id": 0})
+        if existing_conv:
+            client_id = existing_conv.get("client_identifier", client_id)
+    
+    # Process the message
+    result = await process_moltbot_message(
+        tenant_id=tenant_id,
+        client_identifier=client_id,
+        message=request.message,
+        channel="chat"
+    )
+    
+    result["ai_enabled"] = True
+    result["business_name"] = tenant.get("name")
+    
+    return result
 
 async def execute_moltbot_action(
     tenant_id: str,
