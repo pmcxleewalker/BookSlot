@@ -1,43 +1,63 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../App';
+import { useAuth, API } from '../App';
+import axios from 'axios';
 import {
   LayoutDashboard,
   Calendar,
-  Clock,
   Users,
   Briefcase,
   UserCircle,
-  FileText,
   BarChart3,
   Settings,
   LogOut,
   Menu,
   X,
   ChevronDown,
-  Bot
+  Bot,
+  Bell,
+  HelpCircle,
+  Clock
 } from 'lucide-react';
-import { useState } from 'react';
+import { Button } from './ui/button';
 
 const TenantLayout = ({ children, title }) => {
-  const { user, tenant, logout } = useAuth();
+  const { user, tenant, logout, token } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { tenantSlug } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   
   // Determine URL prefix based on whether we're on tenant-scoped routes
   const urlPrefix = tenantSlug ? `/${tenantSlug}` : '';
   
+  // Fetch pending appointments count
+  useEffect(() => {
+    const fetchPending = async () => {
+      try {
+        const res = await axios.get(`${API}/appointments?status=pending`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setPendingCount(res.data.appointments?.length || 0);
+      } catch (e) {
+        // Ignore errors
+      }
+    };
+    if (token) fetchPending();
+    const interval = setInterval(fetchPending, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, [token]);
+  
   const navItems = [
     { path: `${urlPrefix}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
-    { path: `${urlPrefix}/calendar`, label: 'Calendar', icon: Calendar },
-    { path: `${urlPrefix}/appointments`, label: 'Appointments', icon: Clock },
+    { path: `${urlPrefix}/calendar`, label: 'Calendar', icon: Calendar, badge: pendingCount > 0 ? pendingCount : null },
     { path: `${urlPrefix}/staff`, label: 'Staff', icon: Users },
     { path: `${urlPrefix}/services`, label: 'Services', icon: Briefcase },
     { path: `${urlPrefix}/clients`, label: 'Clients', icon: UserCircle },
-    { path: `${urlPrefix}/forms`, label: 'Forms', icon: FileText },
     { path: `${urlPrefix}/moltbot`, label: 'AI Receptionist', icon: Bot },
     { path: `${urlPrefix}/reports`, label: 'Reports', icon: BarChart3 },
     { path: `${urlPrefix}/settings`, label: 'Settings', icon: Settings },
@@ -152,10 +172,15 @@ const TenantLayout = ({ children, title }) => {
                     : 'text-[#666666] hover:text-[#0A0A0A] hover:bg-[#FAFAFA]'
                 }`}
                 style={getSidebarItemStyle(isActive)}
-                data-testid={`nav-${item.label.toLowerCase()}`}
+                data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
               >
                 <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.badge && (
+                  <span className="bg-amber-500 text-white text-xs rounded-full px-2 py-0.5 font-medium">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -202,8 +227,94 @@ const TenantLayout = ({ children, title }) => {
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
         {/* Page Header */}
-        <div className="bg-white border-b border-[#E5E5E5] px-6 py-4">
+        <div className="bg-white border-b border-[#E5E5E5] px-6 py-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-[#0A0A0A]" data-testid="page-title">{title}</h1>
+          
+          {/* Header Actions */}
+          <div className="flex items-center gap-2">
+            {/* Help Button */}
+            <div className="relative">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowHelp(!showHelp)}
+                className="text-[#666666] hover:text-[#0A0A0A]"
+                data-testid="help-button"
+              >
+                <HelpCircle className="w-5 h-5" />
+              </Button>
+              
+              {showHelp && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowHelp(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-[#E5E5E5] rounded-lg shadow-lg z-50 p-4" data-testid="help-panel">
+                    <h3 className="font-semibold text-[#0A0A0A] mb-3">Quick Help</h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="p-3 bg-[#FAFAFA] rounded-md">
+                        <p className="font-medium text-[#0A0A0A]">📅 Calendar</p>
+                        <p className="text-[#666666] mt-1">Drag appointments to reschedule. Click any slot to create a new booking.</p>
+                      </div>
+                      <div className="p-3 bg-[#FAFAFA] rounded-md">
+                        <p className="font-medium text-[#0A0A0A]">✅ Approvals</p>
+                        <p className="text-[#666666] mt-1">Online bookings need approval. Check the Calendar page for pending requests.</p>
+                      </div>
+                      <div className="p-3 bg-[#FAFAFA] rounded-md">
+                        <p className="font-medium text-[#0A0A0A]">🤖 AI Receptionist</p>
+                        <p className="text-[#666666] mt-1">Moltbot handles customer messages 24/7. View conversations in AI Receptionist.</p>
+                      </div>
+                      <div className="p-3 bg-[#FAFAFA] rounded-md">
+                        <p className="font-medium text-[#0A0A0A]">⚙️ Settings</p>
+                        <p className="text-[#666666] mt-1">Customize branding, notifications, and booking preferences.</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {/* Notification Bell */}
+            <div className="relative">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  if (pendingCount > 0) navigate(`${urlPrefix}/calendar`);
+                }}
+                className="text-[#666666] hover:text-[#0A0A0A] relative"
+                data-testid="notification-bell"
+              >
+                <Bell className="w-5 h-5" />
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                    {pendingCount > 9 ? '9+' : pendingCount}
+                  </span>
+                )}
+              </Button>
+              
+              {showNotifications && pendingCount > 0 && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#E5E5E5] rounded-lg shadow-lg z-50 p-4" data-testid="notifications-panel">
+                    <h3 className="font-semibold text-[#0A0A0A] mb-2">Pending Approvals</h3>
+                    <p className="text-sm text-[#666666] mb-3">
+                      You have {pendingCount} booking{pendingCount > 1 ? 's' : ''} waiting for approval.
+                    </p>
+                    <Button 
+                      className="w-full btn-primary text-sm" 
+                      size="sm"
+                      onClick={() => {
+                        setShowNotifications(false);
+                        navigate(`${urlPrefix}/calendar`);
+                      }}
+                    >
+                      View in Calendar
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Page Content */}

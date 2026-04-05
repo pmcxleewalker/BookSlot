@@ -12,6 +12,7 @@ import { Building2, Globe, Clock, Shield, Bell, MessageSquare, Mail, Smartphone,
 const SettingsPage = () => {
   const { tenant, token, updateTenant } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState(null);
   const [loadingNotifications, setLoadingNotifications] = useState(true);
   const [branding, setBranding] = useState({
@@ -30,6 +31,7 @@ const SettingsPage = () => {
     currency: tenant?.currency || 'EUR',
     logo_url: tenant?.logo_url || ''
   });
+  const fileInputRef = React.useRef(null);
 
   useEffect(() => {
     fetchNotificationSettings();
@@ -116,6 +118,50 @@ const SettingsPage = () => {
       toast.success('Setting updated');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to update setting');
+    }
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a PNG, JPEG, WebP, or SVG image');
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      
+      const response = await axios.post(`${API}/upload/image`, formDataUpload, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      if (response.data.url) {
+        setFormData(prev => ({ ...prev, logo_url: response.data.url }));
+        toast.success('Logo uploaded successfully!');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to upload image');
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -259,23 +305,65 @@ const SettingsPage = () => {
               <p className="text-xs text-[#666666] mt-1">Custom name shown in the sidebar (leave empty to use account name)</p>
             </div>
 
-            {/* Logo URL */}
+            {/* Logo Upload */}
             <div>
-              <Label className="text-sm font-medium">Logo URL</Label>
-              <div className="flex gap-2 mt-1.5">
-                <Input
-                  value={formData.logo_url}
-                  onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-                  placeholder="https://your-logo-url.com/logo.png"
-                  className="flex-1"
-                />
-                {formData.logo_url && (
-                  <div className="w-10 h-10 border border-[#E5E5E5] rounded flex items-center justify-center overflow-hidden">
-                    <img src={formData.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+              <Label className="text-sm font-medium">Business Logo</Label>
+              <div className="mt-2 space-y-3">
+                {/* Upload Button */}
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="logo-upload"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-2"
+                    data-testid="upload-logo-btn"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {uploading ? 'Uploading...' : 'Upload Logo'}
+                  </Button>
+                  
+                  {formData.logo_url && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 h-12 border border-[#E5E5E5] rounded flex items-center justify-center overflow-hidden bg-white">
+                        <img src={formData.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFormData({ ...formData, logo_url: '' })}
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Or use URL */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <span className="text-[#666666] text-xs">or URL:</span>
                   </div>
-                )}
+                  <Input
+                    value={formData.logo_url}
+                    onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                    placeholder="https://your-logo-url.com/logo.png"
+                    className="pl-16"
+                    data-testid="logo-url-input"
+                  />
+                </div>
+                <p className="text-xs text-[#666666]">Upload an image (PNG, JPEG, WebP, SVG) or enter a URL. Max 5MB.</p>
               </div>
-              <p className="text-xs text-[#666666] mt-1">Enter a URL to your logo image</p>
             </div>
 
             {/* Color Pickers */}

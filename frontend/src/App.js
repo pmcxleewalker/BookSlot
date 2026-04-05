@@ -16,16 +16,11 @@ import TenantLoginPage from './pages/public/TenantLoginPage';
 // Pages - Admin
 import DashboardPage from './pages/admin/DashboardPage';
 import CalendarPage from './pages/admin/CalendarPage';
-import AppointmentsPage from './pages/admin/AppointmentsPage';
 import StaffPage from './pages/admin/StaffPage';
 import ServicesPage from './pages/admin/ServicesPage';
-import ResourcesPage from './pages/admin/ResourcesPage';
 import ClientsPage from './pages/admin/ClientsPage';
-import FormsPage from './pages/admin/FormsPage';
-import MessagesPage from './pages/admin/MessagesPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import SettingsPage from './pages/admin/SettingsPage';
-import IntegrationsPage from './pages/admin/IntegrationsPage';
 import OnboardingPage from './pages/admin/OnboardingPage';
 import MoltbotPage from './pages/admin/MoltbotPage';
 
@@ -267,27 +262,20 @@ const AppRouter = () => {
       <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
-      <Route path="/appointments" element={<ProtectedRoute><AppointmentsPage /></ProtectedRoute>} />
       <Route path="/staff" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
       <Route path="/services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
-      <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
       <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
-      <Route path="/forms" element={<ProtectedRoute><FormsPage /></ProtectedRoute>} />
-      <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-      <Route path="/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
       <Route path="/moltbot" element={<ProtectedRoute><MoltbotPage /></ProtectedRoute>} />
 
       {/* Tenant-Scoped Routes - Independent franchise URLs */}
       <Route path="/:tenantSlug/login" element={<TenantLoginPage />} />
       <Route path="/:tenantSlug/dashboard" element={<TenantScopedRoute><DashboardPage /></TenantScopedRoute>} />
       <Route path="/:tenantSlug/calendar" element={<TenantScopedRoute><CalendarPage /></TenantScopedRoute>} />
-      <Route path="/:tenantSlug/appointments" element={<TenantScopedRoute><AppointmentsPage /></TenantScopedRoute>} />
       <Route path="/:tenantSlug/staff" element={<TenantScopedRoute><StaffPage /></TenantScopedRoute>} />
       <Route path="/:tenantSlug/services" element={<TenantScopedRoute><ServicesPage /></TenantScopedRoute>} />
       <Route path="/:tenantSlug/clients" element={<TenantScopedRoute><ClientsPage /></TenantScopedRoute>} />
-      <Route path="/:tenantSlug/forms" element={<TenantScopedRoute><FormsPage /></TenantScopedRoute>} />
       <Route path="/:tenantSlug/reports" element={<TenantScopedRoute><ReportsPage /></TenantScopedRoute>} />
       <Route path="/:tenantSlug/settings" element={<TenantScopedRoute><SettingsPage /></TenantScopedRoute>} />
       <Route path="/:tenantSlug/moltbot" element={<TenantScopedRoute><MoltbotPage /></TenantScopedRoute>} />

@@ -8,7 +8,7 @@ import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Plus, X, GripVertical, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, GripVertical, Clock, AlertCircle, Check, User } from 'lucide-react';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, addMinutes, differenceInMinutes } from 'date-fns';
 
 const CalendarPage = () => {
@@ -25,6 +25,9 @@ const CalendarPage = () => {
   const [draggedAppointment, setDraggedAppointment] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
 
+  // Pending approvals panel
+  const [showPendingPanel, setShowPendingPanel] = useState(true);
+  
   // New appointment form
   const [newAppt, setNewAppt] = useState({
     service_id: '',
@@ -201,6 +204,34 @@ const CalendarPage = () => {
     }
   };
 
+  // Get pending appointments
+  const pendingAppointments = appointments.filter(a => a.status === 'pending');
+  const pendingCount = pendingAppointments.length;
+
+  const handleApprove = async (appointmentId) => {
+    try {
+      await axios.post(`${API}/appointments/${appointmentId}/approve`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Booking approved!');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to approve booking');
+    }
+  };
+
+  const handleReject = async (appointmentId) => {
+    try {
+      await axios.post(`${API}/appointments/${appointmentId}/reject`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Booking rejected');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to reject booking');
+    }
+  };
+
   const getStaffColor = (staffId) => {
     const member = staff.find(s => s.staff_id === staffId);
     return member?.color || '#4F46E5';
@@ -208,6 +239,75 @@ const CalendarPage = () => {
 
   return (
     <TenantLayout title="Calendar">
+      {/* Pending Approvals Panel */}
+      {pendingCount > 0 && (
+        <div className={`mb-6 bg-amber-50 border border-amber-200 rounded-lg overflow-hidden ${showPendingPanel ? '' : 'p-4'}`}>
+          <button 
+            onClick={() => setShowPendingPanel(!showPendingPanel)}
+            className="w-full p-4 flex items-center justify-between hover:bg-amber-100 transition-colors"
+            data-testid="toggle-pending-panel"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-amber-800">{pendingCount} booking{pendingCount > 1 ? 's' : ''} awaiting approval</p>
+                <p className="text-sm text-amber-700">Click to {showPendingPanel ? 'hide' : 'view'} pending bookings</p>
+              </div>
+            </div>
+            <ChevronRight className={`w-5 h-5 text-amber-600 transition-transform ${showPendingPanel ? 'rotate-90' : ''}`} />
+          </button>
+          
+          {showPendingPanel && (
+            <div className="border-t border-amber-200 divide-y divide-amber-100 max-h-64 overflow-y-auto">
+              {pendingAppointments.map((appt) => {
+                const staffMember = staff.find(s => s.staff_id === appt.staff_id);
+                const service = services.find(s => s.service_id === appt.service_id);
+                return (
+                  <div key={appt.appointment_id} className="p-4 flex items-center justify-between gap-4 bg-white" data-testid={`pending-${appt.appointment_id}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <User className="w-5 h-5 text-amber-700" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-[#0A0A0A] truncate">{appt.client_name || 'Walk-in'}</p>
+                        <p className="text-sm text-[#666666]">
+                          {service?.name} with {staffMember?.name || 'Staff'}
+                        </p>
+                        <p className="text-xs text-[#666666] flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3" />
+                          {format(parseISO(appt.start_time), 'EEE, MMM d · h:mm a')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button 
+                        size="sm" 
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => handleApprove(appt.appointment_id)}
+                        data-testid={`approve-${appt.appointment_id}`}
+                      >
+                        <Check className="w-4 h-4 mr-1" /> Approve
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                        onClick={() => handleReject(appt.appointment_id)}
+                        data-testid={`reject-${appt.appointment_id}`}
+                      >
+                        <X className="w-4 h-4 mr-1" /> Reject
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Calendar Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">

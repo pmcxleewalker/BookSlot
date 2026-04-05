@@ -1195,49 +1195,7 @@ async def get_pending_approvals(user: Dict = Depends(get_current_user)):
     
     return {"appointments": appointments, "approval_threshold": approval_threshold}
 
-@api_router.post("/appointments/{appointment_id}/approve")
-async def approve_appointment(appointment_id: str, user: Dict = Depends(get_current_user)):
-    """Approve a pending appointment"""
-    if not user.get("tenant_id"):
-        raise HTTPException(status_code=400, detail="No business found")
-    
-    result = await db.appointments.update_one(
-        {"appointment_id": appointment_id, "tenant_id": user["tenant_id"], "status": "pending_approval"},
-        {"$set": {"status": "confirmed", "approved_at": datetime.now(timezone.utc).isoformat(), "approved_by": user["user_id"]}}
-    )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Appointment not found or already processed")
-    
-    # Create notification
-    appt = await db.appointments.find_one({"appointment_id": appointment_id}, {"_id": 0})
-    await create_notification(
-        user["tenant_id"],
-        "booking_approved",
-        "Booking Approved",
-        f"Appointment for {appt.get('client_name', 'Customer')} has been approved",
-        {"appointment_id": appointment_id}
-    )
-    
-    return {"message": "Appointment approved", "status": "confirmed"}
-
-@api_router.post("/appointments/{appointment_id}/reject")
-async def reject_appointment(appointment_id: str, body: Dict[str, Any], user: Dict = Depends(get_current_user)):
-    """Reject a pending appointment"""
-    if not user.get("tenant_id"):
-        raise HTTPException(status_code=400, detail="No business found")
-    
-    reason = body.get("reason", "Rejected by staff")
-    
-    result = await db.appointments.update_one(
-        {"appointment_id": appointment_id, "tenant_id": user["tenant_id"], "status": "pending_approval"},
-        {"$set": {"status": "cancelled", "cancellation_reason": reason, "cancelled_at": datetime.now(timezone.utc).isoformat()}}
-    )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Appointment not found or already processed")
-    
-    return {"message": "Appointment rejected", "status": "cancelled"}
+# Note: approve/reject endpoints moved to smart booking section
 
 @api_router.put("/tenants/me/settings/approval")
 async def update_approval_settings(body: Dict[str, Any], user: Dict = Depends(get_current_user)):
@@ -2059,7 +2017,11 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
     work_end_dt = datetime.strptime(f"{date_str} {work_end}", "%Y-%m-%d %H:%M")
     end_dt = datetime.fromisoformat(requested_end)
     
-    if start_dt < work_start_dt or end_dt > work_end_dt:
+    # Make all datetimes naive for comparison (strip timezone info)
+    start_dt_naive = start_dt.replace(tzinfo=None) if start_dt.tzinfo else start_dt
+    end_dt_naive = end_dt.replace(tzinfo=None) if end_dt.tzinfo else end_dt
+    
+    if start_dt_naive < work_start_dt or end_dt_naive > work_end_dt:
         alternative_times = await get_available_slots_for_day(tenant["tenant_id"], staff["staff_id"], service, date_str, working_hours)
         alternative_staff = await find_available_staff_for_time(tenant["tenant_id"], booking_data["service_id"], requested_start, requested_end)
         
@@ -2077,7 +2039,7 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
         brk_start = datetime.strptime(f"{date_str} {brk.get('start', '12:00')}", "%Y-%m-%d %H:%M")
         brk_end = datetime.strptime(f"{date_str} {brk.get('end', '13:00')}", "%Y-%m-%d %H:%M")
         
-        if start_dt < brk_end and end_dt > brk_start:
+        if start_dt_naive < brk_end and end_dt_naive > brk_start:
             alternative_times = await get_available_slots_for_day(tenant["tenant_id"], staff["staff_id"], service, date_str, working_hours)
             alternative_staff = await find_available_staff_for_time(tenant["tenant_id"], booking_data["service_id"], requested_start, requested_end)
             
