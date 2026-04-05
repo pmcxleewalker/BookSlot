@@ -79,6 +79,8 @@ const PublicBookingPage = () => {
     }
   };
 
+  const [bookingError, setBookingError] = useState(null);
+
   const handleSubmit = async () => {
     if (!clientName || !clientEmail) {
       toast.error('Please fill in your details');
@@ -86,6 +88,8 @@ const PublicBookingPage = () => {
     }
 
     setSubmitting(true);
+    setBookingError(null);
+    
     try {
       const service = selectedService;
       const endTime = addMinutes(new Date(selectedSlot.start_time), service.duration);
@@ -103,12 +107,39 @@ const PublicBookingPage = () => {
 
       setConfirmation(response.data);
       setStep(5);
-      toast.success('Booking confirmed!');
+      toast.success(response.data.message || 'Booking request submitted!');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to book appointment');
+      const errorData = error.response?.data?.detail;
+      
+      if (typeof errorData === 'object' && errorData.reason) {
+        // Smart error with suggestions
+        setBookingError(errorData);
+        toast.error(errorData.message);
+      } else {
+        toast.error(errorData || 'Failed to book appointment');
+      }
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSelectAlternativeStaff = (altStaff) => {
+    setSelectedStaff(altStaff);
+    setBookingError(null);
+    toast.success(`Selected ${altStaff.name}`);
+  };
+
+  const handleSelectAlternativeTime = (slot) => {
+    setSelectedSlot(slot);
+    setBookingError(null);
+    toast.success(`Selected ${slot.display}`);
+  };
+
+  const handleSelectAlternativeDay = (day) => {
+    setSelectedDate(new Date(day.date));
+    setBookingError(null);
+    setStep(3); // Go back to time selection
+    toast.success(`Selected ${day.display}`);
   };
 
   if (loading) {
@@ -384,15 +415,83 @@ const PublicBookingPage = () => {
                 />
               </div>
 
+              {/* Booking Error with Suggestions */}
+              {bookingError && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                  <p className="text-amber-800 font-medium mb-3">{bookingError.message}</p>
+                  
+                  {/* Alternative Times */}
+                  {bookingError.alternative_times && bookingError.alternative_times.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-sm text-amber-700 mb-2">Available times for {selectedStaff?.name}:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {bookingError.alternative_times.map((slot, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSelectAlternativeTime(slot)}
+                            className="px-3 py-1 bg-white border border-amber-300 rounded text-sm text-amber-800 hover:bg-amber-100 transition-colors"
+                          >
+                            {slot.display}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Alternative Days */}
+                  {bookingError.alternative_days && bookingError.alternative_days.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-sm text-amber-700 mb-2">{selectedStaff?.name} is available on:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {bookingError.alternative_days.map((day, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSelectAlternativeDay(day)}
+                            className="px-3 py-1 bg-white border border-amber-300 rounded text-sm text-amber-800 hover:bg-amber-100 transition-colors"
+                          >
+                            {day.display}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Alternative Staff */}
+                  {bookingError.alternative_staff && bookingError.alternative_staff.length > 0 && (
+                    <div>
+                      <p className="text-sm text-amber-700 mb-2">Other available staff:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {bookingError.alternative_staff.map((staff, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSelectAlternativeStaff(staff)}
+                            className="px-3 py-2 bg-white border border-amber-300 rounded text-sm text-amber-800 hover:bg-amber-100 transition-colors flex items-center gap-2"
+                          >
+                            <div className="w-6 h-6 bg-amber-200 rounded-full flex items-center justify-center text-xs font-medium">
+                              {staff.name.charAt(0)}
+                            </div>
+                            {staff.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Button
                 type="submit"
                 disabled={submitting}
                 className="w-full btn-accent flex items-center justify-center gap-2"
                 data-testid="confirm-booking"
               >
-                {submitting ? 'Confirming...' : 'Confirm Booking'}
+                {submitting ? 'Submitting...' : 'Request Booking'}
                 {!submitting && <Check className="w-4 h-4" />}
               </Button>
+              
+              <p className="text-xs text-center text-[#999999] mt-2">
+                Your booking will be confirmed once approved by the business
+              </p>
             </form>
           </div>
         )}
@@ -400,14 +499,26 @@ const PublicBookingPage = () => {
         {/* Step 5: Confirmation */}
         {step === 5 && confirmation && (
           <div className="animate-fade-in text-center">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-8 h-8 text-emerald-600" />
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Clock className="w-8 h-8 text-amber-600" />
             </div>
-            <h2 className="text-2xl font-semibold text-[#0A0A0A] mb-2" data-testid="confirmation-title">Booking Confirmed!</h2>
-            <p className="text-[#666666] mb-8">A confirmation email has been sent to {clientEmail}</p>
+            <h2 className="text-2xl font-semibold text-[#0A0A0A] mb-2" data-testid="confirmation-title">
+              {confirmation.requires_approval ? 'Booking Request Submitted!' : 'Booking Confirmed!'}
+            </h2>
+            <p className="text-[#666666] mb-8">
+              {confirmation.requires_approval 
+                ? `We'll email you at ${clientEmail} once the business confirms your booking.`
+                : `A confirmation email has been sent to ${clientEmail}`
+              }
+            </p>
 
             <div className="card-flat text-left mb-8">
-              <h3 className="text-sm font-medium text-[#666666] mb-3">BOOKING DETAILS</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-[#666666]">BOOKING DETAILS</h3>
+                {confirmation.requires_approval && (
+                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">Pending Approval</span>
+                )}
+              </div>
               <div className="space-y-2">
                 <p className="text-[#0A0A0A]"><strong>{selectedService?.name}</strong></p>
                 <p className="text-sm text-[#666666]">with {selectedStaff?.name}</p>

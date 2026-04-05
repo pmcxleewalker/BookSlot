@@ -41,6 +41,20 @@ const AppointmentsPage = () => {
         await axios.post(`${API}/appointments/${appointmentId}/cancel`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
+      } else if (newStatus === 'approved') {
+        await axios.post(`${API}/appointments/${appointmentId}/approve`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        toast.success('Booking approved!');
+        fetchAppointments();
+        return;
+      } else if (newStatus === 'rejected') {
+        await axios.post(`${API}/appointments/${appointmentId}/reject`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        toast.success('Booking rejected');
+        fetchAppointments();
+        return;
       } else {
         await axios.put(`${API}/appointments/${appointmentId}`, { status: newStatus }, {
           headers: { Authorization: `Bearer ${token}` }
@@ -52,6 +66,9 @@ const AppointmentsPage = () => {
       toast.error('Failed to update appointment');
     }
   };
+
+  // Count pending approvals
+  const pendingCount = appointments.filter(a => a.status === 'pending').length;
 
   const filteredAppointments = appointments.filter(appt => {
     if (search) {
@@ -78,6 +95,29 @@ const AppointmentsPage = () => {
 
   return (
     <TenantLayout title="Appointments">
+      {/* Pending Approvals Alert */}
+      {pendingCount > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+              <Clock className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="font-medium text-amber-800">{pendingCount} booking{pendingCount > 1 ? 's' : ''} awaiting approval</p>
+              <p className="text-sm text-amber-700">Review and approve or reject pending bookings</p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="border-amber-300 text-amber-700 hover:bg-amber-100"
+            onClick={() => setStatusFilter('pending')}
+          >
+            View Pending
+          </Button>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
@@ -90,17 +130,20 @@ const AppointmentsPage = () => {
             data-testid="search-appointments"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {['all', 'pending', 'confirmed', 'completed', 'cancelled'].map((status) => (
             <Button
               key={status}
               variant={statusFilter === status ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter(status)}
-              className={statusFilter === status ? 'btn-primary' : ''}
+              className={`${statusFilter === status ? 'btn-primary' : ''} ${status === 'pending' && pendingCount > 0 ? 'relative' : ''}`}
               data-testid={`filter-${status}`}
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
+              {status === 'pending' && pendingCount > 0 && (
+                <span className="ml-1 bg-amber-500 text-white text-xs rounded-full px-1.5">{pendingCount}</span>
+              )}
             </Button>
           ))}
         </div>
@@ -130,7 +173,7 @@ const AppointmentsPage = () => {
                 </tr>
               ) : (
                 filteredAppointments.map((appt) => (
-                  <tr key={appt.appointment_id} className="table-row" data-testid={`appt-row-${appt.appointment_id}`}>
+                  <tr key={appt.appointment_id} className={`table-row ${appt.status === 'pending' ? 'bg-amber-50' : ''}`} data-testid={`appt-row-${appt.appointment_id}`}>
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-[#121212] rounded-full flex items-center justify-center text-white text-sm font-medium">
@@ -158,11 +201,36 @@ const AppointmentsPage = () => {
                     </td>
                     <td className="p-4">
                       <span className={getStatusBadge(appt.status)}>{appt.status}</span>
+                      {appt.source === 'online' && (
+                        <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">Online</span>
+                      )}
                     </td>
                     <td className="p-4">
                       <span className="font-mono text-[#0A0A0A]">€{appt.total_price || 0}</span>
                     </td>
                     <td className="p-4 text-right">
+                      {/* Quick Approve/Reject buttons for pending */}
+                      {appt.status === 'pending' && (
+                        <div className="flex items-center justify-end gap-2 mb-2">
+                          <Button 
+                            size="sm" 
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => handleStatusChange(appt.appointment_id, 'approved')}
+                            data-testid={`approve-${appt.appointment_id}`}
+                          >
+                            <Check className="w-4 h-4 mr-1" /> Approve
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="border-red-300 text-red-600 hover:bg-red-50"
+                            onClick={() => handleStatusChange(appt.appointment_id, 'rejected')}
+                            data-testid={`reject-${appt.appointment_id}`}
+                          >
+                            <X className="w-4 h-4 mr-1" /> Reject
+                          </Button>
+                        </div>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" data-testid={`appt-actions-${appt.appointment_id}`}>
@@ -170,23 +238,18 @@ const AppointmentsPage = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {appt.status === 'pending' && (
-                            <DropdownMenuItem onClick={() => handleStatusChange(appt.appointment_id, 'confirmed')}>
-                              <Check className="w-4 h-4 mr-2" /> Confirm
+                          {appt.status === 'confirmed' && (
+                            <DropdownMenuItem onClick={() => handleStatusChange(appt.appointment_id, 'completed')}>
+                              <Check className="w-4 h-4 mr-2" /> Mark Complete
                             </DropdownMenuItem>
                           )}
                           {(appt.status === 'pending' || appt.status === 'confirmed') && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleStatusChange(appt.appointment_id, 'completed')}>
-                                <Check className="w-4 h-4 mr-2" /> Mark Complete
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleStatusChange(appt.appointment_id, 'cancelled')}
-                                className="text-red-600"
-                              >
-                                <X className="w-4 h-4 mr-2" /> Cancel
-                              </DropdownMenuItem>
-                            </>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(appt.appointment_id, 'cancelled')}
+                              className="text-red-600"
+                            >
+                              <X className="w-4 h-4 mr-2" /> Cancel
+                            </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>

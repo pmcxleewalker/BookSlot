@@ -2015,7 +2015,7 @@ async def get_availability(
 
 @api_router.post("/public/booking/{slug}/book")
 async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
-    """Create a booking from public page"""
+    """Create a booking from public page with smart validation and suggestions"""
     tenant = await db.tenants.find_one({"booking_url_slug": slug, "is_active": True}, {"_id": 0})
     if not tenant:
         raise HTTPException(status_code=404, detail="Business not found")
@@ -2024,19 +2024,93 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
     
-    # Check for conflicts
+    staff = await db.staff.find_one({"staff_id": booking_data["staff_id"]}, {"_id": 0})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    
+    requested_start = booking_data["start_time"]
+    requested_end = booking_data["end_time"]
+    
+    # Parse the requested date/time
+    start_dt = datetime.fromisoformat(requested_start)
+    date_str = start_dt.strftime("%Y-%m-%d")
+    day_of_week = start_dt.strftime("%A").lower()
+    
+    # Check 1: Staff working hours for that day
+    working_hours = staff.get("working_hours", {})
+    day_schedule = working_hours.get(day_of_week, {})
+    
+    if not day_schedule.get("enabled", False):
+        # Staff not working that day - suggest alternative days
+        alternative_days = await find_alternative_days(tenant["tenant_id"], staff["staff_id"], service, start_dt)
+        alternative_staff = await find_available_staff_for_time(tenant["tenant_id"], booking_data["service_id"], requested_start, requested_end)
+        
+        raise HTTPException(status_code=409, detail={
+            "reason": "staff_day_off",
+            "message": f"{staff['name']} is not working on {start_dt.strftime('%A, %B %d')}.",
+            "alternative_days": alternative_days,
+            "alternative_staff": alternative_staff
+        })
+    
+    # Check if requested time is within working hours
+    work_start = day_schedule.get("start", "09:00")
+    work_end = day_schedule.get("end", "17:00")
+    work_start_dt = datetime.strptime(f"{date_str} {work_start}", "%Y-%m-%d %H:%M")
+    work_end_dt = datetime.strptime(f"{date_str} {work_end}", "%Y-%m-%d %H:%M")
+    end_dt = datetime.fromisoformat(requested_end)
+    
+    if start_dt < work_start_dt or end_dt > work_end_dt:
+        alternative_times = await get_available_slots_for_day(tenant["tenant_id"], staff["staff_id"], service, date_str, working_hours)
+        alternative_staff = await find_available_staff_for_time(tenant["tenant_id"], booking_data["service_id"], requested_start, requested_end)
+        
+        raise HTTPException(status_code=409, detail={
+            "reason": "outside_working_hours",
+            "message": f"{staff['name']} only works from {work_start} to {work_end} on {start_dt.strftime('%A')}.",
+            "working_hours": {"start": work_start, "end": work_end},
+            "alternative_times": alternative_times[:5],
+            "alternative_staff": alternative_staff
+        })
+    
+    # Check 2: Staff on break
+    breaks = day_schedule.get("breaks", [])
+    for brk in breaks:
+        brk_start = datetime.strptime(f"{date_str} {brk.get('start', '12:00')}", "%Y-%m-%d %H:%M")
+        brk_end = datetime.strptime(f"{date_str} {brk.get('end', '13:00')}", "%Y-%m-%d %H:%M")
+        
+        if start_dt < brk_end and end_dt > brk_start:
+            alternative_times = await get_available_slots_for_day(tenant["tenant_id"], staff["staff_id"], service, date_str, working_hours)
+            alternative_staff = await find_available_staff_for_time(tenant["tenant_id"], booking_data["service_id"], requested_start, requested_end)
+            
+            raise HTTPException(status_code=409, detail={
+                "reason": "staff_on_break",
+                "message": f"{staff['name']} has a scheduled break from {brk.get('start')} to {brk.get('end')}.",
+                "break_time": {"start": brk.get('start'), "end": brk.get('end')},
+                "alternative_times": alternative_times[:5],
+                "alternative_staff": alternative_staff
+            })
+    
+    # Check 3: Existing appointment conflict
     conflict = await db.appointments.find_one({
         "tenant_id": tenant["tenant_id"],
         "staff_id": booking_data["staff_id"],
-        "status": {"$nin": ["cancelled"]},
+        "status": {"$nin": ["cancelled", "rejected"]},
         "$or": [
-            {"start_time": {"$lt": booking_data["end_time"], "$gte": booking_data["start_time"]}},
-            {"end_time": {"$gt": booking_data["start_time"], "$lte": booking_data["end_time"]}}
+            {"start_time": {"$lt": requested_end, "$gte": requested_start}},
+            {"end_time": {"$gt": requested_start, "$lte": requested_end}},
+            {"$and": [{"start_time": {"$lte": requested_start}}, {"end_time": {"$gte": requested_end}}]}
         ]
     }, {"_id": 0})
     
     if conflict:
-        raise HTTPException(status_code=409, detail="Time slot no longer available")
+        alternative_times = await get_available_slots_for_day(tenant["tenant_id"], staff["staff_id"], service, date_str, working_hours)
+        alternative_staff = await find_available_staff_for_time(tenant["tenant_id"], booking_data["service_id"], requested_start, requested_end)
+        
+        raise HTTPException(status_code=409, detail={
+            "reason": "already_booked",
+            "message": f"{staff['name']} already has an appointment at this time.",
+            "alternative_times": alternative_times[:5],
+            "alternative_staff": alternative_staff
+        })
     
     # Create or find client
     client = None
@@ -2058,7 +2132,7 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
             await db.clients.insert_one(client_dict)
             client = client_dict
     
-    # Create appointment
+    # Create appointment with PENDING status (requires approval)
     appointment = Appointment(
         service_id=booking_data["service_id"],
         staff_id=booking_data["staff_id"],
@@ -2070,7 +2144,8 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
         end_time=datetime.fromisoformat(booking_data["end_time"]),
         notes=booking_data.get("notes"),
         tenant_id=tenant["tenant_id"],
-        source="online"
+        source="online",
+        status="pending"  # Requires approval
     )
     appointment.total_price = service.get("price", 0)
     
@@ -2084,14 +2159,230 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
     
     await trigger_webhook(tenant["tenant_id"], WebhookEvent.BOOKING_CREATED, appt_dict)
     
-    # Send booking confirmation notifications
-    await send_booking_confirmation(appt_dict, tenant)
-    
     return {
         "appointment": appt_dict,
         "confirmation_code": appointment.appointment_id,
-        "message": "Booking confirmed!"
+        "message": "Booking request submitted! Awaiting confirmation from the business.",
+        "status": "pending",
+        "requires_approval": True
     }
+
+async def find_alternative_days(tenant_id: str, staff_id: str, service: Dict, from_date: datetime, num_days: int = 5) -> List[Dict]:
+    """Find alternative days when staff is working"""
+    staff = await db.staff.find_one({"staff_id": staff_id}, {"_id": 0})
+    if not staff:
+        return []
+    
+    working_hours = staff.get("working_hours", {})
+    alternatives = []
+    current_date = from_date + timedelta(days=1)
+    
+    for _ in range(14):  # Look up to 2 weeks ahead
+        day_name = current_date.strftime("%A").lower()
+        day_schedule = working_hours.get(day_name, {})
+        
+        if day_schedule.get("enabled", False):
+            alternatives.append({
+                "date": current_date.strftime("%Y-%m-%d"),
+                "day": current_date.strftime("%A"),
+                "display": current_date.strftime("%A, %B %d"),
+                "working_hours": {"start": day_schedule.get("start"), "end": day_schedule.get("end")}
+            })
+            
+            if len(alternatives) >= num_days:
+                break
+        
+        current_date += timedelta(days=1)
+    
+    return alternatives
+
+async def find_available_staff_for_time(tenant_id: str, service_id: str, start_time: str, end_time: str) -> List[Dict]:
+    """Find other staff members who can perform the service and are available at that time"""
+    service = await db.services.find_one({"service_id": service_id}, {"_id": 0})
+    if not service:
+        return []
+    
+    # Get all active staff for this tenant
+    all_staff = await db.staff.find({"tenant_id": tenant_id, "is_active": True}, {"_id": 0}).to_list(100)
+    available_staff = []
+    
+    start_dt = datetime.fromisoformat(start_time)
+    end_dt = datetime.fromisoformat(end_time)
+    date_str = start_dt.strftime("%Y-%m-%d")
+    day_of_week = start_dt.strftime("%A").lower()
+    
+    for staff in all_staff:
+        # Check if staff can perform this service
+        assigned_services = staff.get("assigned_services", staff.get("services", []))
+        if assigned_services and service_id not in assigned_services:
+            continue
+        
+        # Check working hours
+        working_hours = staff.get("working_hours", {})
+        day_schedule = working_hours.get(day_of_week, {})
+        
+        if not day_schedule.get("enabled", False):
+            continue
+        
+        work_start = day_schedule.get("start", "09:00")
+        work_end = day_schedule.get("end", "17:00")
+        work_start_dt = datetime.strptime(f"{date_str} {work_start}", "%Y-%m-%d %H:%M")
+        work_end_dt = datetime.strptime(f"{date_str} {work_end}", "%Y-%m-%d %H:%M")
+        
+        if start_dt < work_start_dt or end_dt > work_end_dt:
+            continue
+        
+        # Check breaks
+        in_break = False
+        for brk in day_schedule.get("breaks", []):
+            brk_start = datetime.strptime(f"{date_str} {brk.get('start', '12:00')}", "%Y-%m-%d %H:%M")
+            brk_end = datetime.strptime(f"{date_str} {brk.get('end', '13:00')}", "%Y-%m-%d %H:%M")
+            if start_dt < brk_end and end_dt > brk_start:
+                in_break = True
+                break
+        
+        if in_break:
+            continue
+        
+        # Check for conflicts
+        conflict = await db.appointments.find_one({
+            "tenant_id": tenant_id,
+            "staff_id": staff["staff_id"],
+            "status": {"$nin": ["cancelled", "rejected"]},
+            "$or": [
+                {"start_time": {"$lt": end_time, "$gte": start_time}},
+                {"end_time": {"$gt": start_time, "$lte": end_time}},
+                {"$and": [{"start_time": {"$lte": start_time}}, {"end_time": {"$gte": end_time}}]}
+            ]
+        }, {"_id": 0})
+        
+        if not conflict:
+            available_staff.append({
+                "staff_id": staff["staff_id"],
+                "name": staff["name"],
+                "title": staff.get("title"),
+                "avatar_url": staff.get("avatar_url")
+            })
+    
+    return available_staff
+
+async def get_available_slots_for_day(tenant_id: str, staff_id: str, service: Dict, date: str, working_hours: Dict) -> List[Dict]:
+    """Get available time slots for a specific staff on a specific day"""
+    day_obj = datetime.strptime(date, "%Y-%m-%d")
+    day_of_week = day_obj.strftime("%A").lower()
+    day_schedule = working_hours.get(day_of_week, {})
+    
+    if not day_schedule.get("enabled", False):
+        return []
+    
+    work_start = day_schedule.get("start", "09:00")
+    work_end = day_schedule.get("end", "17:00")
+    start_hour, start_min = map(int, work_start.split(":"))
+    end_hour, end_min = map(int, work_end.split(":"))
+    
+    # Get existing appointments
+    existing = await db.appointments.find({
+        "tenant_id": tenant_id,
+        "staff_id": staff_id,
+        "status": {"$nin": ["cancelled", "rejected"]},
+        "start_time": {"$gte": f"{date}T00:00:00", "$lte": f"{date}T23:59:59"}
+    }, {"_id": 0}).to_list(100)
+    
+    breaks = day_schedule.get("breaks", [])
+    duration = service.get("duration", 30)
+    buffer = service.get("buffer_time", 0)
+    slots = []
+    
+    current_time = datetime(day_obj.year, day_obj.month, day_obj.day, start_hour, start_min)
+    end_time = datetime(day_obj.year, day_obj.month, day_obj.day, end_hour, end_min)
+    
+    while current_time < end_time:
+        slot_start = current_time
+        slot_end = current_time + timedelta(minutes=duration + buffer)
+        
+        if slot_end > end_time:
+            break
+        
+        slot_start_str = slot_start.strftime(f"{date}T%H:%M:%S")
+        slot_end_str = slot_end.strftime(f"{date}T%H:%M:%S")
+        
+        # Check breaks
+        in_break = False
+        for brk in breaks:
+            brk_start_time = datetime.strptime(f"{date} {brk.get('start', '12:00')}", "%Y-%m-%d %H:%M")
+            brk_end_time = datetime.strptime(f"{date} {brk.get('end', '13:00')}", "%Y-%m-%d %H:%M")
+            if slot_start < brk_end_time and slot_end > brk_start_time:
+                in_break = True
+                break
+        
+        if not in_break:
+            # Check conflicts
+            conflict = False
+            for appt in existing:
+                if appt["start_time"] < slot_end_str and appt["end_time"] > slot_start_str:
+                    conflict = True
+                    break
+            
+            if not conflict:
+                slots.append({
+                    "start_time": slot_start_str,
+                    "end_time": slot_end_str,
+                    "display": slot_start.strftime("%I:%M %p")
+                })
+        
+        current_time += timedelta(minutes=30)
+    
+    return slots
+
+@api_router.post("/appointments/{appointment_id}/approve")
+async def approve_appointment(appointment_id: str, user: Dict = Depends(get_current_user)):
+    """Approve a pending appointment"""
+    appointment = await db.appointments.find_one({
+        "appointment_id": appointment_id,
+        "tenant_id": user["tenant_id"]
+    }, {"_id": 0})
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    if appointment.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Appointment is not pending approval")
+    
+    await db.appointments.update_one(
+        {"appointment_id": appointment_id},
+        {"$set": {"status": "confirmed", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Send confirmation notification to client
+    updated_appt = await db.appointments.find_one({"appointment_id": appointment_id}, {"_id": 0})
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    await send_booking_confirmation(updated_appt, tenant)
+    
+    return {"message": "Appointment approved", "status": "confirmed"}
+
+@api_router.post("/appointments/{appointment_id}/reject")
+async def reject_pending_appointment(appointment_id: str, body: Dict[str, Any] = None, user: Dict = Depends(get_current_user)):
+    """Reject a pending appointment"""
+    appointment = await db.appointments.find_one({
+        "appointment_id": appointment_id,
+        "tenant_id": user["tenant_id"]
+    }, {"_id": 0})
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    reason = body.get("reason", "") if body else ""
+    
+    await db.appointments.update_one(
+        {"appointment_id": appointment_id},
+        {"$set": {
+            "status": "rejected", 
+            "rejection_reason": reason,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Appointment rejected", "status": "rejected"}
 
 @api_router.get("/public/booking/manage/{confirmation_code}")
 async def get_booking_by_code(confirmation_code: str):
