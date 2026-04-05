@@ -6,6 +6,7 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - Core positioning: Simple booking software with transparent pricing, fast setup, and AI receptionist
 - **NEW REQUIREMENT (March 2026):** Super Admin Dashboard to manage all tenants, create tenants manually, and assign pricing tiers/features
 - **NEW REQUIREMENT (March 2026):** Email/SMS notification system with SMS as paid add-on (+€10/month)
+- **NEW REQUIREMENT (April 2026):** Smart Booking with conflict detection and admin approval workflow
 
 ## User Personas
 1. **Platform Owner (Super Admin)**: Manages all tenants, creates businesses, assigns tiers
@@ -27,10 +28,12 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - GDPR-compliant design
 - **Super Admin Dashboard with tier management**
 - **Email reminders (free) + SMS add-on (+€10/month)**
+- **Smart booking with conflict detection and alternative suggestions**
+- **Admin approval workflow for all online bookings**
 
 ## What's Been Implemented
 
-### Backend (FastAPI + MongoDB) - Updated March 2026
+### Backend (FastAPI + MongoDB) - Updated April 2026
 - [x] User authentication (JWT + Google OAuth via Emergent)
 - [x] Multi-tenant data models (Tenant, User, Staff, Service, Resource, Client, Appointment, Form, Webhook)
 - [x] All CRUD endpoints for staff, services, resources, clients, appointments
@@ -68,8 +71,22 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - Support for breaks during the day
   - Public availability respects working hours
   - Default working hours (Mon-Fri 9-5)
+- [x] **Smart Booking Validation (NEW April 2026):**
+  - Conflict detection (staff already booked)
+  - Working hours validation
+  - Break time detection
+  - Returns 409 with alternative_times, alternative_days, alternative_staff
+  - All online bookings created with "pending" status
+- [x] **Approval Workflow (NEW April 2026):**
+  - POST /api/appointments/{id}/approve - Approve pending booking
+  - POST /api/appointments/{id}/reject - Reject pending booking
+  - Status flow: pending → confirmed/rejected
+- [x] **File Upload:**
+  - POST /api/upload/image - Upload branding images (logos)
+  - Supported formats: PNG, JPEG, WebP, SVG
+  - Max file size: 5MB
 
-### Frontend (React + Tailwind + Shadcn)
+### Frontend (React + Tailwind + Shadcn) - Updated April 2026
 - [x] Public pages: Landing, Features, Pricing, Login, Signup
 - [x] Public booking page with 5-step flow
 - [x] Manage booking page (view/cancel by confirmation code)
@@ -80,26 +97,24 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - Drag-and-drop appointment rescheduling
   - Visual drop target feedback
   - Grip handle on hover
+  - **Pending Approvals Panel (NEW April 2026)** - Shows all pending bookings with Approve/Reject buttons
 - [x] **Staff management page with:**
   - Working hours editor per staff
   - Visual schedule summary (Mon-Fri, Mon-Sat, etc.)
   - Break time configuration
 - [x] Services management page
 - [x] Clients page with search
-- [x] Resources page (Pro feature)
-- [x] Forms page (Pro feature placeholder)
-- [x] Messages/reminders page (MOCKED)
 - [x] Reports page with stats
 - [x] **Settings page with:**
   - Business details
   - Regional settings
   - Booking settings
-  - **Custom branding (display name, colors, logo URL)**
+  - **Custom branding (display name, colors, logo upload/URL)**
+  - **File upload for logos (NEW April 2026)** - PNG, JPEG, WebP, SVG support
   - **Notification settings:**
     - Email reminders toggle (FREE - Included)
     - SMS add-on toggle (+€10/month)
     - Reminder timing selector (1-48 hours)
-- [x] Integrations page with API docs and webhook config
 - [x] AI Receptionist demo widget (Moltbot chat)
 - [x] **Super Admin Portal:**
   - Admin Login Page (/admin)
@@ -110,7 +125,6 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - **Tenant Lifecycle Controls (activate/deactivate/terminate)**
   - **Black & White theme for Super Admin (no orange accents)**
   - **Renamed "Super Admin" → "Tenant Control Centre"**
-
 - [x] **Moltbot AI Conversation System:**
   - Full conversation understanding via GPT-4o-mini
   - Intent parsing (book, reschedule, cancel, check availability)
@@ -119,6 +133,20 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - Conversation history storage
   - Admin management page (/moltbot)
   - Webhook endpoints for SMS/Email (ready for activation)
+- [x] **Smart Booking UI (NEW April 2026):**
+  - Displays conflict errors with reason message
+  - Shows alternative times (same staff, same day)
+  - Shows alternative days (same staff, different day)
+  - Shows alternative staff (same time, different staff)
+  - One-click selection of alternatives
+- [x] **Notification Bell & Help (NEW April 2026):**
+  - Notification bell in header with pending count badge
+  - Click redirects to Calendar page
+  - Help button (?) opens quick help panel with tips
+- [x] **Navigation Cleanup (NEW April 2026):**
+  - Removed: Resources, Forms, Messages, Integrations tabs
+  - Calendar tab shows pending approval badge
+  - Clean 8-tab navigation: Dashboard, Calendar, Staff, Services, Clients, AI Receptionist, Reports, Settings
 
 ### Design
 - Swiss/High-contrast design system
@@ -202,13 +230,24 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
    - Cost: ~$0.0079/SMS (passed through to tenant via +€10/month add-on)
 
 ## Next Tasks
-1. **UI Tab Cleanup** - Remove Resources, move Messages→AI Receptionist, move Integrations→Settings, add Help button
-2. **Merge Appointments into Calendar** - With approval workflow (configurable time limit)
-3. **File Upload for Branding** - Enable device uploads using Object Storage
-4. **Smart Booking & Notification Bell** - Staff/time recommendations + alert bell
-5. Add Stripe payment integration for deposits
+1. ~~**UI Tab Cleanup** - Remove Resources, move Messages→AI Receptionist, move Integrations→Settings, add Help button~~ ✅ DONE
+2. ~~**Merge Appointments into Calendar** - With approval workflow (configurable time limit)~~ ✅ DONE
+3. ~~**File Upload for Branding** - Enable device uploads using Object Storage~~ ✅ DONE
+4. ~~**Smart Booking & Notification Bell** - Staff/time recommendations + alert bell~~ ✅ DONE
+5. Add Stripe payment integration for deposits (DEFERRED by user)
 6. Implement Google Calendar sync
 7. Build custom forms builder
+
+## Completed in April 2026 Session
+- [x] Smart Booking with conflict detection and alternative suggestions
+- [x] Approval workflow for all online bookings (Approve/Reject buttons)
+- [x] Pending approvals panel merged into Calendar page
+- [x] Notification bell with pending count badge
+- [x] Help button with quick tips panel
+- [x] Logo file upload from device (PNG, JPEG, WebP, SVG)
+- [x] Navigation cleanup (removed Resources, Forms, Messages, Integrations)
+- [x] Fixed datetime comparison bug in booking validation
+- [x] All 17 backend tests passing (100%)
 
 ## Moltbot AI Activation Guide (When Ready)
 To activate Moltbot for incoming SMS/Email:
