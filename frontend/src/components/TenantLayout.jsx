@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import {
-  LayoutDashboard,
   Calendar,
   Users,
   Briefcase,
@@ -16,7 +15,6 @@ import {
   ChevronDown,
   Bot,
   Bell,
-  HelpCircle,
   Clock
 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -28,8 +26,6 @@ const TenantLayout = ({ children, title }) => {
   const { tenantSlug } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   
   // Determine URL prefix based on whether we're on tenant-scoped routes
@@ -53,7 +49,7 @@ const TenantLayout = ({ children, title }) => {
   }, [token]);
   
   const navItems = [
-    { path: `${urlPrefix}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
+    { path: `${urlPrefix}/dashboard`, label: 'Today', icon: Clock },
     { path: `${urlPrefix}/calendar`, label: 'Calendar', icon: Calendar, badge: pendingCount > 0 ? pendingCount : null },
     { path: `${urlPrefix}/staff`, label: 'Staff', icon: Users },
     { path: `${urlPrefix}/services`, label: 'Services', icon: Briefcase },
@@ -230,91 +226,21 @@ const TenantLayout = ({ children, title }) => {
         <div className="bg-white border-b border-[#E5E5E5] px-6 py-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-[#0A0A0A]" data-testid="page-title">{title}</h1>
           
-          {/* Header Actions */}
-          <div className="flex items-center gap-2">
-            {/* Help Button */}
-            <div className="relative">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setShowHelp(!showHelp)}
-                className="text-[#666666] hover:text-[#0A0A0A]"
-                data-testid="help-button"
-              >
-                <HelpCircle className="w-5 h-5" />
-              </Button>
-              
-              {showHelp && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowHelp(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-[#E5E5E5] rounded-lg shadow-lg z-50 p-4" data-testid="help-panel">
-                    <h3 className="font-semibold text-[#0A0A0A] mb-3">Quick Help</h3>
-                    <div className="space-y-3 text-sm">
-                      <div className="p-3 bg-[#FAFAFA] rounded-md">
-                        <p className="font-medium text-[#0A0A0A]">📅 Calendar</p>
-                        <p className="text-[#666666] mt-1">Drag appointments to reschedule. Click any slot to create a new booking.</p>
-                      </div>
-                      <div className="p-3 bg-[#FAFAFA] rounded-md">
-                        <p className="font-medium text-[#0A0A0A]">✅ Approvals</p>
-                        <p className="text-[#666666] mt-1">Online bookings need approval. Check the Calendar page for pending requests.</p>
-                      </div>
-                      <div className="p-3 bg-[#FAFAFA] rounded-md">
-                        <p className="font-medium text-[#0A0A0A]">🤖 AI Receptionist</p>
-                        <p className="text-[#666666] mt-1">Moltbot handles customer messages 24/7. View conversations in AI Receptionist.</p>
-                      </div>
-                      <div className="p-3 bg-[#FAFAFA] rounded-md">
-                        <p className="font-medium text-[#0A0A0A]">⚙️ Settings</p>
-                        <p className="text-[#666666] mt-1">Customize branding, notifications, and booking preferences.</p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-            
-            {/* Notification Bell */}
-            <div className="relative">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => {
-                  setShowNotifications(!showNotifications);
-                  if (pendingCount > 0) navigate(`${urlPrefix}/calendar`);
-                }}
-                className="text-[#666666] hover:text-[#0A0A0A] relative"
-                data-testid="notification-bell"
-              >
-                <Bell className="w-5 h-5" />
-                {pendingCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
-                    {pendingCount > 9 ? '9+' : pendingCount}
-                  </span>
-                )}
-              </Button>
-              
-              {showNotifications && pendingCount > 0 && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#E5E5E5] rounded-lg shadow-lg z-50 p-4" data-testid="notifications-panel">
-                    <h3 className="font-semibold text-[#0A0A0A] mb-2">Pending Approvals</h3>
-                    <p className="text-sm text-[#666666] mb-3">
-                      You have {pendingCount} booking{pendingCount > 1 ? 's' : ''} waiting for approval.
-                    </p>
-                    <Button 
-                      className="w-full btn-primary text-sm" 
-                      size="sm"
-                      onClick={() => {
-                        setShowNotifications(false);
-                        navigate(`${urlPrefix}/calendar`);
-                      }}
-                    >
-                      View in Calendar
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          {/* Notification Bell - Simple */}
+          {pendingCount > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => navigate(`${urlPrefix}/calendar`)}
+              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 relative"
+              data-testid="notification-bell"
+            >
+              <Bell className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                {pendingCount > 9 ? '9+' : pendingCount}
+              </span>
+            </Button>
+          )}
         </div>
 
         {/* Page Content */}
