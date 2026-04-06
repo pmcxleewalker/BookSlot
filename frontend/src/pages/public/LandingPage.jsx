@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Calendar, Users, Clock, Bot, Shield, Zap, CheckCircle2, ChevronRight, BarChart3, Palette, FileText, Bell } from 'lucide-react';
+import { ArrowRight, Calendar, Users, Clock, Bot, Shield, Zap, CheckCircle2, ChevronRight, BarChart3, Palette, FileText, Bell, Mail } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 
 const LandingPage = () => {
@@ -40,9 +40,9 @@ const LandingPage = () => {
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/signup">
-              <Button className="btn-primary text-sm" data-testid="signup-btn">Start Free</Button>
-            </Link>
+            <a href="mailto:lee.quickwing@gmail.com">
+              <Button className="btn-primary text-sm" data-testid="contact-btn">Contact Us</Button>
+            </a>
           </div>
         </div>
       </nav>
@@ -65,12 +65,12 @@ const LandingPage = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/signup">
+            <a href="mailto:lee.quickwing@gmail.com">
               <Button className="btn-primary px-8 py-4 text-base flex items-center gap-2" data-testid="cta-primary">
-                Start Free Trial
-                <ArrowRight className="w-4 h-4" />
+                <Mail className="w-4 h-4" />
+                Get in Touch
               </Button>
-            </Link>
+            </a>
             <Link to="/pricing">
               <Button variant="outline" className="btn-secondary px-8 py-4 text-base" data-testid="cta-secondary">
                 View Pricing
@@ -78,105 +78,91 @@ const LandingPage = () => {
             </Link>
           </div>
 
-          <p className="text-sm text-[#666666] mt-6">No credit card required · 14-day free trial</p>
-        </div>
-      </section>
-
-      {/* Trusted By */}
-      <section className="py-16 px-6 bg-[#FAFAFA] border-y border-[#E5E5E5]">
-        <div className="max-w-7xl mx-auto">
-          <p className="text-center text-sm text-[#666666] mb-8">TRUSTED BY 2,000+ BUSINESSES</p>
-          <div className="flex flex-wrap items-center justify-center gap-12 opacity-50">
-            {['Salon Pro', 'MediCare', 'DentaClinic', 'VetFirst', 'ConsultHub'].map((brand) => (
-              <span key={brand} className="text-xl font-semibold text-[#0A0A0A]">{brand}</span>
-            ))}
-          </div>
+          <p className="text-sm text-[#666666] mt-6">
+            Contact us at <a href="mailto:lee.quickwing@gmail.com" className="text-[#E34A33] hover:underline">lee.quickwing@gmail.com</a>
+          </p>
         </div>
       </section>
 
       {/* Features Grid */}
-      <section className="py-24 px-6">
+      <section className="py-24 px-6 bg-[#FAFAFA] border-y border-[#E5E5E5]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="heading-marketing text-4xl md:text-5xl text-[#0A0A0A] mb-4">
-              Everything you need to manage bookings
+              Everything you need
             </h2>
             <p className="text-lg text-[#666666]">
-              Powerful features, simple interface
+              Powerful features to run your appointment-based business
             </p>
           </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature, idx) => {
-              const Icon = feature.icon;
-              return (
-                <div key={idx} className="card-hover" data-testid={`feature-${idx}`}>
-                  <div className="w-12 h-12 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center mb-4">
-                    <Icon className="w-6 h-6 text-[#0A0A0A]" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-[#0A0A0A] mb-2">{feature.title}</h3>
-                  <p className="text-[#666666]">{feature.desc}</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, index) => (
+              <div 
+                key={index} 
+                className="bg-white p-6 rounded-lg border border-[#E5E5E5] hover:border-[#CCCCCC] transition-colors"
+              >
+                <div className="w-12 h-12 bg-[#FAFAFA] rounded-lg flex items-center justify-center mb-4">
+                  <feature.icon className="w-6 h-6 text-[#0A0A0A]" />
                 </div>
-              );
-            })}
+                <h3 className="text-lg font-semibold text-[#0A0A0A] mb-2">{feature.title}</h3>
+                <p className="text-sm text-[#666666]">{feature.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Industries */}
-      <section className="py-24 px-6 bg-[#FAFAFA] border-y border-[#E5E5E5]">
+      <section className="py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="heading-marketing text-4xl md:text-5xl text-[#0A0A0A] mb-4">
-              Built for your industry
+              Built for service businesses
             </h2>
             <p className="text-lg text-[#666666]">
-              Pre-configured templates for quick setup
+              From salons to clinics, BookSlot adapts to your industry
             </p>
           </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {industries.map((industry, idx) => (
-              <div key={idx} className="group cursor-pointer" data-testid={`industry-${idx}`}>
-                <div className="aspect-[4/3] overflow-hidden mb-4 border border-[#E5E5E5]">
-                  <img 
-                    src={industry.image} 
-                    alt={industry.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                </div>
-                <h3 className="font-semibold text-[#0A0A0A] group-hover:text-[#E34A33] transition-colors flex items-center gap-2">
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {industries.map((industry, index) => (
+              <div key={index} className="relative overflow-hidden rounded-lg aspect-square group">
+                <img 
+                  src={industry.image} 
+                  alt={industry.name}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                <div className="absolute bottom-4 left-4 text-white font-semibold text-lg">
                   {industry.name}
-                  <ChevronRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                </h3>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* AI Receptionist CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="bg-[#121212] text-white p-12 md:p-16 relative overflow-hidden">
-            <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-[#4F46E5] rounded-full flex items-center justify-center">
-                  <Bot className="w-6 h-6" />
-                </div>
-                <span className="text-sm font-medium text-[#4F46E5]">MOLTBOT AI</span>
+      {/* AI Receptionist Feature */}
+      <section className="py-24 px-6 bg-[#0A0A0A] text-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="relative p-8 md:p-12 rounded-2xl overflow-hidden">
+            <div className="relative z-10 max-w-xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full mb-6">
+                <Zap className="w-4 h-4 text-yellow-400" />
+                <span className="text-sm">AI-Powered</span>
               </div>
-              <h2 className="heading-marketing text-3xl md:text-4xl mb-4">
-                Your 24/7 AI Receptionist
+              <h2 className="heading-marketing text-4xl md:text-5xl mb-6">
+                Meet Moltbot, your AI receptionist
               </h2>
-              <p className="text-white/70 mb-8 max-w-lg">
-                Let Moltbot handle booking inquiries, check availability, and schedule appointments 
-                automatically. Works via chat, WhatsApp, or your website.
+              <p className="text-lg text-white/70 mb-8">
+                Never miss a booking. Moltbot handles customer inquiries 24/7, 
+                understands context, and books appointments automatically.
               </p>
-              <div className="flex flex-wrap gap-4">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-[#4F46E5]" />
-                  <span className="text-sm">Answers FAQs</span>
+                  <span className="text-sm">Answers FAQs instantly</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-[#4F46E5]" />
@@ -203,13 +189,17 @@ const LandingPage = () => {
             Ready to simplify your bookings?
           </h2>
           <p className="text-lg text-[#666666] mb-10">
-            Join thousands of businesses using BookSlot to manage their appointments.
+            Get in touch to learn how BookSlot can help your business.
           </p>
-          <Link to="/signup">
-            <Button className="btn-accent px-10 py-4 text-base" data-testid="final-cta">
-              Start Your Free Trial
+          <a href="mailto:lee.quickwing@gmail.com">
+            <Button className="btn-accent px-10 py-4 text-base flex items-center gap-2 mx-auto" data-testid="final-cta">
+              <Mail className="w-5 h-5" />
+              Contact Us
             </Button>
-          </Link>
+          </a>
+          <p className="text-sm text-[#666666] mt-6">
+            Email: <a href="mailto:lee.quickwing@gmail.com" className="text-[#E34A33] hover:underline">lee.quickwing@gmail.com</a>
+          </p>
         </div>
       </section>
 
@@ -221,8 +211,8 @@ const LandingPage = () => {
             <div className="flex items-center gap-8 text-sm text-[#666666]">
               <Link to="/features" className="hover:text-[#0A0A0A] transition-colors">Features</Link>
               <Link to="/pricing" className="hover:text-[#0A0A0A] transition-colors">Pricing</Link>
-              <span>Privacy</span>
-              <span>Terms</span>
+              <Link to="/privacy" className="hover:text-[#0A0A0A] transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-[#0A0A0A] transition-colors">Terms of Service</Link>
             </div>
             <div className="flex items-center gap-4">
               <p className="text-sm text-[#666666]">© 2026 BookSlot. All rights reserved.</p>

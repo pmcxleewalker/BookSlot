@@ -31,6 +31,10 @@ import AdminDashboardPage from './pages/superadmin/AdminDashboardPage';
 import AdminTenantsPage from './pages/superadmin/AdminTenantsPage';
 import AdminTenantDetailPage from './pages/superadmin/AdminTenantDetailPage';
 
+// Pages - Legal
+import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/public/TermsOfServicePage';
+
 // Components
 import AuthCallback from './components/auth/AuthCallback';
 import AIReceptionistWidget from './components/AIReceptionistWidget';
@@ -258,6 +262,8 @@ const AppRouter = () => {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/book/:slug" element={<PublicBookingPage />} />
       <Route path="/booking/:confirmationCode" element={<ManageBookingPage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms" element={<TermsOfServicePage />} />
 
       {/* Protected Admin Routes */}
       <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
