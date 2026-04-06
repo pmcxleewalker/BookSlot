@@ -23,6 +23,7 @@ import ReportsPage from './pages/admin/ReportsPage';
 import SettingsPage from './pages/admin/SettingsPage';
 import OnboardingPage from './pages/admin/OnboardingPage';
 import MoltbotPage from './pages/admin/MoltbotPage';
+import NoShowShieldPage from './pages/admin/NoShowShieldPage';
 
 // Pages - Super Admin
 import AdminLoginPage from './pages/superadmin/AdminLoginPage';
@@ -268,6 +269,7 @@ const AppRouter = () => {
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/moltbot" element={<ProtectedRoute><MoltbotPage /></ProtectedRoute>} />
+      <Route path="/no-show-shield" element={<ProtectedRoute><NoShowShieldPage /></ProtectedRoute>} />
 
       {/* Tenant-Scoped Routes - Independent franchise URLs */}
       <Route path="/:tenantSlug/login" element={<TenantLoginPage />} />
@@ -279,6 +281,7 @@ const AppRouter = () => {
       <Route path="/:tenantSlug/reports" element={<TenantScopedRoute><ReportsPage /></TenantScopedRoute>} />
       <Route path="/:tenantSlug/settings" element={<TenantScopedRoute><SettingsPage /></TenantScopedRoute>} />
       <Route path="/:tenantSlug/moltbot" element={<TenantScopedRoute><MoltbotPage /></TenantScopedRoute>} />
+      <Route path="/:tenantSlug/no-show-shield" element={<TenantScopedRoute><NoShowShieldPage /></TenantScopedRoute>} />
 
       {/* Super Admin Routes */}
       <Route path="/admin" element={<AdminLoginPage />} />

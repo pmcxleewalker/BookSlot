@@ -1,0 +1,1 @@
+PWA icons will use the logo_url from tenant branding

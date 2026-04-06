@@ -262,7 +262,18 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - [x] Click any day in Week/Month to drill down to Day view
   - [x] Click time slot in Week view to create appointment
   - [x] Appointment badges in Month view (confirmed/pending counts)
-- [x] All 17 backend tests passing (100%)
+- [x] **No-Show Shield System (April 6, 2026):**
+  - [x] AI Risk Scoring Engine (backend) - Analyzes client history, booking patterns, day/time factors
+  - [x] At-Risk Appointments Dashboard - Shows high/medium risk bookings for next 7 days
+  - [x] Risk score visualization (0-100 scale with color-coded bars)
+  - [x] Risk factors display (e.g., "first_time_client", "monday_morning", "far_advance_booking")
+  - [x] Waitlist Management - Add/remove clients waiting for cancellations
+  - [x] Smart Waitlist Matching - Auto-finds waitlist clients that match cancelled slots
+  - [x] PWA Push Notification infrastructure (manifest, service worker)
+  - [x] Push subscription endpoints for customer app install
+  - [x] Send reminder button to notify at-risk clients
+  - [x] Mark as No-Show tracking for future risk calculations
+- [x] All backend tests passing
 
 ## Moltbot AI Activation Guide (When Ready)
 To activate Moltbot for incoming SMS/Email:

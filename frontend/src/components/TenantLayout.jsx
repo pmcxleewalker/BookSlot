@@ -15,7 +15,8 @@ import {
   ChevronDown,
   Bot,
   Bell,
-  Clock
+  Clock,
+  Shield
 } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -51,6 +52,7 @@ const TenantLayout = ({ children, title }) => {
   const navItems = [
     { path: `${urlPrefix}/dashboard`, label: 'Today', icon: Clock },
     { path: `${urlPrefix}/calendar`, label: 'Calendar', icon: Calendar, badge: pendingCount > 0 ? pendingCount : null },
+    { path: `${urlPrefix}/no-show-shield`, label: 'No-Show Shield', icon: Shield },
     { path: `${urlPrefix}/staff`, label: 'Staff', icon: Users },
     { path: `${urlPrefix}/services`, label: 'Services', icon: Briefcase },
     { path: `${urlPrefix}/clients`, label: 'Clients', icon: UserCircle },

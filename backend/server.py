@@ -458,6 +458,51 @@ class Webhook(BaseModel):
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# ================== NO-SHOW SHIELD MODELS ==================
+
+class RiskLevel(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+class WaitlistStatus(str, Enum):
+    ACTIVE = "active"
+    PROMOTED = "promoted"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+class WaitlistEntry(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    waitlist_id: str = Field(default_factory=lambda: f"wl_{uuid.uuid4().hex[:12]}")
+    tenant_id: str
+    client_name: str
+    client_email: Optional[str] = None
+    client_phone: Optional[str] = None
+    service_id: Optional[str] = None
+    preferred_staff_id: Optional[str] = None
+    preferred_dates: List[str] = Field(default_factory=list)  # YYYY-MM-DD
+    preferred_times: List[str] = Field(default_factory=list)  # HH:MM
+    flexible_dates: bool = True
+    flexible_times: bool = True
+    notes: Optional[str] = None
+    status: WaitlistStatus = WaitlistStatus.ACTIVE
+    promoted_to_appointment_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    notified_at: Optional[datetime] = None
+
+class PushSubscription(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    subscription_id: str = Field(default_factory=lambda: f"push_{uuid.uuid4().hex[:12]}")
+    tenant_id: str
+    client_id: Optional[str] = None
+    appointment_id: Optional[str] = None
+    endpoint: str
+    keys: Dict[str, str]  # p256dh, auth
+    client_name: Optional[str] = None
+    client_phone: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_used: Optional[datetime] = None
+
 # ================== HELPER FUNCTIONS ==================
 
 def hash_password(password: str) -> str:
@@ -526,6 +571,200 @@ async def verify_tenant_access(user: Dict[str, Any], tenant_id: str) -> bool:
     if user.get("tenant_id") != tenant_id:
         raise HTTPException(status_code=403, detail="Access denied to this tenant")
     return True
+
+# ================== NO-SHOW SHIELD - RISK SCORING ENGINE ==================
+
+async def calculate_risk_score(tenant_id: str, appointment_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    AI-powered risk scoring for no-shows.
+    Analyzes multiple factors to predict probability of no-show.
+    Returns: {score: 0-100, level: low/medium/high, factors: [...]}
+    """
+    risk_factors = []
+    base_score = 0
+    
+    client_email = appointment_data.get("client_email")
+    client_phone = appointment_data.get("client_phone")
+    client_name = appointment_data.get("client_name", "")
+    start_time = appointment_data.get("start_time")
+    service_id = appointment_data.get("service_id")
+    staff_id = appointment_data.get("staff_id")
+    
+    # Convert start_time to datetime if string
+    if isinstance(start_time, str):
+        start_time = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+    
+    # 1. Client History Analysis (most important factor)
+    if client_email or client_phone:
+        query = {"tenant_id": tenant_id}
+        if client_email:
+            query["client_email"] = client_email
+        elif client_phone:
+            query["client_phone"] = client_phone
+        
+        # Get client's appointment history
+        past_appointments = await db.appointments.find(query, {"_id": 0}).to_list(100)
+        
+        if len(past_appointments) > 0:
+            # Calculate no-show rate
+            total = len(past_appointments)
+            no_shows = sum(1 for a in past_appointments if a.get("status") == "no_show")
+            cancelled_late = sum(1 for a in past_appointments if a.get("status") == "cancelled" and a.get("cancelled_late", False))
+            
+            no_show_rate = (no_shows + cancelled_late * 0.5) / total
+            
+            if no_show_rate > 0.3:
+                base_score += 40
+                risk_factors.append({"factor": "high_no_show_history", "impact": 40, "detail": f"{int(no_show_rate*100)}% no-show rate"})
+            elif no_show_rate > 0.15:
+                base_score += 25
+                risk_factors.append({"factor": "moderate_no_show_history", "impact": 25, "detail": f"{int(no_show_rate*100)}% no-show rate"})
+            elif no_show_rate > 0:
+                base_score += 10
+                risk_factors.append({"factor": "some_no_show_history", "impact": 10, "detail": f"{int(no_show_rate*100)}% no-show rate"})
+            
+            # Check if loyal client (reduces risk)
+            if total >= 5 and no_show_rate < 0.1:
+                base_score -= 15
+                risk_factors.append({"factor": "loyal_client", "impact": -15, "detail": f"{total} visits, excellent history"})
+        else:
+            # First-time client - moderate risk
+            base_score += 15
+            risk_factors.append({"factor": "first_time_client", "impact": 15, "detail": "No booking history"})
+    else:
+        # No contact info - high risk
+        base_score += 20
+        risk_factors.append({"factor": "no_contact_info", "impact": 20, "detail": "Cannot send reminders"})
+    
+    # 2. Day of Week Analysis
+    if start_time:
+        day_of_week = start_time.weekday()
+        
+        # Monday mornings and Friday evenings have higher no-show rates
+        if day_of_week == 0 and start_time.hour < 11:  # Monday morning
+            base_score += 10
+            risk_factors.append({"factor": "monday_morning", "impact": 10, "detail": "Higher no-show day/time"})
+        elif day_of_week == 4 and start_time.hour >= 17:  # Friday evening
+            base_score += 8
+            risk_factors.append({"factor": "friday_evening", "impact": 8, "detail": "Weekend plans often interfere"})
+    
+    # 3. Lead Time Analysis (how far in advance was booking made)
+    if start_time:
+        now = datetime.now(timezone.utc)
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
+        days_until = (start_time - now).days
+        
+        if days_until > 30:
+            base_score += 20
+            risk_factors.append({"factor": "far_advance_booking", "impact": 20, "detail": f"Booked {days_until} days ahead"})
+        elif days_until > 14:
+            base_score += 10
+            risk_factors.append({"factor": "advance_booking", "impact": 10, "detail": f"Booked {days_until} days ahead"})
+    
+    # 4. Time of Day Analysis
+    if start_time:
+        hour = start_time.hour
+        if hour < 9:  # Early morning
+            base_score += 8
+            risk_factors.append({"factor": "early_appointment", "impact": 8, "detail": "Before 9 AM"})
+        elif hour >= 19:  # Late evening
+            base_score += 5
+            risk_factors.append({"factor": "late_appointment", "impact": 5, "detail": "After 7 PM"})
+    
+    # 5. Booking Source Analysis
+    source = appointment_data.get("source", "online")
+    if source == "online":
+        base_score += 5
+        risk_factors.append({"factor": "online_booking", "impact": 5, "detail": "Online bookings have slightly higher no-show rate"})
+    elif source == "admin":
+        base_score -= 5
+        risk_factors.append({"factor": "staff_booking", "impact": -5, "detail": "Staff-created bookings are more reliable"})
+    
+    # 6. Service-specific analysis
+    if service_id:
+        # Check historical no-show rate for this service
+        service_appointments = await db.appointments.find({
+            "tenant_id": tenant_id,
+            "service_id": service_id,
+            "status": {"$in": ["completed", "no_show", "cancelled"]}
+        }, {"_id": 0}).to_list(200)
+        
+        if len(service_appointments) >= 10:
+            service_no_shows = sum(1 for a in service_appointments if a.get("status") == "no_show")
+            service_no_show_rate = service_no_shows / len(service_appointments)
+            
+            if service_no_show_rate > 0.2:
+                base_score += 10
+                risk_factors.append({"factor": "high_risk_service", "impact": 10, "detail": f"Service has {int(service_no_show_rate*100)}% no-show rate"})
+    
+    # Ensure score is between 0-100
+    final_score = max(0, min(100, base_score))
+    
+    # Determine risk level
+    if final_score >= 50:
+        risk_level = "high"
+    elif final_score >= 25:
+        risk_level = "medium"
+    else:
+        risk_level = "low"
+    
+    return {
+        "score": final_score,
+        "level": risk_level,
+        "factors": risk_factors
+    }
+
+async def auto_promote_waitlist(tenant_id: str, appointment: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    When a high-risk appointment is detected, find matching waitlist entries
+    and notify them about potential availability.
+    """
+    start_time = appointment.get("start_time")
+    service_id = appointment.get("service_id")
+    staff_id = appointment.get("staff_id")
+    
+    if isinstance(start_time, str):
+        start_time = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+    
+    appointment_date = start_time.strftime("%Y-%m-%d") if start_time else None
+    appointment_time = start_time.strftime("%H:%M") if start_time else None
+    
+    # Find matching waitlist entries
+    query = {
+        "tenant_id": tenant_id,
+        "status": "active"
+    }
+    
+    waitlist_entries = await db.waitlist.find(query, {"_id": 0}).to_list(50)
+    
+    matches = []
+    for entry in waitlist_entries:
+        score = 0
+        
+        # Check date match
+        if entry.get("flexible_dates") or (appointment_date and appointment_date in entry.get("preferred_dates", [])):
+            score += 30
+        
+        # Check time match
+        if entry.get("flexible_times") or (appointment_time and appointment_time in entry.get("preferred_times", [])):
+            score += 20
+        
+        # Check service match
+        if not entry.get("service_id") or entry.get("service_id") == service_id:
+            score += 25
+        
+        # Check staff match
+        if not entry.get("preferred_staff_id") or entry.get("preferred_staff_id") == staff_id:
+            score += 25
+        
+        if score >= 50:  # Good enough match
+            matches.append({"entry": entry, "match_score": score})
+    
+    # Sort by match score
+    matches.sort(key=lambda x: x["match_score"], reverse=True)
+    
+    return matches[0]["entry"] if matches else None
 
 # ================== AUTH ENDPOINTS ==================
 
@@ -3362,6 +3601,419 @@ async def retry_webhook_delivery(webhook: Dict, payload: Dict, signature: str, d
     """Retry webhook delivery after a delay"""
     await asyncio.sleep(delay)
     await attempt_webhook_delivery(webhook, payload, signature, delivery_id, attempt)
+
+# ================== NO-SHOW SHIELD - RISK MANAGEMENT ==================
+
+@api_router.get("/risk/at-risk-appointments")
+async def get_at_risk_appointments(user: Dict = Depends(get_current_user)):
+    """Get all appointments with high/medium risk scores"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    tenant_id = user["tenant_id"]
+    
+    # Get upcoming appointments (next 7 days)
+    now = datetime.now(timezone.utc)
+    week_ahead = now + timedelta(days=7)
+    
+    appointments = await db.appointments.find({
+        "tenant_id": tenant_id,
+        "status": {"$in": ["pending", "confirmed"]},
+        "start_time": {"$gte": now.isoformat(), "$lte": week_ahead.isoformat()}
+    }, {"_id": 0}).to_list(200)
+    
+    at_risk = []
+    for appt in appointments:
+        # Calculate risk if not already calculated
+        if "risk_score" not in appt:
+            risk = await calculate_risk_score(tenant_id, appt)
+            appt["risk_score"] = risk["score"]
+            appt["risk_level"] = risk["level"]
+            appt["risk_factors"] = risk["factors"]
+            
+            # Update in database
+            await db.appointments.update_one(
+                {"appointment_id": appt["appointment_id"]},
+                {"$set": {
+                    "risk_score": risk["score"],
+                    "risk_level": risk["level"],
+                    "risk_factors": risk["factors"]
+                }}
+            )
+        
+        if appt.get("risk_level") in ["medium", "high"]:
+            at_risk.append(appt)
+    
+    # Sort by risk score (highest first)
+    at_risk.sort(key=lambda x: x.get("risk_score", 0), reverse=True)
+    
+    # Get staff and service names for display
+    staff_map = {}
+    service_map = {}
+    staff_list = await db.staff.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(100)
+    service_list = await db.services.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(100)
+    for s in staff_list:
+        staff_map[s["staff_id"]] = s["name"]
+    for s in service_list:
+        service_map[s["service_id"]] = s["name"]
+    
+    for appt in at_risk:
+        appt["staff_name"] = staff_map.get(appt.get("staff_id"), "Unknown")
+        appt["service_name"] = service_map.get(appt.get("service_id"), "Unknown")
+    
+    return {
+        "at_risk_appointments": at_risk,
+        "total_count": len(at_risk),
+        "high_risk_count": sum(1 for a in at_risk if a.get("risk_level") == "high"),
+        "medium_risk_count": sum(1 for a in at_risk if a.get("risk_level") == "medium")
+    }
+
+@api_router.post("/risk/calculate/{appointment_id}")
+async def calculate_appointment_risk(appointment_id: str, user: Dict = Depends(get_current_user)):
+    """Calculate or recalculate risk score for a specific appointment"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    appointment = await db.appointments.find_one({
+        "appointment_id": appointment_id,
+        "tenant_id": user["tenant_id"]
+    }, {"_id": 0})
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    risk = await calculate_risk_score(user["tenant_id"], appointment)
+    
+    # Update appointment with risk data
+    await db.appointments.update_one(
+        {"appointment_id": appointment_id},
+        {"$set": {
+            "risk_score": risk["score"],
+            "risk_level": risk["level"],
+            "risk_factors": risk["factors"],
+            "risk_calculated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "appointment_id": appointment_id,
+        "risk": risk
+    }
+
+@api_router.post("/risk/mark-no-show/{appointment_id}")
+async def mark_appointment_no_show(appointment_id: str, user: Dict = Depends(get_current_user)):
+    """Mark an appointment as no-show (for tracking)"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    result = await db.appointments.update_one(
+        {"appointment_id": appointment_id, "tenant_id": user["tenant_id"]},
+        {"$set": {
+            "status": "no_show",
+            "no_show_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    return {"message": "Marked as no-show", "status": "no_show"}
+
+# ================== WAITLIST MANAGEMENT ==================
+
+@api_router.get("/waitlist")
+async def get_waitlist(user: Dict = Depends(get_current_user)):
+    """Get all active waitlist entries"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    entries = await db.waitlist.find({
+        "tenant_id": user["tenant_id"],
+        "status": "active"
+    }, {"_id": 0}).to_list(100)
+    
+    return {"waitlist": entries, "total": len(entries)}
+
+@api_router.post("/waitlist")
+async def add_to_waitlist(entry_data: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Add a client to the waitlist"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    entry = WaitlistEntry(
+        tenant_id=user["tenant_id"],
+        client_name=entry_data.get("client_name", ""),
+        client_email=entry_data.get("client_email"),
+        client_phone=entry_data.get("client_phone"),
+        service_id=entry_data.get("service_id"),
+        preferred_staff_id=entry_data.get("preferred_staff_id"),
+        preferred_dates=entry_data.get("preferred_dates", []),
+        preferred_times=entry_data.get("preferred_times", []),
+        flexible_dates=entry_data.get("flexible_dates", True),
+        flexible_times=entry_data.get("flexible_times", True),
+        notes=entry_data.get("notes")
+    )
+    
+    entry_dict = entry.model_dump()
+    entry_dict["created_at"] = entry_dict["created_at"].isoformat()
+    
+    await db.waitlist.insert_one({**entry_dict})
+    
+    return {"message": "Added to waitlist", "waitlist_entry": entry_dict}
+
+@api_router.post("/waitlist/{waitlist_id}/promote")
+async def promote_waitlist_entry(waitlist_id: str, appointment_data: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Promote a waitlist entry to a confirmed appointment"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    # Get waitlist entry
+    entry = await db.waitlist.find_one({
+        "waitlist_id": waitlist_id,
+        "tenant_id": user["tenant_id"],
+        "status": "active"
+    }, {"_id": 0})
+    
+    if not entry:
+        raise HTTPException(status_code=404, detail="Waitlist entry not found")
+    
+    # Create the appointment
+    appointment_id = f"appt_{uuid.uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc)
+    
+    appointment = {
+        "appointment_id": appointment_id,
+        "tenant_id": user["tenant_id"],
+        "service_id": appointment_data.get("service_id") or entry.get("service_id"),
+        "staff_id": appointment_data.get("staff_id") or entry.get("preferred_staff_id"),
+        "client_name": entry["client_name"],
+        "client_email": entry.get("client_email"),
+        "client_phone": entry.get("client_phone"),
+        "start_time": appointment_data["start_time"],
+        "end_time": appointment_data["end_time"],
+        "status": "confirmed",
+        "source": "waitlist",
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+        "notes": f"Promoted from waitlist. Original notes: {entry.get('notes', '')}"
+    }
+    
+    await db.appointments.insert_one({**appointment})
+    
+    # Update waitlist entry status
+    await db.waitlist.update_one(
+        {"waitlist_id": waitlist_id},
+        {"$set": {
+            "status": "promoted",
+            "promoted_to_appointment_id": appointment_id,
+            "promoted_at": now.isoformat()
+        }}
+    )
+    
+    return {
+        "message": "Promoted to appointment",
+        "appointment_id": appointment_id,
+        "appointment": appointment
+    }
+
+@api_router.delete("/waitlist/{waitlist_id}")
+async def remove_from_waitlist(waitlist_id: str, user: Dict = Depends(get_current_user)):
+    """Remove an entry from the waitlist"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    result = await db.waitlist.update_one(
+        {"waitlist_id": waitlist_id, "tenant_id": user["tenant_id"]},
+        {"$set": {"status": "cancelled"}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Waitlist entry not found")
+    
+    return {"message": "Removed from waitlist"}
+
+@api_router.get("/waitlist/matches/{appointment_id}")
+async def find_waitlist_matches(appointment_id: str, user: Dict = Depends(get_current_user)):
+    """Find waitlist entries that match a specific appointment slot"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    appointment = await db.appointments.find_one({
+        "appointment_id": appointment_id,
+        "tenant_id": user["tenant_id"]
+    }, {"_id": 0})
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Find matching waitlist entries
+    match = await auto_promote_waitlist(user["tenant_id"], appointment)
+    
+    if match:
+        return {"match_found": True, "waitlist_entry": match}
+    return {"match_found": False, "waitlist_entry": None}
+
+# ================== PUSH NOTIFICATIONS (PWA) ==================
+
+@api_router.post("/push/subscribe")
+async def subscribe_push_notifications(subscription_data: Dict[str, Any]):
+    """Subscribe a client to push notifications (PWA)"""
+    tenant_id = subscription_data.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID required")
+    
+    subscription = PushSubscription(
+        tenant_id=tenant_id,
+        client_id=subscription_data.get("client_id"),
+        appointment_id=subscription_data.get("appointment_id"),
+        endpoint=subscription_data["endpoint"],
+        keys=subscription_data["keys"],
+        client_name=subscription_data.get("client_name"),
+        client_phone=subscription_data.get("client_phone")
+    )
+    
+    sub_dict = subscription.model_dump()
+    sub_dict["created_at"] = sub_dict["created_at"].isoformat()
+    
+    # Check if endpoint already exists
+    existing = await db.push_subscriptions.find_one({"endpoint": subscription.endpoint}, {"_id": 0})
+    if existing:
+        # Update existing
+        await db.push_subscriptions.update_one(
+            {"endpoint": subscription.endpoint},
+            {"$set": sub_dict}
+        )
+        return {"message": "Subscription updated", "subscription_id": existing["subscription_id"]}
+    
+    await db.push_subscriptions.insert_one({**sub_dict})
+    
+    return {"message": "Subscribed to notifications", "subscription_id": subscription.subscription_id}
+
+@api_router.delete("/push/unsubscribe")
+async def unsubscribe_push_notifications(endpoint: str = Query(...)):
+    """Unsubscribe from push notifications"""
+    result = await db.push_subscriptions.delete_one({"endpoint": endpoint})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    
+    return {"message": "Unsubscribed from notifications"}
+
+@api_router.post("/push/send-reminder")
+async def send_push_reminder(reminder_data: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Send a push notification reminder to a client (admin action)"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    appointment_id = reminder_data.get("appointment_id")
+    if not appointment_id:
+        raise HTTPException(status_code=400, detail="Appointment ID required")
+    
+    # Get appointment details
+    appointment = await db.appointments.find_one({
+        "appointment_id": appointment_id,
+        "tenant_id": user["tenant_id"]
+    }, {"_id": 0})
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Find push subscription for this appointment or client
+    subscription = await db.push_subscriptions.find_one({
+        "$or": [
+            {"appointment_id": appointment_id},
+            {"client_phone": appointment.get("client_phone")},
+            {"client_id": appointment.get("client_id")}
+        ],
+        "tenant_id": user["tenant_id"]
+    }, {"_id": 0})
+    
+    if not subscription:
+        return {
+            "message": "No push subscription found for this client",
+            "sent": False,
+            "install_link": f"/book/{user['tenant_id']}?install=true"
+        }
+    
+    # Get tenant for branding
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    
+    # Get service name
+    service = await db.services.find_one({"service_id": appointment.get("service_id")}, {"_id": 0})
+    service_name = service.get("name", "Appointment") if service else "Appointment"
+    
+    # Format notification payload
+    start_time = appointment.get("start_time")
+    if isinstance(start_time, str):
+        start_time = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+    
+    notification_payload = {
+        "title": f"Reminder: {service_name}",
+        "body": f"You have a booking on {start_time.strftime('%A, %B %d')} at {start_time.strftime('%I:%M %p')}",
+        "icon": tenant.get("logo_url", "/icon-192.png"),
+        "badge": "/badge-72.png",
+        "tag": f"reminder-{appointment_id}",
+        "data": {
+            "appointment_id": appointment_id,
+            "url": f"/booking/confirm/{appointment_id}"
+        },
+        "actions": [
+            {"action": "confirm", "title": "Confirm"},
+            {"action": "reschedule", "title": "Reschedule"}
+        ]
+    }
+    
+    # Record notification attempt
+    await db.push_notifications.insert_one({
+        "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
+        "tenant_id": user["tenant_id"],
+        "appointment_id": appointment_id,
+        "subscription_id": subscription["subscription_id"],
+        "payload": notification_payload,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "message": "Push notification queued",
+        "sent": True,
+        "payload": notification_payload,
+        "subscription_id": subscription["subscription_id"]
+    }
+
+@api_router.get("/push/vapid-key")
+async def get_vapid_public_key():
+    """Get VAPID public key for push notification subscription"""
+    # In production, this should be a proper VAPID key pair
+    # For now, return a placeholder - the frontend can use it to subscribe
+    vapid_public_key = os.environ.get("VAPID_PUBLIC_KEY", "")
+    
+    return {
+        "public_key": vapid_public_key,
+        "enabled": bool(vapid_public_key)
+    }
+
+@api_router.get("/push/app-install-link/{tenant_slug}")
+async def get_app_install_link(tenant_slug: str):
+    """Get the PWA install link for a tenant's booking app"""
+    tenant = await db.tenants.find_one({
+        "$or": [
+            {"booking_url_slug": tenant_slug},
+            {"tenant_id": tenant_slug}
+        ]
+    }, {"_id": 0})
+    
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    base_url = os.environ.get("REACT_APP_BACKEND_URL", "")
+    install_url = f"{base_url}/book/{tenant.get('booking_url_slug', tenant['tenant_id'])}?install=true"
+    
+    return {
+        "install_url": install_url,
+        "business_name": tenant["name"],
+        "logo_url": tenant.get("logo_url")
+    }
 
 # ================== AI RECEPTIONIST API (MOLTBOT) ==================
 
