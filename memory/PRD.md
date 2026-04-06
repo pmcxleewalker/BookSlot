@@ -243,7 +243,6 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - [x] Approval workflow for all online bookings (Approve/Reject buttons)
 - [x] Pending approvals panel merged into Calendar page
 - [x] Notification bell with pending count badge
-- [x] Help button with quick tips panel (removed - simplified)
 - [x] Logo file upload from device (PNG, JPEG, WebP, SVG)
 - [x] Navigation cleanup (removed Resources, Forms, Messages, Integrations)
 - [x] Fixed datetime comparison bug in booking validation
@@ -251,12 +250,18 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - [x] Renamed Dashboard → "Today" with focus on today's bookings
   - [x] Large clock display + appointment count
   - [x] Quick "New Appointment" button on Today page
-  - [x] Simplified Calendar to day-view (not week-view)
-  - [x] Pending approvals show ALL bookings across all days with dates
-  - [x] Quick approve/reject with date visibility (e.g., "Mar 23")
   - [x] "Done" button to mark appointments as completed
   - [x] In-progress, upcoming, and completed sections
   - [x] Contact icons (phone/email) for quick client communication
+- [x] **Calendar Views Enhancement (April 6, 2026):**
+  - [x] Day view (list format) - Quick appointment turnover
+  - [x] Week view (7-day time grid) - Plan the week ahead
+  - [x] Month view (calendar grid) - Long-term planning
+  - [x] Staff filter dropdown - View individual staff calendars
+  - [x] Navigation: Previous/Next/Today buttons
+  - [x] Click any day in Week/Month to drill down to Day view
+  - [x] Click time slot in Week view to create appointment
+  - [x] Appointment badges in Month view (confirmed/pending counts)
 - [x] All 17 backend tests passing (100%)
 
 ## Moltbot AI Activation Guide (When Ready)

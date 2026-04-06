@@ -8,18 +8,28 @@ import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Plus, X, Clock, AlertCircle, Check, User, Phone, Mail } from 'lucide-react';
-import { format, addDays, subDays, isSameDay, parseISO, addMinutes, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
+import { 
+  ChevronLeft, ChevronRight, Plus, X, Clock, AlertCircle, Check, 
+  Phone, Mail, Calendar as CalendarIcon, Users, List
+} from 'lucide-react';
+import { 
+  format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths,
+  startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval,
+  isSameDay, isSameMonth, parseISO, addMinutes, differenceInMinutes, isToday
+} from 'date-fns';
 
 const CalendarPage = () => {
   const { token } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState('day'); // day, week, month
+  const [selectedStaff, setSelectedStaff] = useState('all');
   const [appointments, setAppointments] = useState([]);
   const [staff, setStaff] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
   const [showPendingPanel, setShowPendingPanel] = useState(true);
+  const [newApptDate, setNewApptDate] = useState(null);
   
   const [newAppt, setNewAppt] = useState({
     service_id: '',
@@ -36,7 +46,7 @@ const CalendarPage = () => {
   useEffect(() => {
     fetchData();
     fetchAllPending();
-  }, [selectedDate]);
+  }, [selectedDate, viewMode]);
 
   const fetchAllPending = async () => {
     try {
@@ -53,10 +63,26 @@ const CalendarPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      let startDate, endDate;
+      
+      if (viewMode === 'day') {
+        startDate = format(selectedDate, 'yyyy-MM-dd');
+        endDate = startDate + 'T23:59:59';
+      } else if (viewMode === 'week') {
+        const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+        startDate = format(weekStart, 'yyyy-MM-dd');
+        endDate = format(weekEnd, 'yyyy-MM-dd') + 'T23:59:59';
+      } else {
+        const monthStart = startOfMonth(selectedDate);
+        const monthEnd = endOfMonth(selectedDate);
+        startDate = format(monthStart, 'yyyy-MM-dd');
+        endDate = format(monthEnd, 'yyyy-MM-dd') + 'T23:59:59';
+      }
+
       const [apptRes, staffRes, servicesRes] = await Promise.all([
         axios.get(`${API}/appointments`, {
-          params: { start_date: dateStr, end_date: dateStr + 'T23:59:59' },
+          params: { start_date: startDate, end_date: endDate },
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${API}/staff`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -76,14 +102,36 @@ const CalendarPage = () => {
     }
   };
 
-  const handlePrevDay = () => setSelectedDate(subDays(selectedDate, 1));
-  const handleNextDay = () => setSelectedDate(addDays(selectedDate, 1));
+  // Navigation handlers
+  const handlePrev = () => {
+    if (viewMode === 'day') setSelectedDate(subDays(selectedDate, 1));
+    else if (viewMode === 'week') setSelectedDate(subWeeks(selectedDate, 1));
+    else setSelectedDate(subMonths(selectedDate, 1));
+  };
+  
+  const handleNext = () => {
+    if (viewMode === 'day') setSelectedDate(addDays(selectedDate, 1));
+    else if (viewMode === 'week') setSelectedDate(addWeeks(selectedDate, 1));
+    else setSelectedDate(addMonths(selectedDate, 1));
+  };
+  
   const handleToday = () => setSelectedDate(new Date());
 
-  // Today's appointments by status
-  const confirmedAppointments = appointments.filter(a => a.status === 'confirmed');
-  const completedAppointments = appointments.filter(a => a.status === 'completed');
-  const todayPendingAppointments = appointments.filter(a => a.status === 'pending');
+  // Filter appointments by staff
+  const filteredAppointments = selectedStaff === 'all' 
+    ? appointments 
+    : appointments.filter(a => a.staff_id === selectedStaff);
+
+  // Get appointments for a specific day
+  const getAppointmentsForDay = (date) => {
+    return filteredAppointments.filter(a => 
+      isSameDay(parseISO(a.start_time), date)
+    );
+  };
+
+  // Categorize today's appointments
+  const confirmedAppointments = filteredAppointments.filter(a => a.status === 'confirmed');
+  const completedAppointments = filteredAppointments.filter(a => a.status === 'completed');
 
   const handleApprove = async (appointmentId) => {
     try {
@@ -123,6 +171,11 @@ const CalendarPage = () => {
     }
   };
 
+  const openNewAppointment = (date = selectedDate) => {
+    setNewApptDate(date);
+    setShowNewAppointment(true);
+  };
+
   const handleCreateAppointment = async () => {
     if (!newAppt.service_id || !newAppt.staff_id || !newAppt.client_name || !newAppt.time) {
       toast.error('Please fill all required fields');
@@ -131,7 +184,7 @@ const CalendarPage = () => {
 
     try {
       const service = services.find(s => s.service_id === newAppt.service_id);
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const dateStr = format(newApptDate || selectedDate, 'yyyy-MM-dd');
       const startTime = `${dateStr}T${newAppt.time}:00`;
       const endTime = format(addMinutes(parseISO(startTime), service?.duration || 30), "yyyy-MM-dd'T'HH:mm:ss");
 
@@ -144,7 +197,7 @@ const CalendarPage = () => {
         start_time: startTime,
         end_time: endTime,
         notes: newAppt.notes,
-        status: 'confirmed' // Admin-created = auto-confirmed
+        status: 'confirmed'
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -158,51 +211,107 @@ const CalendarPage = () => {
     }
   };
 
-  const isToday = isSameDay(selectedDate, new Date());
+  // Get header text based on view mode
+  const getHeaderText = () => {
+    if (viewMode === 'day') return format(selectedDate, 'EEEE, MMMM d, yyyy');
+    if (viewMode === 'week') {
+      const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+      return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`;
+    }
+    return format(selectedDate, 'MMMM yyyy');
+  };
 
   return (
     <TenantLayout title="Calendar">
-      <div className="max-w-3xl mx-auto">
-        {/* Date Navigation */}
-        <div className="flex items-center justify-between mb-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Controls Row */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          {/* Navigation */}
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrevDay} data-testid="prev-day">
+            <Button variant="outline" size="sm" onClick={handlePrev} data-testid="prev-btn">
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <Button 
-              variant={isToday ? "default" : "outline"} 
+              variant={isToday(selectedDate) ? "default" : "outline"} 
               size="sm" 
               onClick={handleToday}
-              className={isToday ? "btn-primary" : ""}
+              className={isToday(selectedDate) ? "btn-primary" : ""}
               data-testid="today-btn"
             >
               Today
             </Button>
-            <Button variant="outline" size="sm" onClick={handleNextDay} data-testid="next-day">
+            <Button variant="outline" size="sm" onClick={handleNext} data-testid="next-btn">
               <ChevronRight className="w-4 h-4" />
             </Button>
+            
+            <span className="ml-4 text-lg font-semibold text-[#0A0A0A]">
+              {getHeaderText()}
+            </span>
           </div>
           
-          <div className="text-center">
-            <p className="text-2xl font-semibold text-[#0A0A0A]">
-              {format(selectedDate, 'EEEE')}
-            </p>
-            <p className="text-sm text-[#666]">
-              {format(selectedDate, 'MMMM d, yyyy')}
-            </p>
+          {/* View Toggle & Staff Filter */}
+          <div className="flex items-center gap-3">
+            {/* Staff Filter */}
+            <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+              <SelectTrigger className="w-[160px]" data-testid="staff-filter">
+                <Users className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="All Staff" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Staff</SelectItem>
+                {staff.map((member) => (
+                  <SelectItem key={member.staff_id} value={member.staff_id}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* View Toggle */}
+            <div className="flex bg-[#F5F5F5] rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('day')}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  viewMode === 'day' ? 'bg-white shadow text-[#0A0A0A]' : 'text-[#666]'
+                }`}
+                data-testid="view-day"
+              >
+                <List className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('week')}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  viewMode === 'week' ? 'bg-white shadow text-[#0A0A0A]' : 'text-[#666]'
+                }`}
+                data-testid="view-week"
+              >
+                Week
+              </button>
+              <button
+                onClick={() => setViewMode('month')}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  viewMode === 'month' ? 'bg-white shadow text-[#0A0A0A]' : 'text-[#666]'
+                }`}
+                data-testid="view-month"
+              >
+                Month
+              </button>
+            </div>
+            
+            {/* Add Button */}
+            <Button 
+              onClick={() => openNewAppointment()} 
+              className="btn-primary"
+              data-testid="new-appointment-btn"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add
+            </Button>
           </div>
-          
-          <Button 
-            onClick={() => setShowNewAppointment(true)} 
-            className="btn-primary"
-            data-testid="new-appointment-btn"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add
-          </Button>
         </div>
 
-        {/* Pending Approvals - All (not just today) */}
+        {/* Pending Approvals - All */}
         {allPendingAppts.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg mb-6 overflow-hidden">
             <button 
@@ -219,15 +328,13 @@ const CalendarPage = () => {
             </button>
             
             {showPendingPanel && (
-              <div className="border-t border-amber-200 divide-y divide-amber-100 max-h-72 overflow-y-auto">
+              <div className="border-t border-amber-200 divide-y divide-amber-100 max-h-48 overflow-y-auto">
                 {allPendingAppts.map((appt) => (
-                  <AppointmentRow 
+                  <PendingRow 
                     key={appt.appointment_id}
                     appt={appt}
                     staff={staff}
                     services={services}
-                    isPending
-                    showDate
                     onApprove={() => handleApprove(appt.appointment_id)}
                     onReject={() => handleReject(appt.appointment_id)}
                   />
@@ -237,56 +344,39 @@ const CalendarPage = () => {
           </div>
         )}
 
-        {/* Confirmed Appointments */}
+        {/* Calendar Views */}
         {loading ? (
           <div className="text-center py-12 text-[#666]">Loading...</div>
-        ) : confirmedAppointments.length === 0 && completedAppointments.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 bg-[#FAFAFA] rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-8 h-8 text-[#999]" />
-            </div>
-            <p className="text-lg text-[#666] mb-2">No appointments</p>
-            <p className="text-sm text-[#999]">
-              {isToday ? "Your schedule is clear today" : `Nothing scheduled for ${format(selectedDate, 'MMM d')}`}
-            </p>
-          </div>
+        ) : viewMode === 'day' ? (
+          <DayView 
+            appointments={filteredAppointments}
+            staff={staff}
+            services={services}
+            selectedDate={selectedDate}
+            onComplete={handleComplete}
+          />
+        ) : viewMode === 'week' ? (
+          <WeekView 
+            appointments={filteredAppointments}
+            staff={staff}
+            services={services}
+            selectedDate={selectedDate}
+            onDayClick={(date) => { setSelectedDate(date); setViewMode('day'); }}
+            onAddClick={(date) => openNewAppointment(date)}
+          />
         ) : (
-          <div className="space-y-2">
-            {confirmedAppointments.map((appt) => (
-              <AppointmentRow 
-                key={appt.appointment_id}
-                appt={appt}
-                staff={staff}
-                services={services}
-                onComplete={() => handleComplete(appt.appointment_id)}
-              />
-            ))}
-            
-            {/* Completed Section */}
-            {completedAppointments.length > 0 && (
-              <div className="pt-4 mt-4 border-t border-[#E5E5E5]">
-                <p className="text-xs font-semibold text-[#999] uppercase tracking-wider mb-3">
-                  Completed ({completedAppointments.length})
-                </p>
-                {completedAppointments.map((appt) => (
-                  <AppointmentRow 
-                    key={appt.appointment_id}
-                    appt={appt}
-                    staff={staff}
-                    services={services}
-                    isCompleted
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          <MonthView 
+            appointments={filteredAppointments}
+            selectedDate={selectedDate}
+            onDayClick={(date) => { setSelectedDate(date); setViewMode('day'); }}
+          />
         )}
 
         {/* New Appointment Dialog */}
         <Dialog open={showNewAppointment} onOpenChange={setShowNewAppointment}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>New Appointment - {format(selectedDate, 'MMM d')}</DialogTitle>
+              <DialogTitle>New Appointment - {format(newApptDate || selectedDate, 'MMM d, yyyy')}</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 mt-4">
@@ -381,8 +471,248 @@ const CalendarPage = () => {
   );
 };
 
-// Appointment Row Component
-const AppointmentRow = ({ appt, staff, services, isPending, isCompleted, showDate, onApprove, onReject, onComplete }) => {
+// Pending Row Component
+const PendingRow = ({ appt, staff, services, onApprove, onReject }) => {
+  const start = parseISO(appt.start_time);
+  const staffMember = staff.find(s => s.staff_id === appt.staff_id);
+  const service = services.find(s => s.service_id === appt.service_id);
+  
+  return (
+    <div className="flex items-center gap-4 p-3 bg-white">
+      <div className="min-w-[65px] text-center">
+        <p className="text-base font-semibold font-mono text-[#0A0A0A]">{format(start, 'HH:mm')}</p>
+        <p className="text-xs text-[#666]">{format(start, 'MMM d')}</p>
+      </div>
+      <div className="w-1 h-10 rounded-full bg-amber-400" />
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-[#0A0A0A] truncate">{appt.client_name || 'Walk-in'}</p>
+        <p className="text-sm text-[#666] truncate">{service?.name} · {staffMember?.name}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 w-8 p-0" onClick={onApprove}>
+          <Check className="w-4 h-4" />
+        </Button>
+        <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50 h-8 w-8 p-0" onClick={onReject}>
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Day View Component
+const DayView = ({ appointments, staff, services, selectedDate, onComplete }) => {
+  const confirmed = appointments.filter(a => a.status === 'confirmed');
+  const completed = appointments.filter(a => a.status === 'completed');
+  
+  if (confirmed.length === 0 && completed.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <div className="w-16 h-16 bg-[#FAFAFA] rounded-full flex items-center justify-center mx-auto mb-4">
+          <Clock className="w-8 h-8 text-[#999]" />
+        </div>
+        <p className="text-lg text-[#666] mb-2">No appointments</p>
+        <p className="text-sm text-[#999]">
+          {isToday(selectedDate) ? "Your schedule is clear today" : `Nothing scheduled for ${format(selectedDate, 'MMM d')}`}
+        </p>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-2">
+      {confirmed.map((appt) => (
+        <AppointmentRow 
+          key={appt.appointment_id}
+          appt={appt}
+          staff={staff}
+          services={services}
+          onComplete={() => onComplete(appt.appointment_id)}
+        />
+      ))}
+      
+      {completed.length > 0 && (
+        <div className="pt-4 mt-4 border-t border-[#E5E5E5]">
+          <p className="text-xs font-semibold text-[#999] uppercase tracking-wider mb-3">
+            Completed ({completed.length})
+          </p>
+          {completed.map((appt) => (
+            <AppointmentRow 
+              key={appt.appointment_id}
+              appt={appt}
+              staff={staff}
+              services={services}
+              isCompleted
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Week View Component
+const WeekView = ({ appointments, staff, services, selectedDate, onDayClick, onAddClick }) => {
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+  const days = eachDayOfInterval({
+    start: weekStart,
+    end: endOfWeek(selectedDate, { weekStartsOn: 1 })
+  });
+  
+  const hours = Array.from({ length: 12 }, (_, i) => i + 8); // 8 AM to 7 PM
+  
+  const getAppointmentsForDayAndHour = (date, hour) => {
+    return appointments.filter(a => {
+      const start = parseISO(a.start_time);
+      return isSameDay(start, date) && start.getHours() === hour;
+    });
+  };
+  
+  return (
+    <div className="border border-[#E5E5E5] rounded-lg overflow-hidden bg-white">
+      {/* Header */}
+      <div className="grid grid-cols-8 border-b border-[#E5E5E5]">
+        <div className="p-2 text-center text-xs font-medium text-[#666] bg-[#FAFAFA]"></div>
+        {days.map((day) => (
+          <div 
+            key={day.toISOString()}
+            className={`p-2 text-center border-l border-[#E5E5E5] cursor-pointer hover:bg-[#FAFAFA] ${
+              isToday(day) ? 'bg-orange-50' : ''
+            }`}
+            onClick={() => onDayClick(day)}
+          >
+            <p className="text-xs text-[#666]">{format(day, 'EEE')}</p>
+            <p className={`text-lg font-semibold ${isToday(day) ? 'text-orange-600' : 'text-[#0A0A0A]'}`}>
+              {format(day, 'd')}
+            </p>
+          </div>
+        ))}
+      </div>
+      
+      {/* Time Grid */}
+      <div className="max-h-[500px] overflow-y-auto">
+        {hours.map((hour) => (
+          <div key={hour} className="grid grid-cols-8 border-b border-[#E5E5E5] min-h-[60px]">
+            <div className="p-2 text-xs text-[#666] bg-[#FAFAFA] text-right pr-3">
+              {hour}:00
+            </div>
+            {days.map((day) => {
+              const dayAppts = getAppointmentsForDayAndHour(day, hour);
+              return (
+                <div 
+                  key={`${day.toISOString()}-${hour}`}
+                  className="border-l border-[#E5E5E5] p-1 relative group cursor-pointer hover:bg-[#FAFAFA]"
+                  onClick={() => onAddClick(day)}
+                >
+                  {dayAppts.map((appt) => {
+                    const staffMember = staff.find(s => s.staff_id === appt.staff_id);
+                    const duration = differenceInMinutes(parseISO(appt.end_time), parseISO(appt.start_time));
+                    const height = Math.max(duration / 60 * 60, 24);
+                    return (
+                      <div 
+                        key={appt.appointment_id}
+                        className={`text-xs p-1 rounded mb-1 truncate ${
+                          appt.status === 'confirmed' 
+                            ? 'bg-emerald-100 text-emerald-800 border-l-2 border-emerald-500' 
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                        style={{ minHeight: height }}
+                        onClick={(e) => { e.stopPropagation(); onDayClick(day); }}
+                      >
+                        <p className="font-medium truncate">{appt.client_name}</p>
+                        <p className="text-[10px] opacity-75 truncate">{staffMember?.name}</p>
+                      </div>
+                    );
+                  })}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Plus className="w-4 h-4 text-[#999]" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Month View Component
+const MonthView = ({ appointments, selectedDate, onDayClick }) => {
+  const monthStart = startOfMonth(selectedDate);
+  const monthEnd = endOfMonth(selectedDate);
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  
+  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  const weeks = [];
+  for (let i = 0; i < days.length; i += 7) {
+    weeks.push(days.slice(i, i + 7));
+  }
+  
+  const getAppointmentsForDay = (date) => {
+    return appointments.filter(a => isSameDay(parseISO(a.start_time), date));
+  };
+  
+  return (
+    <div className="border border-[#E5E5E5] rounded-lg overflow-hidden bg-white">
+      {/* Day Headers */}
+      <div className="grid grid-cols-7 border-b border-[#E5E5E5] bg-[#FAFAFA]">
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+          <div key={day} className="p-2 text-center text-xs font-medium text-[#666]">
+            {day}
+          </div>
+        ))}
+      </div>
+      
+      {/* Calendar Grid */}
+      {weeks.map((week, weekIdx) => (
+        <div key={weekIdx} className="grid grid-cols-7 border-b border-[#E5E5E5] last:border-b-0">
+          {week.map((day) => {
+            const dayAppts = getAppointmentsForDay(day);
+            const isCurrentMonth = isSameMonth(day, selectedDate);
+            const confirmed = dayAppts.filter(a => a.status === 'confirmed').length;
+            const pending = dayAppts.filter(a => a.status === 'pending').length;
+            
+            return (
+              <div 
+                key={day.toISOString()}
+                className={`min-h-[80px] p-2 border-l border-[#E5E5E5] first:border-l-0 cursor-pointer hover:bg-[#FAFAFA] transition-colors ${
+                  !isCurrentMonth ? 'bg-[#FAFAFA] opacity-50' : ''
+                } ${isToday(day) ? 'bg-orange-50' : ''}`}
+                onClick={() => onDayClick(day)}
+              >
+                <p className={`text-sm font-medium mb-1 ${
+                  isToday(day) ? 'text-orange-600' : isCurrentMonth ? 'text-[#0A0A0A]' : 'text-[#999]'
+                }`}>
+                  {format(day, 'd')}
+                </p>
+                
+                {dayAppts.length > 0 && (
+                  <div className="space-y-1">
+                    {confirmed > 0 && (
+                      <div className="text-[10px] bg-emerald-100 text-emerald-700 rounded px-1 py-0.5">
+                        {confirmed} confirmed
+                      </div>
+                    )}
+                    {pending > 0 && (
+                      <div className="text-[10px] bg-amber-100 text-amber-700 rounded px-1 py-0.5">
+                        {pending} pending
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Appointment Row Component (for Day view)
+const AppointmentRow = ({ appt, staff, services, isCompleted, onComplete }) => {
   const start = parseISO(appt.start_time);
   const end = parseISO(appt.end_time);
   const duration = differenceInMinutes(end, start);
@@ -392,28 +722,19 @@ const AppointmentRow = ({ appt, staff, services, isPending, isCompleted, showDat
   return (
     <div 
       className={`flex items-center gap-4 p-4 rounded-lg ${
-        isPending ? 'bg-white' : isCompleted ? 'bg-[#FAFAFA] opacity-60' : 'bg-white border border-[#E5E5E5]'
+        isCompleted ? 'bg-[#FAFAFA] opacity-60' : 'bg-white border border-[#E5E5E5]'
       }`}
       data-testid={`appt-row-${appt.appointment_id}`}
     >
-      {/* Time */}
       <div className="min-w-[70px] text-center">
         <p className={`text-xl font-semibold font-mono ${isCompleted ? 'text-[#999]' : 'text-[#0A0A0A]'}`}>
           {format(start, 'HH:mm')}
         </p>
-        {showDate ? (
-          <p className="text-xs text-[#666]">{format(start, 'MMM d')}</p>
-        ) : (
-          <p className="text-xs text-[#999]">{duration}m</p>
-        )}
+        <p className="text-xs text-[#999]">{duration}m</p>
       </div>
       
-      {/* Colored bar */}
-      <div className={`w-1 h-12 rounded-full ${
-        isPending ? 'bg-amber-400' : isCompleted ? 'bg-[#CCC]' : 'bg-emerald-500'
-      }`} />
+      <div className={`w-1 h-12 rounded-full ${isCompleted ? 'bg-[#CCC]' : 'bg-emerald-500'}`} />
       
-      {/* Details */}
       <div className="flex-1 min-w-0">
         <p className={`font-medium ${isCompleted ? 'text-[#999]' : 'text-[#0A0A0A]'}`}>
           {appt.client_name || 'Walk-in'}
@@ -423,7 +744,6 @@ const AppointmentRow = ({ appt, staff, services, isPending, isCompleted, showDat
         </p>
       </div>
       
-      {/* Contact Icons */}
       {!isCompleted && (
         <div className="flex items-center gap-2">
           {appt.client_phone && (
@@ -439,19 +759,7 @@ const AppointmentRow = ({ appt, staff, services, isPending, isCompleted, showDat
         </div>
       )}
       
-      {/* Actions */}
-      {isPending && (
-        <div className="flex items-center gap-2">
-          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onApprove}>
-            <Check className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50" onClick={onReject}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
-      
-      {!isPending && !isCompleted && onComplete && (
+      {!isCompleted && onComplete && (
         <Button size="sm" variant="outline" onClick={onComplete}>
           <Check className="w-4 h-4 mr-1" />
           Done
