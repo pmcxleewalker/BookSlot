@@ -4933,6 +4933,176 @@ async def get_my_features(user: Dict = Depends(get_current_user)):
     
     return {"features": PLAN_FEATURES.get(plan, PLAN_FEATURES["starter"]), "plan": plan}
 
+
+# ================== AI ADMIN ASSISTANT ==================
+
+ADMIN_ASSISTANT_PROMPT = """You are {ai_name}, an AI assistant for the business "{business_name}" ({industry} industry).
+You help the business owner/admin with daily operations.
+
+BUSINESS CONTEXT:
+- Business: {business_name}
+- Industry: {industry}
+- Today: {today_date}
+- Staff count: {staff_count}
+- Services: {services_list}
+- Today's appointments: {today_appointments}
+- Pending approvals: {pending_count}
+- This week total: {week_total}
+
+YOUR CAPABILITIES:
+- Answer questions about today's schedule
+- Provide business insights and tips
+- Help understand booking patterns
+- Give industry-specific advice ({industry})
+- Summarize daily/weekly activity
+- Suggest ways to reduce no-shows
+- Help with staff scheduling questions
+
+PERSONALITY: {personality}
+
+RULES:
+- Be concise and helpful (2-3 sentences max unless asked for detail)
+- Use {terminology_client} instead of "client" for this {industry} business
+- Use {terminology_staff} instead of "staff"  
+- Use {terminology_appointment} instead of "appointment"
+- If asked to perform actions (create appointment, etc.), explain that the user should use the relevant page (Calendar, Team, Settings) and offer to guide them
+- Never make up data — only reference the context provided above
+"""
+
+INDUSTRY_AI_NAMES = {
+    "salon": "Bella",
+    "dentist": "Dr. Assist",
+    "vet": "PawPal",
+    "clinic": "MedAssist",
+    "doctor": "MedAssist",
+    "consultant": "BookBot",
+    "other": "BookBot",
+}
+
+INDUSTRY_PERSONALITIES = {
+    "salon": "friendly, warm, uses beauty/wellness terminology, encouraging",
+    "dentist": "professional, precise, uses dental terminology, reassuring",
+    "vet": "caring, organized, mentions pets warmly, uses veterinary terms",
+    "clinic": "professional, precise, uses medical terminology",
+    "doctor": "professional, precise, uses medical terminology",
+    "consultant": "helpful, efficient, professional, business-focused",
+    "other": "helpful, efficient, professional",
+}
+
+INDUSTRY_TERMINOLOGY = {
+    "salon": {"client": "client", "staff": "stylist", "appointment": "appointment"},
+    "dentist": {"client": "patient", "staff": "practitioner", "appointment": "visit"},
+    "vet": {"client": "pet parent", "staff": "vet", "appointment": "visit"},
+    "clinic": {"client": "patient", "staff": "doctor", "appointment": "visit"},
+    "doctor": {"client": "patient", "staff": "doctor", "appointment": "visit"},
+    "consultant": {"client": "client", "staff": "consultant", "appointment": "session"},
+    "other": {"client": "client", "staff": "staff", "appointment": "appointment"},
+}
+
+@api_router.post("/ai-assistant/chat")
+async def ai_assistant_chat(body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """AI Admin Assistant - helps business owners with daily tasks"""
+    message = body.get("message", "").strip()
+    conversation_history = body.get("history", [])
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="Message required")
+    
+    tenant_id = user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    industry = tenant.get("industry", "other")
+    ai_name = INDUSTRY_AI_NAMES.get(industry, "BookBot")
+    personality = INDUSTRY_PERSONALITIES.get(industry, INDUSTRY_PERSONALITIES["other"])
+    terminology = INDUSTRY_TERMINOLOGY.get(industry, INDUSTRY_TERMINOLOGY["other"])
+    
+    # Gather context
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    week_end = (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%d")
+    
+    services = await db.services.find({"tenant_id": tenant_id}, {"_id": 0, "name": 1, "duration": 1, "price": 1}).to_list(50)
+    staff_count = await db.staff.count_documents({"tenant_id": tenant_id, "is_active": True})
+    
+    today_appts = await db.appointments.find({
+        "tenant_id": tenant_id,
+        "start_time": {"$gte": today, "$lte": today + "T23:59:59"},
+        "status": {"$ne": "cancelled"}
+    }, {"_id": 0, "client_name": 1, "service_name": 1, "start_time": 1, "status": 1}).to_list(50)
+    
+    pending_count = await db.appointments.count_documents({"tenant_id": tenant_id, "status": "pending"})
+    
+    week_appts = await db.appointments.count_documents({
+        "tenant_id": tenant_id,
+        "start_time": {"$gte": today, "$lte": week_end + "T23:59:59"},
+        "status": {"$ne": "cancelled"}
+    })
+    
+    services_list = ", ".join([f"{s['name']} ({s.get('duration', 30)}min, €{s.get('price', 0)})" for s in services]) or "No services set up yet"
+    
+    today_summary = ""
+    if today_appts:
+        today_summary = "; ".join([f"{a.get('client_name','?')} at {a.get('start_time','?')[:16]} ({a.get('status','?')})" for a in today_appts[:10]])
+    else:
+        today_summary = "No appointments today"
+    
+    system_prompt = ADMIN_ASSISTANT_PROMPT.format(
+        ai_name=ai_name,
+        business_name=tenant.get("name", "Business"),
+        industry=industry,
+        today_date=today,
+        staff_count=staff_count,
+        services_list=services_list,
+        today_appointments=today_summary,
+        pending_count=pending_count,
+        week_total=week_appts,
+        personality=personality,
+        terminology_client=terminology["client"],
+        terminology_staff=terminology["staff"],
+        terminology_appointment=terminology["appointment"],
+    )
+    
+    # Build conversation for LLM
+    if MOLTBOT_LLM_AVAILABLE:
+        try:
+            llm_key = EMERGENT_LLM_KEY
+            if not llm_key:
+                return {"response": f"I'm {ai_name}, but my AI brain needs configuration. Please contact support.", "ai_name": ai_name}
+            
+            session_id = f"admin_assist_{user['user_id']}_{uuid.uuid4().hex[:8]}"
+            chat = LlmChat(
+                api_key=llm_key,
+                session_id=session_id,
+                system_message=system_prompt
+            ).with_model("openai", "gpt-4o-mini")
+            
+            # Build conversation context from history
+            history_text = ""
+            for msg in conversation_history[-8:]:
+                role = "Admin" if msg.get("role") == "user" else ai_name
+                history_text += f"{role}: {msg.get('content','')}\n"
+            
+            full_message = message
+            if history_text:
+                full_message = f"Conversation so far:\n{history_text}\nAdmin's latest message: {message}"
+            
+            response = await chat.send_message(UserMessage(text=full_message))
+            return {"response": response, "ai_name": ai_name}
+        except Exception as e:
+            logger.error(f"AI Assistant error: {e}")
+            return {"response": f"I had trouble processing that. Could you rephrase? ({str(e)[:50]})", "ai_name": ai_name}
+    else:
+        # Fallback without LLM
+        return {
+            "response": f"Hi! I'm {ai_name}. AI features require the Emergent LLM integration. In the meantime: you have {len(today_appts)} appointments today and {pending_count} pending approvals.",
+            "ai_name": ai_name
+        }
+
+
 # ================== SUPER ADMIN ENDPOINTS ==================
 
 SUPER_ADMIN_SECRET = os.environ.get('SUPER_ADMIN_SECRET', 'superadmin-secret-key')

@@ -37,7 +37,7 @@ import TermsOfServicePage from './pages/public/TermsOfServicePage';
 
 // Components
 import AuthCallback from './components/auth/AuthCallback';
-import AIReceptionistWidget from './components/AIReceptionistWidget';
+import AIAdminAssistant from './components/AIAdminAssistant';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -307,7 +307,7 @@ function App() {
       <AuthProvider>
         <Toaster position="top-right" richColors closeButton />
         <AppRouter />
-        <AIReceptionistWidget />
+        <AIAdminAssistant />
       </AuthProvider>
     </BrowserRouter>
   );
