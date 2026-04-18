@@ -118,13 +118,17 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - [x] AI Receptionist demo widget (Moltbot chat)
 - [x] **Super Admin Portal:**
   - Admin Login Page (/admin)
-  - Admin Dashboard with stats and revenue (/admin/dashboard)
-  - Tenants List with search/filter (/admin/tenants)
-  - Create Tenant Dialog with plan selection
-  - Tenant Detail Page with plan editor (/admin/tenants/{id})
-  - **Tenant Lifecycle Controls (activate/deactivate/terminate)**
-  - **Black & White theme for Super Admin (no orange accents)**
-  - **Renamed "Super Admin" → "Tenant Control Centre"**
+  - Admin Dashboard with dark navy sidebar, grid layout (/admin/dashboard)
+  - **Client List panel** with admin URLs, credentials, staff page links, booking links
+  - **Booking Activity bar chart** (30-day visual)
+  - **Platform Overview ring charts** (Clients, Bookings, Users) + MRR
+  - **Client Details table** with plan, staff count, booking count, status
+  - Clients List with search/filter (/admin/tenants) - **Renamed from "Tenants" to "Clients"**
+  - Create Client Dialog with plan selection
+  - Client Detail Page with plan editor (/admin/tenants/{id})
+  - **Client Lifecycle Controls (activate/deactivate/terminate)**
+  - **Dark navy sidebar theme (#1a1f2e) for Franchise Command Centre**
+  - **Auto-seeded super admin on startup (admin@bookslot.io / Admin123!)**
 - [x] **Moltbot AI Conversation System:**
   - Full conversation understanding via GPT-4o-mini
   - Intent parsing (book, reschedule, cancel, check availability)
@@ -154,8 +158,9 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
 - Colors: #0A0A0A (primary), #E34A33 (accent), #4F46E5 (AI widget)
 - Sharp-edged buttons and cards
 - Mobile-responsive
-- **Super Admin Dark Theme:** Black & white only (#0A0A0A bg, white text, no colored accents)
+- **Franchise Command Centre:** Dark navy sidebar (#1a1f2e), blue accent active states, grid dashboard
 - **Tenant Custom Branding:** Dynamic primary/secondary/accent colors from tenant settings
+- **Tenant Dashboard:** Minimalist 4-tab layout (Today, Calendar, Team, Settings)
 
 ## Pricing Tiers & Features
 | Feature | Starter (€29) | Growth (€79) | Pro (€149) |
@@ -273,6 +278,19 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - [x] Push subscription endpoints for customer app install
   - [x] Send reminder button to notify at-risk clients
   - [x] Mark as No-Show tracking for future risk calculations
+- [x] **Live Fleet Sheet / Today Dashboard (April 2026):**
+  - [x] Auto-refresh every 30 seconds with visible timestamp
+  - [x] Stats row: Today, This Week, Pending counts
+  - [x] Upcoming 7 days section grouped by day
+  - [x] Manual refresh button
+- [x] **Franchise Command Centre Rebuild (April 2026):**
+  - [x] Dark navy sidebar (#1a1f2e) with admin profile
+  - [x] Renamed "Tenants" → "Clients" throughout
+  - [x] Client List panel with admin/staff/booking URLs and credentials
+  - [x] Booking Activity bar chart (30-day)
+  - [x] Platform Overview ring charts (Clients, Bookings, Users) + MRR
+  - [x] Client Details table
+  - [x] Auto-seeded super admin account on startup
 - [x] All backend tests passing
 
 ## Moltbot AI Activation Guide (When Ready)
