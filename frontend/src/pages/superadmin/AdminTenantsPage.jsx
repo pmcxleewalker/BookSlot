@@ -120,7 +120,7 @@ const AdminTenantsPage = () => {
       await axios.post(`${API}/admin/tenants`, newTenant, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Tenant created successfully');
+      toast.success('Client created successfully');
       setShowCreateDialog(false);
       setNewTenant({
         business_name: '',
@@ -134,7 +134,7 @@ const AdminTenantsPage = () => {
       });
       fetchTenants();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create tenant');
+      toast.error(error.response?.data?.detail || 'Failed to add client');
     } finally {
       setCreating(false);
     }
@@ -152,11 +152,11 @@ const AdminTenantsPage = () => {
         await axios.post(`${API}/admin/tenants/${tenantId}/activate`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        toast.success('Tenant activated');
+        toast.success('Client activated');
       }
       fetchTenants();
     } catch (error) {
-      toast.error('Failed to update tenant status');
+      toast.error('Failed to update client status');
     }
   };
 
@@ -169,10 +169,10 @@ const AdminTenantsPage = () => {
       await axios.post(`${API}/admin/tenants/${tenantId}/terminate`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Tenant deleted permanently');
+      toast.success('Client deleted permanently');
       fetchTenants();
     } catch (error) {
-      toast.error('Failed to delete tenant');
+      toast.error('Failed to delete client');
     }
   };
 
@@ -183,11 +183,11 @@ const AdminTenantsPage = () => {
   };
 
   return (
-    <SuperAdminLayout title="Tenants">
+    <SuperAdminLayout title="Clients">
       {/* Summary Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white border border-[#E5E5E5] rounded-lg p-4">
-          <p className="text-sm text-[#666666]">Total Franchises</p>
+          <p className="text-sm text-[#666666]">Total Clients</p>
           <p className="text-2xl font-semibold text-[#0A0A0A]">{tenants.length}</p>
         </div>
         <div className="bg-white border border-[#E5E5E5] rounded-lg p-4">
@@ -255,7 +255,7 @@ const AdminTenantsPage = () => {
             data-testid="create-tenant-btn"
           >
             <Plus className="w-4 h-4" />
-            Create Franchise
+            Add Client
           </Button>
         </div>
       </div>
@@ -266,7 +266,7 @@ const AdminTenantsPage = () => {
           <table className="w-full">
             <thead>
               <tr className="text-left text-[#999999] text-sm bg-[#FAFAFA]">
-                <th className="p-4">Franchise</th>
+                <th className="p-4">Client</th>
                 <th className="p-4">Plan</th>
                 <th className="p-4">URLs</th>
                 <th className="p-4">Staff</th>
@@ -283,7 +283,7 @@ const AdminTenantsPage = () => {
               ) : tenants.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-[#999999]">
-                    {search ? 'No franchises found' : 'No franchises yet'}
+                    {search ? 'No clients found' : 'No clients yet'}
                   </td>
                 </tr>
               ) : (
@@ -371,7 +371,7 @@ const AdminTenantsPage = () => {
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-lg bg-white border-[#E5E5E5] text-[#0A0A0A]">
           <DialogHeader>
-            <DialogTitle className="text-[#0A0A0A]">Create New Tenant</DialogTitle>
+            <DialogTitle className="text-[#0A0A0A]">Add New Client</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 mt-4 max-h-[70vh] overflow-y-auto pr-2">
@@ -513,7 +513,7 @@ const AdminTenantsPage = () => {
                 disabled={creating}
                 data-testid="submit-create-tenant"
               >
-                {creating ? 'Creating...' : 'Create Tenant'}
+                {creating ? 'Creating...' : 'Add Client'}
               </Button>
             </div>
           </div>

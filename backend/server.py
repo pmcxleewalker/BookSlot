@@ -5053,11 +5053,14 @@ async def admin_get_tenants(
     
     tenants = await db.tenants.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     
-    # Get stats for each tenant
+    # Get stats and owner info for each tenant
     for tenant in tenants:
         tenant["staff_count"] = await db.staff.count_documents({"tenant_id": tenant["tenant_id"], "is_active": True})
         tenant["client_count"] = await db.clients.count_documents({"tenant_id": tenant["tenant_id"]})
         tenant["appointment_count"] = await db.appointments.count_documents({"tenant_id": tenant["tenant_id"]})
+        owner = await db.users.find_one({"tenant_id": tenant["tenant_id"], "role": "owner"}, {"_id": 0, "password_hash": 0})
+        tenant["owner_email"] = owner.get("email") if owner else None
+        tenant["owner_name"] = owner.get("name") if owner else None
     
     return {"tenants": tenants}
 
@@ -5126,6 +5129,7 @@ async def admin_create_tenant(body: Dict[str, Any], admin: Dict = Depends(get_su
         "booking_url_slug": slug,
         "is_active": body.get("is_active", True),
         "onboarding_completed": True,
+        "owner_initial_password": body["owner_password"],
         "settings": body.get("settings", {}),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
