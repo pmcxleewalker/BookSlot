@@ -5397,6 +5397,23 @@ async def startup_event():
         logger.info("Object storage initialized")
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
+    
+    # Seed super admin if not exists
+    try:
+        existing = await db.super_admins.find_one({"email": "admin@bookslot.io"}, {"_id": 0})
+        if not existing:
+            admin = {
+                "admin_id": f"admin_{uuid.uuid4().hex[:12]}",
+                "email": "admin@bookslot.io",
+                "name": "Super Admin",
+                "password_hash": hash_password("Admin123!"),
+                "role": "super_admin",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.super_admins.insert_one(admin)
+            logger.info("Super admin seeded: admin@bookslot.io")
+    except Exception as e:
+        logger.error(f"Super admin seed failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
