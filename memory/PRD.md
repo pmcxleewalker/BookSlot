@@ -291,6 +291,20 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - [x] Platform Overview ring charts (Clients, Bookings, Users) + MRR
   - [x] Client Details table
   - [x] Auto-seeded super admin account on startup
+- [x] **Industry-Themed UI Overhaul (April 18, 2026):**
+  - [x] Industry theme system (salon=rose, dentist=blue, vet=green, clinic=blue, default=indigo)
+  - [x] Dark themed sidebar matching industry colors
+  - [x] Colorful hero section with gradient stats
+  - [x] AI Intelligence banner with contextual business insights
+  - [x] Industry badge in header (e.g., "Salon & Spa")
+  - [x] Industry-specific terminology (stylist/patient/pet parent etc.)
+- [x] **AI Admin Assistant (April 18, 2026):**
+  - [x] Floating chat bubble (sparkles icon) on admin pages
+  - [x] Industry-specific AI personality (Bella/Dr. Assist/PawPal)
+  - [x] Real LLM integration via Emergent key (gpt-4o-mini)
+  - [x] Context-aware: knows today's schedule, pending approvals, services, staff
+  - [x] Quick action buttons for common queries
+  - [x] Replaces old Moltbot widget
 - [x] All backend tests passing
 
 ## Moltbot AI Activation Guide (When Ready)
