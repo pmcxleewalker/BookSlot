@@ -311,6 +311,13 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - [x] All dialogs themed with gradient buttons
   - [x] Pending approvals with approve/reject in themed cards
   - [x] 3 demo tenants seeded: Bella Hair Studio (salon), Bright Smile Dental (dentist), Happy Paws Vet Clinic (vet)
+- [x] **Ultra Sleek Calendar & Industry Services (April 19, 2026):**
+  - [x] Week time-grid calendar: day columns (Mon-Sun), time labels (08:00-17:00), colored appointment blocks
+  - [x] Staff avatar row with gradient circles and click-to-filter
+  - [x] Appointment blocks colored by status: green=confirmed, amber=pending, blue=completed, red=cancelled
+  - [x] Glow hover effects on all buttons, smooth rounded edges
+  - [x] 12 industry-specific services per tenant (salon: Balayage/Keratin/Bridal Hair, dentist: Root Canal/Crown/Whitening, vet: Vaccination Packs/Microchip/X-Ray)
+  - [x] Day view with themed appointment cards
 - [x] All backend tests passing
 
 ## Moltbot AI Activation Guide (When Ready)
