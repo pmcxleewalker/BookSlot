@@ -1,34 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
+import { getTheme } from '../../config/industryThemes';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, User, Briefcase, Clock } from 'lucide-react';
+import { Plus, Pencil, Trash2, User, Clock, DollarSign, Mail, Phone as PhoneIcon, Star } from 'lucide-react';
 
 const StaffPage = () => {
-  const { token } = useAuth();
+  const { token, tenant } = useAuth();
+  const theme = getTheme(tenant?.industry);
   const [activeTab, setActiveTab] = useState('staff');
   const [staff, setStaff] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Staff form
+
   const [showStaffDialog, setShowStaffDialog] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [staffForm, setStaffForm] = useState({ name: '', email: '', phone: '', role: 'staff' });
-  
-  // Service form
+
   const [showServiceDialog, setShowServiceDialog] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [serviceForm, setServiceForm] = useState({ name: '', duration: 30, price: 0, description: '' });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
@@ -38,205 +36,164 @@ const StaffPage = () => {
       ]);
       setStaff(staffRes.data.staff || []);
       setServices(servicesRes.data.services || []);
-    } catch (error) {
-      console.error('Failed to load:', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { console.error('Failed:', error); }
+    finally { setLoading(false); }
   };
 
-  // Staff handlers
-  const openAddStaff = () => {
-    setEditingStaff(null);
-    setStaffForm({ name: '', email: '', phone: '', role: 'staff' });
-    setShowStaffDialog(true);
-  };
-
-  const openEditStaff = (member) => {
-    setEditingStaff(member);
-    setStaffForm({ name: member.name, email: member.email || '', phone: member.phone || '', role: member.role || 'staff' });
-    setShowStaffDialog(true);
-  };
-
+  const openAddStaff = () => { setEditingStaff(null); setStaffForm({ name: '', email: '', phone: '', role: 'staff' }); setShowStaffDialog(true); };
+  const openEditStaff = (m) => { setEditingStaff(m); setStaffForm({ name: m.name, email: m.email || '', phone: m.phone || '', role: m.role || 'staff' }); setShowStaffDialog(true); };
   const handleSaveStaff = async () => {
-    if (!staffForm.name) {
-      toast.error('Name is required');
-      return;
-    }
+    if (!staffForm.name) { toast.error('Name is required'); return; }
     try {
-      if (editingStaff) {
-        await axios.put(`${API}/staff/${editingStaff.staff_id}`, staffForm, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        toast.success('Updated');
-      } else {
-        await axios.post(`${API}/staff`, staffForm, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        toast.success('Added');
-      }
-      setShowStaffDialog(false);
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed');
-    }
+      if (editingStaff) { await axios.put(`${API}/staff/${editingStaff.staff_id}`, staffForm, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Updated'); }
+      else { await axios.post(`${API}/staff`, staffForm, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Added'); }
+      setShowStaffDialog(false); fetchData();
+    } catch (error) { toast.error(error.response?.data?.detail || 'Failed'); }
   };
+  const handleDeleteStaff = async (id) => { if (!window.confirm('Delete this team member?')) return; try { await axios.delete(`${API}/staff/${id}`, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Deleted'); fetchData(); } catch { toast.error('Failed'); } };
 
-  const handleDeleteStaff = async (id) => {
-    if (!window.confirm('Delete this team member?')) return;
-    try {
-      await axios.delete(`${API}/staff/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success('Deleted');
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to delete');
-    }
-  };
-
-  // Service handlers
-  const openAddService = () => {
-    setEditingService(null);
-    setServiceForm({ name: '', duration: 30, price: 0, description: '' });
-    setShowServiceDialog(true);
-  };
-
-  const openEditService = (service) => {
-    setEditingService(service);
-    setServiceForm({ 
-      name: service.name, 
-      duration: service.duration || 30, 
-      price: service.price || 0, 
-      description: service.description || '' 
-    });
-    setShowServiceDialog(true);
-  };
-
+  const openAddService = () => { setEditingService(null); setServiceForm({ name: '', duration: 30, price: 0, description: '' }); setShowServiceDialog(true); };
+  const openEditService = (s) => { setEditingService(s); setServiceForm({ name: s.name, duration: s.duration || 30, price: s.price || 0, description: s.description || '' }); setShowServiceDialog(true); };
   const handleSaveService = async () => {
-    if (!serviceForm.name) {
-      toast.error('Name is required');
-      return;
-    }
+    if (!serviceForm.name) { toast.error('Name is required'); return; }
     try {
-      if (editingService) {
-        await axios.put(`${API}/services/${editingService.service_id}`, serviceForm, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        toast.success('Updated');
-      } else {
-        await axios.post(`${API}/services`, serviceForm, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        toast.success('Added');
-      }
-      setShowServiceDialog(false);
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed');
-    }
+      if (editingService) { await axios.put(`${API}/services/${editingService.service_id}`, serviceForm, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Updated'); }
+      else { await axios.post(`${API}/services`, serviceForm, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Added'); }
+      setShowServiceDialog(false); fetchData();
+    } catch (error) { toast.error(error.response?.data?.detail || 'Failed'); }
   };
+  const handleDeleteService = async (id) => { if (!window.confirm('Delete this service?')) return; try { await axios.delete(`${API}/services/${id}`, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Deleted'); fetchData(); } catch { toast.error('Failed'); } };
 
-  const handleDeleteService = async (id) => {
-    if (!window.confirm('Delete this service?')) return;
-    try {
-      await axios.delete(`${API}/services/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success('Deleted');
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to delete');
-    }
+  // Generate avatar colors from name
+  const getAvatarGradient = (name, idx) => {
+    const gradients = [
+      ['#e11d48', '#be185d'], ['#0284c7', '#0369a1'], ['#059669', '#047857'],
+      ['#7c3aed', '#6d28d9'], ['#ea580c', '#c2410c'], ['#0891b2', '#0e7490'],
+    ];
+    return gradients[idx % gradients.length];
   };
 
   return (
     <TenantLayout title="Team">
-      <div className="max-w-xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-[#F5F5F5] p-1 rounded-lg">
-          <button
-            onClick={() => setActiveTab('staff')}
-            className={`flex-1 py-2 px-4 text-sm rounded-md transition-colors ${
-              activeTab === 'staff' ? 'bg-white shadow-sm text-[#0A0A0A] font-medium' : 'text-[#666]'
-            }`}
-          >
-            <User className="w-4 h-4 inline mr-2" />
-            Staff ({staff.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('services')}
-            className={`flex-1 py-2 px-4 text-sm rounded-md transition-colors ${
-              activeTab === 'services' ? 'bg-white shadow-sm text-[#0A0A0A] font-medium' : 'text-[#666]'
-            }`}
-          >
-            <Briefcase className="w-4 h-4 inline mr-2" />
-            Services ({services.length})
-          </button>
+        <div className="flex gap-1 mb-6 p-1 rounded-2xl" style={{ backgroundColor: theme.primaryLight }}>
+          {[
+            { key: 'staff', label: theme.terminology.staff, count: staff.length, icon: User },
+            { key: 'services', label: 'Services', count: services.length, icon: Star },
+          ].map(tab => {
+            const Icon = tab.icon;
+            return (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                className={`flex-1 py-2.5 px-4 text-sm rounded-xl transition-all flex items-center justify-center gap-2 ${
+                  activeTab === tab.key ? 'bg-white shadow-md text-gray-900 font-semibold' : 'text-gray-500'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label} <span className="text-xs opacity-60">({tab.count})</span>
+              </button>
+            );
+          })}
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-[#999]">Loading...</div>
+          <div className="text-center py-12 text-gray-400">Loading...</div>
         ) : activeTab === 'staff' ? (
-          /* Staff Tab */
           <div>
-            <Button onClick={openAddStaff} className="w-full mb-4 h-10 bg-[#0A0A0A] hover:bg-[#1a1a1a]">
-              <Plus className="w-4 h-4 mr-2" /> Add Staff
+            <Button onClick={openAddStaff}
+              className="w-full mb-5 h-11 rounded-xl text-white shadow-lg hover:shadow-xl transition-shadow"
+              style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
+              data-testid="add-staff-btn"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Add {theme.terminology.staff.replace(/s$/, '')}
             </Button>
-            
+
             {staff.length === 0 ? (
-              <div className="text-center py-12 text-[#999]">No staff members yet</div>
+              <div className="text-center py-12 bg-white rounded-2xl border border-gray-200">
+                <User className="w-8 h-8 mx-auto mb-2" style={{ color: theme.primary + '60' }} />
+                <p className="text-gray-500">No team members yet</p>
+              </div>
             ) : (
-              <div className="space-y-2">
-                {staff.map((member) => (
-                  <div key={member.staff_id} className="bg-white rounded-xl p-4 border border-[#EAEAEA] flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#F5F5F5] rounded-full flex items-center justify-center text-sm font-medium text-[#666]">
-                        {member.name?.charAt(0)?.toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-medium text-[#0A0A0A]">{member.name}</p>
-                        <p className="text-xs text-[#999]">{member.role || 'Staff'}</p>
+              <div className="grid gap-3">
+                {staff.map((member, idx) => {
+                  const [c1, c2] = getAvatarGradient(member.name, idx);
+                  return (
+                    <div key={member.staff_id}
+                      className="bg-white rounded-2xl p-4 border border-gray-200 hover:shadow-md transition-all group"
+                      data-testid={`staff-card-${member.staff_id}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm"
+                          style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
+                        >
+                          {member.name?.charAt(0)?.toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900">{member.name}</p>
+                          <p className="text-sm text-gray-500">{member.role || 'Staff'}</p>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                            {member.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{member.email}</span>}
+                            {member.phone && <span className="flex items-center gap-1"><PhoneIcon className="w-3 h-3" />{member.phone}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openEditStaff(member)} className="h-9 w-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteStaff(member.staff_id)} className="h-9 w-9 rounded-xl border border-red-200 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEditStaff(member)}>
-                        <Pencil className="w-4 h-4 text-[#666]" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleDeleteStaff(member.staff_id)}>
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
         ) : (
-          /* Services Tab */
           <div>
-            <Button onClick={openAddService} className="w-full mb-4 h-10 bg-[#0A0A0A] hover:bg-[#1a1a1a]">
+            <Button onClick={openAddService}
+              className="w-full mb-5 h-11 rounded-xl text-white shadow-lg hover:shadow-xl transition-shadow"
+              style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
+              data-testid="add-service-btn"
+            >
               <Plus className="w-4 h-4 mr-2" /> Add Service
             </Button>
-            
+
             {services.length === 0 ? (
-              <div className="text-center py-12 text-[#999]">No services yet</div>
+              <div className="text-center py-12 bg-white rounded-2xl border border-gray-200">
+                <Star className="w-8 h-8 mx-auto mb-2" style={{ color: theme.primary + '60' }} />
+                <p className="text-gray-500">No services yet</p>
+              </div>
             ) : (
-              <div className="space-y-2">
-                {services.map((service) => (
-                  <div key={service.service_id} className="bg-white rounded-xl p-4 border border-[#EAEAEA] flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-[#0A0A0A]">{service.name}</p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-[#666]">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {service.duration}m
-                        </span>
-                        <span>€{service.price}</span>
+              <div className="grid gap-3">
+                {services.map((service, idx) => (
+                  <div key={service.service_id}
+                    className="bg-white rounded-2xl p-4 border border-gray-200 hover:shadow-md transition-all group"
+                    style={{ borderLeft: `4px solid ${theme.primary}` }}
+                    data-testid={`service-card-${service.service_id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">{service.name}</p>
+                        <div className="flex items-center gap-4 mt-2">
+                          <span className="inline-flex items-center gap-1.5 text-sm px-3 py-1 rounded-lg" style={{ backgroundColor: theme.primaryLight, color: theme.primary }}>
+                            <Clock className="w-3.5 h-3.5" /> {service.duration}m
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 text-sm px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700">
+                            <DollarSign className="w-3.5 h-3.5" /> &euro;{service.price}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEditService(service)}>
-                        <Pencil className="w-4 h-4 text-[#666]" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleDeleteService(service.service_id)}>
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openEditService(service)} className="h-9 w-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDeleteService(service.service_id)} className="h-9 w-9 rounded-xl border border-red-200 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -248,25 +205,14 @@ const StaffPage = () => {
         {/* Staff Dialog */}
         <Dialog open={showStaffDialog} onOpenChange={setShowStaffDialog}>
           <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="text-base">{editingStaff ? 'Edit' : 'Add'} Staff</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle className="text-base">{editingStaff ? 'Edit' : 'Add'} {theme.terminology.staff.replace(/s$/, '')}</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-2">
-              <div>
-                <Label className="text-xs text-[#666]">Name</Label>
-                <Input value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} className="mt-1 h-10" />
-              </div>
-              <div>
-                <Label className="text-xs text-[#666]">Email</Label>
-                <Input type="email" value={staffForm.email} onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} className="mt-1 h-10" />
-              </div>
-              <div>
-                <Label className="text-xs text-[#666]">Phone</Label>
-                <Input type="tel" value={staffForm.phone} onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })} className="mt-1 h-10" />
-              </div>
+              <div><Label className="text-xs text-gray-500">Name</Label><Input value={staffForm.name} onChange={e => setStaffForm({ ...staffForm, name: e.target.value })} className="mt-1 h-10 rounded-xl" /></div>
+              <div><Label className="text-xs text-gray-500">Email</Label><Input type="email" value={staffForm.email} onChange={e => setStaffForm({ ...staffForm, email: e.target.value })} className="mt-1 h-10 rounded-xl" /></div>
+              <div><Label className="text-xs text-gray-500">Phone</Label><Input type="tel" value={staffForm.phone} onChange={e => setStaffForm({ ...staffForm, phone: e.target.value })} className="mt-1 h-10 rounded-xl" /></div>
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" className="flex-1 h-10" onClick={() => setShowStaffDialog(false)}>Cancel</Button>
-                <Button className="flex-1 h-10 bg-[#0A0A0A] hover:bg-[#1a1a1a]" onClick={handleSaveStaff}>Save</Button>
+                <Button variant="outline" className="flex-1 h-10 rounded-xl" onClick={() => setShowStaffDialog(false)}>Cancel</Button>
+                <Button className="flex-1 h-10 rounded-xl text-white" style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }} onClick={handleSaveStaff}>Save</Button>
               </div>
             </div>
           </DialogContent>
@@ -275,27 +221,16 @@ const StaffPage = () => {
         {/* Service Dialog */}
         <Dialog open={showServiceDialog} onOpenChange={setShowServiceDialog}>
           <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="text-base">{editingService ? 'Edit' : 'Add'} Service</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle className="text-base">{editingService ? 'Edit' : 'Add'} Service</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-2">
-              <div>
-                <Label className="text-xs text-[#666]">Service Name</Label>
-                <Input value={serviceForm.name} onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })} className="mt-1 h-10" placeholder="Haircut" />
-              </div>
+              <div><Label className="text-xs text-gray-500">Service Name</Label><Input value={serviceForm.name} onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })} className="mt-1 h-10 rounded-xl" placeholder="e.g. Haircut" /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs text-[#666]">Duration (min)</Label>
-                  <Input type="number" value={serviceForm.duration} onChange={(e) => setServiceForm({ ...serviceForm, duration: parseInt(e.target.value) || 30 })} className="mt-1 h-10" />
-                </div>
-                <div>
-                  <Label className="text-xs text-[#666]">Price (€)</Label>
-                  <Input type="number" value={serviceForm.price} onChange={(e) => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value) || 0 })} className="mt-1 h-10" />
-                </div>
+                <div><Label className="text-xs text-gray-500">Duration (min)</Label><Input type="number" value={serviceForm.duration} onChange={e => setServiceForm({ ...serviceForm, duration: parseInt(e.target.value) || 30 })} className="mt-1 h-10 rounded-xl" /></div>
+                <div><Label className="text-xs text-gray-500">Price (&euro;)</Label><Input type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value) || 0 })} className="mt-1 h-10 rounded-xl" /></div>
               </div>
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" className="flex-1 h-10" onClick={() => setShowServiceDialog(false)}>Cancel</Button>
-                <Button className="flex-1 h-10 bg-[#0A0A0A] hover:bg-[#1a1a1a]" onClick={handleSaveService}>Save</Button>
+                <Button variant="outline" className="flex-1 h-10 rounded-xl" onClick={() => setShowServiceDialog(false)}>Cancel</Button>
+                <Button className="flex-1 h-10 rounded-xl text-white" style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }} onClick={handleSaveService}>Save</Button>
               </div>
             </div>
           </DialogContent>
