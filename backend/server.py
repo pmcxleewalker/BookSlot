@@ -2778,7 +2778,7 @@ async def get_detailed_reports(
     staff_map = {s["staff_id"]: s for s in staff}
     
     # Calculate metrics
-    total_revenue = sum(a.get("total_price", 0) for a in appointments if a.get("status") in ["completed", "confirmed"])
+    total_revenue = sum(a.get("total_price", a.get("price", 0)) for a in appointments if a.get("status") in ["completed", "confirmed"])
     total_bookings = len(appointments)
     completed = len([a for a in appointments if a.get("status") == "completed"])
     cancelled = len([a for a in appointments if a.get("status") == "cancelled"])
@@ -2789,8 +2789,8 @@ async def get_detailed_reports(
     bookings_by_service = {}
     for a in appointments:
         service_id = a.get("service_id")
-        service_name = services_map.get(service_id, {}).get("name", "Unknown")
-        price = a.get("total_price", 0) if a.get("status") in ["completed", "confirmed"] else 0
+        service_name = services_map.get(service_id, {}).get("name", a.get("service_name", "Unknown"))
+        price = a.get("total_price", a.get("price", 0)) if a.get("status") in ["completed", "confirmed"] else 0
         
         revenue_by_service[service_name] = revenue_by_service.get(service_name, 0) + price
         bookings_by_service[service_name] = bookings_by_service.get(service_name, 0) + 1
@@ -2800,8 +2800,8 @@ async def get_detailed_reports(
     bookings_by_staff = {}
     for a in appointments:
         staff_id = a.get("staff_id")
-        staff_name = staff_map.get(staff_id, {}).get("name", "Unknown")
-        price = a.get("total_price", 0) if a.get("status") in ["completed", "confirmed"] else 0
+        staff_name = staff_map.get(staff_id, {}).get("name", a.get("staff_name", "Unknown"))
+        price = a.get("total_price", a.get("price", 0)) if a.get("status") in ["completed", "confirmed"] else 0
         
         revenue_by_staff[staff_name] = revenue_by_staff.get(staff_name, 0) + price
         bookings_by_staff[staff_name] = bookings_by_staff.get(staff_name, 0) + 1
@@ -2811,7 +2811,7 @@ async def get_detailed_reports(
     daily_bookings = {}
     for a in appointments:
         date = a.get("start_time", "")[:10]
-        price = a.get("total_price", 0) if a.get("status") in ["completed", "confirmed"] else 0
+        price = a.get("total_price", a.get("price", 0)) if a.get("status") in ["completed", "confirmed"] else 0
         daily_revenue[date] = daily_revenue.get(date, 0) + price
         daily_bookings[date] = daily_bookings.get(date, 0) + 1
     

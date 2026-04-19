@@ -5,7 +5,7 @@ import { getTheme } from '../config/industryThemes';
 import axios from 'axios';
 import {
   Calendar, Users, Settings, LogOut, Menu, X,
-  ChevronDown, Bell, Home, Sparkles
+  ChevronDown, Bell, Home, Sparkles, BarChart3
 } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -39,6 +39,7 @@ const TenantLayout = ({ children, title }) => {
     { path: `${urlPrefix}/dashboard`, label: 'Today', icon: Home },
     { path: `${urlPrefix}/calendar`, label: 'Calendar', icon: Calendar, badge: pendingCount > 0 ? pendingCount : null },
     { path: `${urlPrefix}/staff`, label: 'Team', icon: Users },
+    { path: `${urlPrefix}/reports`, label: 'Reports', icon: BarChart3 },
     { path: `${urlPrefix}/settings`, label: 'Settings', icon: Settings },
   ];
 

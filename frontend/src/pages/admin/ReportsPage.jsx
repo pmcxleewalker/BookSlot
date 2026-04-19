@@ -1,408 +1,282 @@
 import React, { useState, useEffect } from 'react';
 import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
+import { getTheme } from '../../config/industryThemes';
 import axios from 'axios';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { toast } from 'sonner';
-import { 
-  BarChart3, TrendingUp, DollarSign, Calendar, Users, Clock,
-  Download, FileText, Table, RefreshCw, ChevronDown
-} from 'lucide-react';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { BarChart3, TrendingUp, Users, Clock, DollarSign, CalendarCheck, XCircle, AlertTriangle, Trophy, Star } from 'lucide-react';
+import { format, subDays } from 'date-fns';
 
 const ReportsPage = () => {
   const { token, tenant } = useAuth();
+  const theme = getTheme(tenant?.industry);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
   const [dateRange, setDateRange] = useState('30');
-  const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [report, setReport] = useState(null);
 
-  useEffect(() => {
-    fetchReport();
-  }, [startDate, endDate]);
+  useEffect(() => { fetchReports(); }, [dateRange]);
 
-  const handleDateRangeChange = (value) => {
-    setDateRange(value);
-    const today = new Date();
-    
-    switch(value) {
-      case '7':
-        setStartDate(format(subDays(today, 7), 'yyyy-MM-dd'));
-        setEndDate(format(today, 'yyyy-MM-dd'));
-        break;
-      case '30':
-        setStartDate(format(subDays(today, 30), 'yyyy-MM-dd'));
-        setEndDate(format(today, 'yyyy-MM-dd'));
-        break;
-      case '90':
-        setStartDate(format(subDays(today, 90), 'yyyy-MM-dd'));
-        setEndDate(format(today, 'yyyy-MM-dd'));
-        break;
-      case 'month':
-        setStartDate(format(startOfMonth(today), 'yyyy-MM-dd'));
-        setEndDate(format(endOfMonth(today), 'yyyy-MM-dd'));
-        break;
-      default:
-        break;
-    }
-  };
-
-  const fetchReport = async () => {
+  const fetchReports = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API}/reports/detailed`, {
-        params: { start_date: startDate, end_date: endDate },
+      const end = format(new Date(), 'yyyy-MM-dd');
+      const start = format(subDays(new Date(), parseInt(dateRange)), 'yyyy-MM-dd');
+      const res = await axios.get(`${API}/reports/detailed`, {
+        params: { start_date: start, end_date: end },
         headers: { Authorization: `Bearer ${token}` }
       });
-      setReport(response.data);
-    } catch (error) {
-      console.error('Failed to load reports:', error);
-      toast.error('Failed to load reports');
-    } finally {
-      setLoading(false);
-    }
+      setData(res.data);
+    } catch (error) { console.error('Failed:', error); }
+    finally { setLoading(false); }
   };
 
-  const exportData = async (format, reportType) => {
-    setExporting(true);
-    try {
-      const response = await axios.get(`${API}/reports/export`, {
-        params: { 
-          format, 
-          report_type: reportType,
-          start_date: startDate,
-          end_date: endDate
-        },
-        headers: { Authorization: `Bearer ${token}` }
-      });
+  const summary = data?.summary || {};
+  const byService = data?.by_service || [];
+  const byStaff = data?.by_staff || [];
+  const busiestHours = data?.busiest_hours || [];
+  const dailyTrends = data?.daily_trends || [];
 
-      if (format === 'csv') {
-        // Download CSV
-        const blob = new Blob([response.data.csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = response.data.filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        toast.success(`Downloaded ${response.data.row_count} records`);
-      } else {
-        // Generate PDF from data (using browser print)
-        const data = response.data;
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>${data.title}</title>
-              <style>
-                body { font-family: Arial, sans-serif; padding: 40px; }
-                h1 { color: #0A0A0A; border-bottom: 2px solid #E34A33; padding-bottom: 10px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #E5E5E5; padding: 8px; text-align: left; }
-                th { background: #FAFAFA; }
-                .summary { background: #FAFAFA; padding: 20px; margin: 20px 0; }
-                .logo { color: #E34A33; font-size: 24px; font-weight: bold; }
-              </style>
-            </head>
-            <body>
-              <div class="logo">${tenant?.name || 'BookSlot'}</div>
-              <p style="color: #666;">Powered by BookSlot</p>
-              <h1>${data.title}</h1>
-              <div class="summary">
-                <strong>Summary:</strong><br/>
-                ${Object.entries(data.summary || {}).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join('<br/>')}
-              </div>
-              <table>
-                <thead>
-                  <tr>${(data.columns || []).map(c => `<th>${c}</th>`).join('')}</tr>
-                </thead>
-                <tbody>
-                  ${(data.data || []).map(row => `
-                    <tr>${(data.columns || []).map(c => `<td>${row[c] || ''}</td>`).join('')}</tr>
-                  `).join('')}
-                </tbody>
-              </table>
-              <p style="margin-top: 40px; color: #666; font-size: 12px;">
-                Generated on ${new Date().toLocaleDateString()} by BookSlot
-              </p>
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
-        toast.success('PDF ready for printing');
-      }
-    } catch (error) {
-      toast.error('Failed to export');
-    } finally {
-      setExporting(false);
-    }
-  };
+  const topService = byService[0];
+  const topStaff = byStaff[0];
+  const peakHour = busiestHours.reduce((max, h) => h.bookings > (max?.bookings || 0) ? h : max, null);
+
+  const maxBookings = Math.max(...byStaff.map(s => s.bookings), 1);
+  const maxServiceBookings = Math.max(...byService.map(s => s.bookings), 1);
+  const maxHourBookings = Math.max(...busiestHours.map(h => h.bookings), 1);
 
   return (
     <TenantLayout title="Reports">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-4">
-          <Select value={dateRange} onValueChange={handleDateRangeChange}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Date range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
-              <SelectItem value="month">This month</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          {dateRange === 'custom' && (
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-36"
-              />
-              <span className="text-[#666666]">to</span>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-36"
-              />
-            </div>
-          )}
-          
-          <Button variant="ghost" size="sm" onClick={fetchReport}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5" style={{ color: theme.primary }} />
+            <h2 className="text-lg font-bold text-gray-900">Business Insights</h2>
+          </div>
+          <div className="flex bg-gray-100 rounded-xl p-0.5">
+            {[
+              { value: '7', label: '7 Days' },
+              { value: '30', label: '30 Days' },
+              { value: '90', label: '90 Days' },
+            ].map(opt => (
+              <button key={opt.value} onClick={() => setDateRange(opt.value)}
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${dateRange === opt.value ? 'text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}
+                style={dateRange === opt.value ? { background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` } : {}}
+              >{opt.label}</button>
+            ))}
+          </div>
         </div>
 
-        {/* Export Buttons */}
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => exportData('csv', 'appointments')}
-            disabled={exporting}
-            data-testid="export-csv"
-          >
-            <Table className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => exportData('pdf', 'appointments')}
-            disabled={exporting}
-            data-testid="export-pdf"
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Export PDF
-          </Button>
-        </div>
+        {loading ? (
+          <div className="text-center py-16 text-gray-400">Loading reports...</div>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6" data-testid="report-summary-cards">
+              <SummaryCard icon={CalendarCheck} label="Total Bookings" value={summary.total_bookings || 0} theme={theme} gradient />
+              <SummaryCard icon={DollarSign} label="Revenue" value={`€${summary.total_revenue || 0}`} theme={theme} />
+              <SummaryCard icon={XCircle} label="Cancellations" value={summary.cancelled || 0} theme={theme} warn={summary.cancelled > 0} />
+              <SummaryCard icon={TrendingUp} label="Completion Rate" value={`${summary.completion_rate || 0}%`} theme={theme} />
+            </div>
+
+            {/* Top Performers */}
+            {(topStaff || topService || peakHour) && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6" data-testid="top-performers">
+                {topStaff && (
+                  <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${theme.primary}20, ${theme.accent}20)` }}>
+                      <Trophy className="w-6 h-6" style={{ color: theme.primary }} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Top {theme.terminology.staff.replace(/s$/, '')}</p>
+                      <p className="font-bold text-gray-900 text-lg">{topStaff.name}</p>
+                      <p className="text-sm text-gray-500">{topStaff.bookings} bookings</p>
+                    </div>
+                  </div>
+                )}
+                {topService && (
+                  <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-50">
+                      <Star className="w-6 h-6 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Most Booked Service</p>
+                      <p className="font-bold text-gray-900 text-lg truncate max-w-[180px]">{topService.name}</p>
+                      <p className="text-sm text-gray-500">{topService.bookings} bookings</p>
+                    </div>
+                  </div>
+                )}
+                {peakHour && (
+                  <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-50">
+                      <Clock className="w-6 h-6 text-indigo-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Peak Hour</p>
+                      <p className="font-bold text-gray-900 text-lg">{String(peakHour.hour).padStart(2, '0')}:00</p>
+                      <p className="text-sm text-gray-500">{peakHour.bookings} bookings</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* Staff Leaderboard */}
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" data-testid="staff-leaderboard">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                  <Users className="w-4 h-4" style={{ color: theme.primary }} />
+                  <h3 className="font-semibold text-gray-900 text-sm">{theme.terminology.staff} Leaderboard</h3>
+                </div>
+                <div className="p-4 space-y-3">
+                  {byStaff.length === 0 ? (
+                    <p className="text-center text-gray-400 py-4 text-sm">No booking data yet</p>
+                  ) : byStaff.map((s, i) => (
+                    <div key={s.name} className="flex items-center gap-3">
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? 'text-white' : 'text-gray-500 bg-gray-100'}`}
+                        style={i === 0 ? { background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` } : {}}
+                      >{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-900 truncate">{s.name}</span>
+                          <span className="text-sm font-bold text-gray-700">{s.bookings}</span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${(s.bookings / maxBookings) * 100}%`, background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`, opacity: 1 - (i * 0.15) }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Service Popularity */}
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" data-testid="service-popularity">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                  <Star className="w-4 h-4 text-amber-500" />
+                  <h3 className="font-semibold text-gray-900 text-sm">Service Popularity</h3>
+                </div>
+                <div className="p-4 space-y-3">
+                  {byService.length === 0 ? (
+                    <p className="text-center text-gray-400 py-4 text-sm">No service data yet</p>
+                  ) : byService.slice(0, 8).map((s, i) => (
+                    <div key={s.name}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-gray-900 truncate">{s.name}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-gray-400">{s.bookings}</span>
+                          {s.revenue > 0 && <span className="text-xs font-semibold text-emerald-600">€{s.revenue}</span>}
+                        </div>
+                      </div>
+                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500 bg-amber-400"
+                          style={{ width: `${(s.bookings / maxServiceBookings) * 100}%`, opacity: 1 - (i * 0.1) }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Busiest Hours */}
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" data-testid="busiest-hours">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-indigo-500" />
+                  <h3 className="font-semibold text-gray-900 text-sm">Busiest Hours</h3>
+                </div>
+                <div className="p-4">
+                  {busiestHours.length === 0 ? (
+                    <p className="text-center text-gray-400 py-4 text-sm">No data yet</p>
+                  ) : (
+                    <div className="flex items-end gap-1 h-36">
+                      {Array.from({ length: 10 }, (_, i) => i + 8).map(hour => {
+                        const found = busiestHours.find(h => h.hour === hour);
+                        const count = found?.bookings || 0;
+                        const height = maxHourBookings > 0 ? (count / maxHourBookings) * 100 : 0;
+                        const isPeak = found && peakHour && found.hour === peakHour.hour;
+                        return (
+                          <div key={hour} className="flex-1 flex flex-col items-center gap-1">
+                            <span className="text-[9px] font-bold text-gray-600">{count || ''}</span>
+                            <div className="w-full rounded-t-lg transition-all duration-500 min-h-[4px]"
+                              style={{ height: `${Math.max(height, 4)}%`, background: isPeak ? `linear-gradient(180deg, ${theme.primary}, ${theme.accent})` : '#e5e7eb' }}
+                            />
+                            <span className="text-[9px] text-gray-400 font-mono">{hour}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Daily Trend */}
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" data-testid="daily-trends">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                  <h3 className="font-semibold text-gray-900 text-sm">Daily Booking Trend</h3>
+                </div>
+                <div className="p-4">
+                  {dailyTrends.length === 0 ? (
+                    <p className="text-center text-gray-400 py-4 text-sm">No trend data yet</p>
+                  ) : (
+                    <div className="flex items-end gap-[2px] h-36">
+                      {dailyTrends.slice(-30).map((d, i) => {
+                        const maxDaily = Math.max(...dailyTrends.map(t => t.bookings), 1);
+                        const height = (d.bookings / maxDaily) * 100;
+                        return (
+                          <div key={d.date} className="flex-1 group relative">
+                            <div className="w-full rounded-t-sm min-h-[2px] hover:opacity-80 transition-all"
+                              style={{ height: `${Math.max(height, 2)}%`, background: `linear-gradient(180deg, ${theme.primary}, ${theme.accent})`, opacity: 0.4 + (i / dailyTrends.length) * 0.6 }}
+                            />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-800 text-white text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                              {d.date}: {d.bookings}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Status Breakdown */}
+            <div className="mt-5 bg-white rounded-2xl border border-gray-200 overflow-hidden" data-testid="status-breakdown">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-900 text-sm">Booking Status Breakdown</h3>
+              </div>
+              <div className="p-5 flex items-center justify-center gap-8">
+                <StatusBlock label="Confirmed" count={Math.max(0, (summary.total_bookings || 0) - (summary.completed || 0) - (summary.cancelled || 0) - (summary.no_shows || 0))} color="#10b981" />
+                <StatusBlock label="Completed" count={summary.completed || 0} color="#3b82f6" />
+                <StatusBlock label="Cancelled" count={summary.cancelled || 0} color="#ef4444" />
+                <StatusBlock label="No Shows" count={summary.no_shows || 0} color="#f97316" />
+              </div>
+            </div>
+          </>
+        )}
       </div>
-
-      {loading ? (
-        <div className="py-12 text-center text-[#666666]">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" />
-          Loading reports...
-        </div>
-      ) : report ? (
-        <div className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="card-flat">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">€{(report.summary?.total_revenue || 0).toFixed(0)}</p>
-                  <p className="text-xs text-[#666666]">Total Revenue</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="card-flat">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">{report.summary?.total_bookings || 0}</p>
-                  <p className="text-xs text-[#666666]">Total Bookings</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="card-flat">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 rounded flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">{report.summary?.completion_rate || 0}%</p>
-                  <p className="text-xs text-[#666666]">Completion Rate</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="card-flat">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-100 rounded flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">€{(report.summary?.average_booking_value || 0).toFixed(0)}</p>
-                  <p className="text-xs text-[#666666]">Avg. Booking Value</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Status Breakdown */}
-          <div className="card-flat">
-            <h3 className="font-semibold text-[#0A0A0A] mb-4">Booking Status</h3>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full" />
-                <span className="text-sm">Completed: {report.summary?.completed || 0}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full" />
-                <span className="text-sm">Cancelled: {report.summary?.cancelled || 0}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-gray-500 rounded-full" />
-                <span className="text-sm">No Shows: {report.summary?.no_shows || 0}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Revenue by Service */}
-            <div className="card-flat">
-              <h3 className="font-semibold text-[#0A0A0A] mb-4">Revenue by Service</h3>
-              <div className="space-y-3">
-                {report.by_service?.slice(0, 5).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{item.name}</p>
-                      <div className="w-full bg-[#E5E5E5] h-2 rounded mt-1">
-                        <div 
-                          className="bg-[#E34A33] h-2 rounded"
-                          style={{ 
-                            width: `${Math.min(100, (item.revenue / (report.by_service[0]?.revenue || 1)) * 100)}%` 
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="ml-4 text-right">
-                      <p className="font-semibold">€{item.revenue.toFixed(0)}</p>
-                      <p className="text-xs text-[#666666]">{item.bookings} bookings</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Revenue by Staff */}
-            <div className="card-flat">
-              <h3 className="font-semibold text-[#0A0A0A] mb-4">Revenue by Staff</h3>
-              <div className="space-y-3">
-                {report.by_staff?.slice(0, 5).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{item.name}</p>
-                      <div className="w-full bg-[#E5E5E5] h-2 rounded mt-1">
-                        <div 
-                          className="bg-[#4F46E5] h-2 rounded"
-                          style={{ 
-                            width: `${Math.min(100, (item.revenue / (report.by_staff[0]?.revenue || 1)) * 100)}%` 
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="ml-4 text-right">
-                      <p className="font-semibold">€{item.revenue.toFixed(0)}</p>
-                      <p className="text-xs text-[#666666]">{item.bookings} bookings</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Busiest Hours */}
-          <div className="card-flat">
-            <h3 className="font-semibold text-[#0A0A0A] mb-4">Busiest Hours</h3>
-            <div className="flex items-end gap-1 h-32">
-              {Array.from({ length: 12 }, (_, i) => i + 8).map(hour => {
-                const data = report.busiest_hours?.find(h => h.hour === hour);
-                const bookings = data?.bookings || 0;
-                const maxBookings = Math.max(...(report.busiest_hours?.map(h => h.bookings) || [1]));
-                const height = maxBookings > 0 ? (bookings / maxBookings) * 100 : 0;
-                
-                return (
-                  <div key={hour} className="flex-1 flex flex-col items-center">
-                    <div 
-                      className="w-full bg-[#E34A33] rounded-t transition-all"
-                      style={{ height: `${height}%`, minHeight: bookings > 0 ? '4px' : '0' }}
-                      title={`${hour}:00 - ${bookings} bookings`}
-                    />
-                    <span className="text-xs text-[#666666] mt-1">{hour}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Daily Trends */}
-          {report.daily_trends && report.daily_trends.length > 0 && (
-            <div className="card-flat">
-              <h3 className="font-semibold text-[#0A0A0A] mb-4">Daily Revenue Trend</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[#E5E5E5]">
-                      <th className="text-left py-2 font-medium text-[#666666]">Date</th>
-                      <th className="text-right py-2 font-medium text-[#666666]">Bookings</th>
-                      <th className="text-right py-2 font-medium text-[#666666]">Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.daily_trends.slice(-10).map((day, idx) => (
-                      <tr key={idx} className="border-b border-[#E5E5E5] last:border-0">
-                        <td className="py-2">{day.date}</td>
-                        <td className="py-2 text-right">{day.bookings}</td>
-                        <td className="py-2 text-right font-medium">€{day.revenue.toFixed(0)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="card-flat py-12 text-center">
-          <BarChart3 className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
-          <h3 className="font-semibold text-[#0A0A0A] mb-2">No data available</h3>
-          <p className="text-[#666666]">Select a date range to view reports</p>
-        </div>
-      )}
     </TenantLayout>
   );
 };
+
+const SummaryCard = ({ icon: Icon, label, value, theme, gradient, warn }) => (
+  <div className={`rounded-2xl p-4 border transition-all hover:shadow-md ${gradient ? 'text-white border-transparent' : warn ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}
+    style={gradient ? { background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` } : {}}
+  >
+    <Icon className={`w-5 h-5 mb-2 ${gradient ? 'text-white/70' : warn ? 'text-red-400' : 'text-gray-400'}`} />
+    <p className={`text-2xl font-bold ${gradient ? '' : warn ? 'text-red-700' : 'text-gray-900'}`}>{value}</p>
+    <p className={`text-xs mt-0.5 ${gradient ? 'text-white/60' : 'text-gray-400'}`}>{label}</p>
+  </div>
+);
+
+const StatusBlock = ({ label, count, color }) => (
+  <div className="text-center">
+    <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: color + '15' }}>
+      <span className="text-xl font-bold" style={{ color }}>{count}</span>
+    </div>
+    <p className="text-xs text-gray-500 font-medium">{label}</p>
+  </div>
+);
 
 export default ReportsPage;
