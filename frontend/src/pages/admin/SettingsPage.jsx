@@ -7,14 +7,18 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { toast } from 'sonner';
-import { Building2, Globe, Clock, Shield, Bell, MessageSquare, Mail, Smartphone, Check, Palette, Upload, Eye } from 'lucide-react';
+import { Building2, Globe, Clock, Shield, Bell, MessageSquare, Mail, Smartphone, Check, Palette, Upload, Eye, BellRing } from 'lucide-react';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 const SettingsPage = () => {
   const { tenant, token, updateTenant } = useAuth();
+  const { permission, isSubscribed, isSupported, subscribe, unsubscribe } = usePushNotifications(token);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState(null);
   const [loadingNotifications, setLoadingNotifications] = useState(true);
+  const [reminderSettings, setReminderSettings] = useState({ push_enabled: false, reminder_hours: 24 });
+  const [savingReminders, setSavingReminders] = useState(false);
   const [branding, setBranding] = useState({
     business_name: '',
     primary_color: '#E34A33',
@@ -36,7 +40,44 @@ const SettingsPage = () => {
   useEffect(() => {
     fetchNotificationSettings();
     fetchBranding();
+    fetchReminderSettings();
   }, []);
+
+  const fetchReminderSettings = async () => {
+    try {
+      const res = await axios.get(`${API}/reminders/settings`, { headers: { Authorization: `Bearer ${token}` } });
+      setReminderSettings(res.data.settings || { push_enabled: false, reminder_hours: 24 });
+    } catch { /* ignore */ }
+  };
+
+  const handleTogglePush = async () => {
+    if (!reminderSettings.push_enabled) {
+      const ok = await subscribe();
+      if (ok) {
+        await saveReminderSettings({ push_enabled: true, reminder_hours: reminderSettings.reminder_hours });
+        toast.success('Push reminders enabled');
+      } else {
+        toast.error('Push notifications were blocked. Please allow in browser settings.');
+      }
+    } else {
+      await unsubscribe();
+      await saveReminderSettings({ push_enabled: false, reminder_hours: reminderSettings.reminder_hours });
+      toast.success('Push reminders disabled');
+    }
+  };
+
+  const handleReminderHoursChange = async (hours) => {
+    await saveReminderSettings({ ...reminderSettings, reminder_hours: hours });
+  };
+
+  const saveReminderSettings = async (settings) => {
+    setSavingReminders(true);
+    try {
+      await axios.post(`${API}/reminders/settings`, settings, { headers: { Authorization: `Bearer ${token}` } });
+      setReminderSettings(settings);
+    } catch { toast.error('Failed to save reminder settings'); }
+    finally { setSavingReminders(false); }
+  };
 
   const fetchNotificationSettings = async () => {
     try {
@@ -641,6 +682,83 @@ const SettingsPage = () => {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Push Notification Reminders */}
+        <div className="bg-white border border-[#E5E5E5] rounded-lg overflow-hidden" data-testid="push-reminders-section">
+          <div className="flex items-center gap-3 p-6 pb-4">
+            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
+              <BellRing className="w-5 h-5 text-violet-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-[#0A0A0A]">Push Notification Reminders</h3>
+              <p className="text-sm text-[#666666]">Send automatic reminders before appointments</p>
+            </div>
+          </div>
+          <div className="px-6 pb-6 space-y-4">
+            {!isSupported ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                Push notifications are not supported in this browser. Try Chrome, Edge, or Firefox on desktop.
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="font-medium text-[#0A0A0A]">Enable Push Reminders</p>
+                    <p className="text-sm text-[#666666]">
+                      {isSubscribed ? 'Notifications active on this device' : 'Send appointment reminders via push notification'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={reminderSettings.push_enabled}
+                    onCheckedChange={handleTogglePush}
+                    disabled={savingReminders}
+                    data-testid="toggle-push-reminders"
+                  />
+                </div>
+
+                {reminderSettings.push_enabled && (
+                  <>
+                    <div className="flex items-center justify-between py-2 border-t border-[#E5E5E5]">
+                      <div>
+                        <p className="font-medium text-[#0A0A0A]">Remind Before</p>
+                        <p className="text-sm text-[#666666]">How long before the appointment</p>
+                      </div>
+                      <select
+                        value={reminderSettings.reminder_hours}
+                        onChange={(e) => handleReminderHoursChange(parseInt(e.target.value))}
+                        className="border border-[#E5E5E5] rounded-lg px-3 py-2 text-sm bg-white"
+                        data-testid="push-reminder-hours"
+                      >
+                        <option value={1}>1 hour</option>
+                        <option value={2}>2 hours</option>
+                        <option value={4}>4 hours</option>
+                        <option value={12}>12 hours</option>
+                        <option value={24}>24 hours (1 day)</option>
+                        <option value={48}>48 hours (2 days)</option>
+                      </select>
+                    </div>
+
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800 flex items-start gap-2">
+                      <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-medium">Reminders are active</p>
+                        <p className="text-emerald-600 text-xs mt-0.5">
+                          Clients who have subscribed via your booking page will receive a push notification {reminderSettings.reminder_hours} hour{reminderSettings.reminder_hours !== 1 ? 's' : ''} before their appointment.
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {permission === 'denied' && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                    Notifications are blocked on this device. Go to browser settings to allow notifications for this site.
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Save Button */}

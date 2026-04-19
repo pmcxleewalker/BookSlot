@@ -41,6 +41,14 @@ try:
 except ImportError:
     MOLTBOT_LLM_AVAILABLE = False
 
+# Web Push
+try:
+    from pywebpush import webpush, WebPushException
+    WEBPUSH_AVAILABLE = True
+except ImportError:
+    WEBPUSH_AVAILABLE = False
+
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -3909,7 +3917,6 @@ async def send_push_reminder(reminder_data: Dict[str, Any], user: Dict = Depends
     if not appointment_id:
         raise HTTPException(status_code=400, detail="Appointment ID required")
     
-    # Get appointment details
     appointment = await db.appointments.find_one({
         "appointment_id": appointment_id,
         "tenant_id": user["tenant_id"]
@@ -3918,7 +3925,7 @@ async def send_push_reminder(reminder_data: Dict[str, Any], user: Dict = Depends
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    # Find push subscription for this appointment or client
+    # Find push subscription for this client
     subscription = await db.push_subscriptions.find_one({
         "$or": [
             {"appointment_id": appointment_id},
@@ -3929,57 +3936,138 @@ async def send_push_reminder(reminder_data: Dict[str, Any], user: Dict = Depends
     }, {"_id": 0})
     
     if not subscription:
-        return {
-            "message": "No push subscription found for this client",
-            "sent": False,
-            "install_link": f"/book/{user['tenant_id']}?install=true"
-        }
+        return {"message": "No push subscription found for this client", "sent": False}
     
-    # Get tenant for branding
     tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
-    
-    # Get service name
     service = await db.services.find_one({"service_id": appointment.get("service_id")}, {"_id": 0})
     service_name = service.get("name", "Appointment") if service else "Appointment"
     
-    # Format notification payload
-    start_time = appointment.get("start_time")
-    if isinstance(start_time, str):
-        start_time = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+    start_time = appointment.get("start_time", "")
+    try:
+        if isinstance(start_time, str):
+            start_time = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+        body_text = f"You have a booking on {start_time.strftime('%A, %B %d')} at {start_time.strftime('%I:%M %p')}"
+    except:
+        body_text = "You have an upcoming appointment"
     
     notification_payload = {
         "title": f"Reminder: {service_name}",
-        "body": f"You have a booking on {start_time.strftime('%A, %B %d')} at {start_time.strftime('%I:%M %p')}",
-        "icon": tenant.get("logo_url", "/icon-192.png"),
-        "badge": "/badge-72.png",
+        "body": body_text,
+        "icon": "/icon-192.png",
         "tag": f"reminder-{appointment_id}",
-        "data": {
-            "appointment_id": appointment_id,
-            "url": f"/booking/confirm/{appointment_id}"
-        },
-        "actions": [
-            {"action": "confirm", "title": "Confirm"},
-            {"action": "reschedule", "title": "Reschedule"}
-        ]
+        "data": {"appointment_id": appointment_id, "url": f"/booking/{appointment_id}"}
     }
     
-    # Record notification attempt
+    # Actually send the push notification
+    sent = False
+    if WEBPUSH_AVAILABLE:
+        vapid_private = os.environ.get("VAPID_PRIVATE_KEY", "")
+        vapid_email = os.environ.get("VAPID_CLAIM_EMAIL", "mailto:admin@bookslot.io")
+        if vapid_private and subscription.get("endpoint"):
+            try:
+                import json as json_mod
+                webpush(
+                    subscription_info={"endpoint": subscription["endpoint"], "keys": subscription.get("keys", {})},
+                    data=json_mod.dumps(notification_payload),
+                    vapid_private_key=vapid_private,
+                    vapid_claims={"sub": vapid_email}
+                )
+                sent = True
+                logger.info(f"Push sent for appointment {appointment_id}")
+            except WebPushException as e:
+                logger.error(f"Push send failed: {e}")
+                if e.response and e.response.status_code in [404, 410]:
+                    await db.push_subscriptions.delete_one({"endpoint": subscription["endpoint"]})
+    
     await db.push_notifications.insert_one({
         "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
         "tenant_id": user["tenant_id"],
         "appointment_id": appointment_id,
-        "subscription_id": subscription["subscription_id"],
         "payload": notification_payload,
-        "status": "pending",
+        "status": "sent" if sent else "queued",
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
-    return {
-        "message": "Push notification queued",
-        "sent": True,
-        "payload": notification_payload,
-        "subscription_id": subscription["subscription_id"]
+    return {"message": "Push notification sent" if sent else "Notification queued", "sent": sent}
+
+@api_router.post("/push/subscribe-admin")
+async def subscribe_admin_push(subscription_data: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Subscribe admin user to push notifications for their tenant"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    endpoint = subscription_data.get("endpoint")
+    keys = subscription_data.get("keys", {})
+    if not endpoint:
+        raise HTTPException(status_code=400, detail="Endpoint required")
+    
+    sub = {
+        "subscription_id": f"push_{uuid.uuid4().hex[:12]}",
+        "tenant_id": user["tenant_id"],
+        "user_id": user["user_id"],
+        "type": "admin",
+        "endpoint": endpoint,
+        "keys": keys,
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
+    
+    existing = await db.push_subscriptions.find_one({"endpoint": endpoint}, {"_id": 0})
+    if existing:
+        await db.push_subscriptions.update_one({"endpoint": endpoint}, {"$set": sub})
+        return {"message": "Subscription updated"}
+    
+    await db.push_subscriptions.insert_one({**sub})
+    return {"message": "Subscribed to notifications"}
+
+@api_router.post("/reminders/settings")
+async def update_reminder_settings(body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Update reminder settings for a tenant"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    
+    settings = {
+        "push_enabled": body.get("push_enabled", True),
+        "reminder_hours": body.get("reminder_hours", 24),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.tenants.update_one(
+        {"tenant_id": user["tenant_id"]},
+        {"$set": {"reminder_settings": settings}}
+    )
+    
+    return {"message": "Reminder settings updated", "settings": settings}
+
+@api_router.get("/reminders/settings")
+async def get_reminder_settings(user: Dict = Depends(get_current_user)):
+    """Get reminder settings for a tenant"""
+    if not user.get("tenant_id"):
+        return {"settings": {"push_enabled": False, "reminder_hours": 24}}
+    
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    settings = tenant.get("reminder_settings", {"push_enabled": False, "reminder_hours": 24}) if tenant else {"push_enabled": False, "reminder_hours": 24}
+    return {"settings": settings}
+
+@api_router.get("/reminders/upcoming")
+async def get_upcoming_reminders(user: Dict = Depends(get_current_user)):
+    """Get upcoming appointments that will receive reminders"""
+    if not user.get("tenant_id"):
+        return {"reminders": []}
+    
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    settings = tenant.get("reminder_settings", {"push_enabled": False, "reminder_hours": 24}) if tenant else {}
+    hours = settings.get("reminder_hours", 24)
+    
+    now = datetime.now(timezone.utc)
+    reminder_window = now + timedelta(hours=hours)
+    
+    upcoming = await db.appointments.find({
+        "tenant_id": user["tenant_id"],
+        "status": "confirmed",
+        "start_time": {"$gte": now.isoformat(), "$lte": reminder_window.isoformat()}
+    }, {"_id": 0}).to_list(50)
+    
+    return {"reminders": upcoming, "reminder_hours": hours}
 
 @api_router.get("/push/vapid-key")
 async def get_vapid_public_key():
