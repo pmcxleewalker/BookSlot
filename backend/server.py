@@ -247,7 +247,7 @@ class UserResponse(BaseModel):
 # Staff Models
 class StaffBase(BaseModel):
     name: str
-    email: EmailStr
+    email: Optional[EmailStr] = None
     phone: Optional[str] = None
     title: Optional[str] = None
     bio: Optional[str] = None
