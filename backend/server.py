@@ -388,7 +388,8 @@ class AppointmentBase(BaseModel):
     resource_id: Optional[str] = None
 
 class AppointmentCreate(AppointmentBase):
-    pass
+    repeat_weeks: Optional[int] = None  # Repeat every X weeks
+    repeat_count: Optional[int] = 1     # How many repeats (1 = just this one)
 
 class Appointment(AppointmentBase):
     model_config = ConfigDict(extra="ignore")
@@ -1952,46 +1953,82 @@ async def get_appointments(
 
 @api_router.post("/appointments")
 async def create_appointment(appt_data: AppointmentCreate, user: Dict = Depends(get_current_user)):
-    """Create new appointment"""
+    """Create new appointment (with optional repeat booking)"""
     if not user.get("tenant_id"):
         raise HTTPException(status_code=400, detail="No business found")
     
-    # Check for conflicts
-    conflict = await db.appointments.find_one({
-        "tenant_id": user["tenant_id"],
-        "staff_id": appt_data.staff_id,
-        "status": {"$nin": ["cancelled"]},
-        "$or": [
-            {"start_time": {"$lt": appt_data.end_time.isoformat(), "$gte": appt_data.start_time.isoformat()}},
-            {"end_time": {"$gt": appt_data.start_time.isoformat(), "$lte": appt_data.end_time.isoformat()}},
-            {"$and": [
-                {"start_time": {"$lte": appt_data.start_time.isoformat()}},
-                {"end_time": {"$gte": appt_data.end_time.isoformat()}}
-            ]}
-        ]
-    }, {"_id": 0})
-    
-    if conflict:
-        raise HTTPException(status_code=409, detail="Time slot conflict with existing appointment")
-    
-    # Get service price
     service = await db.services.find_one({"service_id": appt_data.service_id}, {"_id": 0})
+    service_price = service.get("price", 0) if service else 0
+    service_name = service.get("name", "") if service else ""
     
-    appointment = Appointment(**appt_data.model_dump(), tenant_id=user["tenant_id"])
-    appointment.total_price = service.get("price", 0) if service else 0
+    staff = await db.staff.find_one({"staff_id": appt_data.staff_id}, {"_id": 0})
+    staff_name = staff.get("name", "") if staff else ""
     
-    appt_dict = appointment.model_dump()
-    appt_dict["start_time"] = appt_dict["start_time"].isoformat()
-    appt_dict["end_time"] = appt_dict["end_time"].isoformat()
-    appt_dict["created_at"] = appt_dict["created_at"].isoformat()
-    appt_dict["updated_at"] = appt_dict["updated_at"].isoformat()
+    repeat_weeks = appt_data.repeat_weeks or 0
+    repeat_count = min(appt_data.repeat_count or 1, 52)  # Max 52 repeats (1 year)
     
-    await db.appointments.insert_one({**appt_dict})
+    created_appointments = []
     
-    # Trigger webhook
-    await trigger_webhook(user["tenant_id"], WebhookEvent.BOOKING_CREATED, appt_dict)
+    for i in range(repeat_count):
+        offset = timedelta(weeks=repeat_weeks * i) if repeat_weeks > 0 and i > 0 else timedelta(0)
+        start = appt_data.start_time + offset
+        end = appt_data.end_time + offset
+        
+        # Check conflict
+        conflict = await db.appointments.find_one({
+            "tenant_id": user["tenant_id"],
+            "staff_id": appt_data.staff_id,
+            "status": {"$nin": ["cancelled"]},
+            "$or": [
+                {"start_time": {"$lt": end.isoformat(), "$gte": start.isoformat()}},
+                {"end_time": {"$gt": start.isoformat(), "$lte": end.isoformat()}},
+                {"$and": [
+                    {"start_time": {"$lte": start.isoformat()}},
+                    {"end_time": {"$gte": end.isoformat()}}
+                ]}
+            ]
+        }, {"_id": 0})
+        
+        if conflict and i == 0:
+            raise HTTPException(status_code=409, detail="Time slot conflict with existing appointment")
+        if conflict:
+            continue  # Skip conflicting repeats silently
+        
+        appt_dict = {
+            "appointment_id": f"appt_{uuid.uuid4().hex[:12]}",
+            "tenant_id": user["tenant_id"],
+            "service_id": appt_data.service_id,
+            "service_name": service_name,
+            "staff_id": appt_data.staff_id,
+            "staff_name": staff_name,
+            "client_id": appt_data.client_id,
+            "client_name": appt_data.client_name,
+            "client_email": appt_data.client_email,
+            "client_phone": appt_data.client_phone,
+            "start_time": start.isoformat(),
+            "end_time": end.isoformat(),
+            "notes": appt_data.notes,
+            "status": "confirmed",
+            "total_price": service_price,
+            "price": service_price,
+            "source": "admin",
+            "repeat_group_id": f"rpt_{uuid.uuid4().hex[:8]}" if repeat_weeks > 0 else None,
+            "repeat_weeks": repeat_weeks if repeat_weeks > 0 else None,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        await db.appointments.insert_one({**appt_dict})
+        created_appointments.append(appt_dict)
     
-    return {"appointment": appt_dict}
+    if created_appointments:
+        await trigger_webhook(user["tenant_id"], WebhookEvent.BOOKING_CREATED, created_appointments[0])
+    
+    return {
+        "appointment": created_appointments[0] if created_appointments else {},
+        "total_created": len(created_appointments),
+        "repeat_weeks": repeat_weeks if repeat_weeks > 0 else None
+    }
 
 @api_router.put("/appointments/{appointment_id}")
 async def update_appointment(appointment_id: str, updates: Dict[str, Any], user: Dict = Depends(get_current_user)):
