@@ -1,0 +1,131 @@
+{
+  "summary": "Completed testing of Phase 3: Service Enhancements. All features working correctly - service dialog shows all new fields (Category, Buffer, Deposit toggle with amount, Visible Online toggle, Staff assignment pills, Add-ons section). Backend API supports all new fields for create/update. Services list shows 12 services. Other pages (Dashboard, Calendar, Settings with 4 tabs, Staff multi-tab dialog) all working.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "test_report_links": [
+    "/app/backend/tests/test_service_enhancements.py",
+    "/app/test_reports/pytest/pytest_service_enhancements.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [
+    "Login salon@bookslot.io / Demo123! works - PASS",
+    "Team > Services tab shows 12 services - PASS",
+    "Service edit dialog shows Service Name field - PASS",
+    "Service edit dialog shows Description field - PASS",
+    "Service edit dialog shows Category field with autocomplete placeholder - PASS",
+    "Service edit dialog shows Duration (min) field - PASS",
+    "Service edit dialog shows Price (€) field - PASS",
+    "Service edit dialog shows Buffer (min) field - PASS",
+    "Service edit dialog shows Visible Online toggle - PASS",
+    "Service edit dialog shows Require Deposit toggle - PASS",
+    "Deposit Amount (€) field appears when Require Deposit is enabled - PASS",
+    "Service edit dialog shows Assigned Staff section with pill buttons (Sarah, Mia, Jake) - PASS",
+    "Service edit dialog shows All Staff button to select/clear all - PASS",
+    "Service edit dialog shows Add-Ons section with name/price/duration inputs and + button - PASS",
+    "POST /api/services creates service with all new fields (category, buffer_time, deposit_required, deposit_amount, visible_online, staff_ids, add_ons) - PASS",
+    "PUT /api/services/{id} updates all new fields - PASS",
+    "GET /api/services returns services with all new fields - PASS",
+    "Staff page Stylists tab still works with multi-tab dialog (Details/Schedule/Services/Access) - PASS",
+    "Dashboard (Today) still loads correctly - PASS",
+    "Calendar still works with appointments and staff filter - PASS",
+    "Settings still works with 4 tabs (Business, Branding, Booking Rules, Notifications) - PASS"
+  ],
+  
+  "updated_files": [
+    "/app/backend/tests/test_service_enhancements.py"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (27/27 tests passed)",
+    "frontend": "100% (all features working)"
+  },
+  
+  "test_credentials": {
+    "salon": "salon@bookslot.io / Demo123!",
+    "super_admin": "admin@bookslot.io / Admin123! at /admin"
+  },
+  
+  "seed_data_creation": "No new seed data created - used existing seeded tenants",
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "Phase 3 Service Enhancements complete. Service edit dialog has all new fields: Category (with autocomplete from existing categories), Duration, Price, Buffer (min), Visible Online toggle, Require Deposit toggle (shows Deposit Amount field when enabled), Assigned Staff section with pill-button UI (click to toggle staff on/off), Add-Ons section (name/price/duration with + button to add). Backend ServiceBase model supports: category, buffer_time, deposit_required, deposit_amount, visible_online, staff_ids (list), add_ons (list of {name, price, duration}). All CRUD operations work via POST/PUT/DELETE /api/services.",
+  
+  "features_tested": {
+    "login": {
+      "salon_login": "PASS - salon@bookslot.io / Demo123! works"
+    },
+    "team_services_tab": {
+      "services_count": "PASS - 12 services displayed",
+      "add_service_btn": "PASS - Opens add service dialog"
+    },
+    "service_edit_dialog": {
+      "service_name": "PASS",
+      "description": "PASS",
+      "category": "PASS - with autocomplete placeholder 'e.g. Hair, Nails, Skin, Colour'",
+      "duration": "PASS",
+      "price": "PASS",
+      "buffer_time": "PASS",
+      "visible_online_toggle": "PASS - with 'Show on public booking page' description",
+      "require_deposit_toggle": "PASS - with 'Collect a deposit when booking' description",
+      "deposit_amount": "PASS - appears when deposit enabled",
+      "assigned_staff": "PASS - pill buttons (Sarah, Mia, Jake) with All Staff button",
+      "add_ons": "PASS - name/price/duration inputs with + button"
+    },
+    "backend_api": {
+      "create_service": "PASS - POST /api/services with all new fields",
+      "update_service": "PASS - PUT /api/services/{id} updates all fields",
+      "get_services": "PASS - returns services with all new fields",
+      "delete_service": "PASS - soft delete works"
+    },
+    "other_pages": {
+      "dashboard": "PASS - Today page loads",
+      "calendar": "PASS - Calendar with appointments and staff filter",
+      "settings": "PASS - 4 tabs (Business, Branding, Booking Rules, Notifications)",
+      "staff_dialog": "PASS - 4 tabs (Details, Schedule, Services, Access)"
+    }
+  },
+  
+  "api_tests": {
+    "test_01_login_success": "PASS",
+    "test_02_get_services_list": "PASS",
+    "test_03_get_staff_list": "PASS",
+    "test_04_service_has_category_field": "PASS",
+    "test_05_service_has_buffer_time_field": "PASS",
+    "test_06_service_has_deposit_fields": "PASS",
+    "test_07_service_has_visible_online_field": "PASS",
+    "test_08_service_has_staff_ids_field": "PASS",
+    "test_09_service_has_add_ons_field": "PASS",
+    "test_10_create_service_with_all_new_fields": "PASS",
+    "test_11_verify_created_service_persisted": "PASS",
+    "test_12_update_service_category": "PASS",
+    "test_13_update_service_buffer_time": "PASS",
+    "test_14_update_service_deposit_settings": "PASS",
+    "test_15_update_service_visible_online": "PASS",
+    "test_16_update_service_add_ons": "PASS",
+    "test_17_update_service_staff_ids": "PASS",
+    "test_18_verify_all_updates_persisted": "PASS",
+    "test_19_services_have_categories_for_grouping": "PASS",
+    "test_20_cleanup_test_service": "PASS",
+    "test_21_verify_service_deleted": "PASS",
+    "test_dashboard_api": "PASS",
+    "test_staff_api": "PASS",
+    "test_appointments_api": "PASS",
+    "test_tenant_api": "PASS",
+    "test_booking_rules_api": "PASS",
+    "test_branding_api": "PASS"
+  }
+}

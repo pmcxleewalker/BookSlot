@@ -42,7 +42,8 @@ const StaffPage = () => {
   // Service form
   const [showServiceDialog, setShowServiceDialog] = useState(false);
   const [editingService, setEditingService] = useState(null);
-  const [serviceForm, setServiceForm] = useState({ name: '', duration: 30, price: 0, description: '' });
+  const [serviceForm, setServiceForm] = useState({ name: '', duration: 30, price: 0, description: '', category: '', buffer_time: 0, deposit_required: false, deposit_amount: 0, visible_online: true, staff_ids: [], add_ons: [] });
+  const [newAddOn, setNewAddOn] = useState({ name: '', price: 0, duration: 0 });
 
   useEffect(() => { fetchData(); }, []);
   const fetchData = async () => {
@@ -126,8 +127,8 @@ const StaffPage = () => {
   const handleDeleteStaff = async (id) => { if (!window.confirm('Remove this team member?')) return; try { await axios.delete(`${API}/staff/${id}`, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Removed'); fetchData(); } catch { toast.error('Failed'); } };
 
   // Service handlers
-  const openAddService = () => { setEditingService(null); setServiceForm({ name: '', duration: 30, price: 0, description: '' }); setShowServiceDialog(true); };
-  const openEditService = (s) => { setEditingService(s); setServiceForm({ name: s.name, duration: s.duration || 30, price: s.price || 0, description: s.description || '' }); setShowServiceDialog(true); };
+  const openAddService = () => { setEditingService(null); setServiceForm({ name: '', duration: 30, price: 0, description: '', category: '', buffer_time: 0, deposit_required: false, deposit_amount: 0, visible_online: true, staff_ids: [], add_ons: [] }); setNewAddOn({ name: '', price: 0, duration: 0 }); setShowServiceDialog(true); };
+  const openEditService = (s) => { setEditingService(s); setServiceForm({ name: s.name, duration: s.duration || 30, price: s.price || 0, description: s.description || '', category: s.category || '', buffer_time: s.buffer_time || 0, deposit_required: s.deposit_required || false, deposit_amount: s.deposit_amount || 0, visible_online: s.visible_online !== false, staff_ids: s.staff_ids || [], add_ons: s.add_ons || [] }); setNewAddOn({ name: '', price: 0, duration: 0 }); setShowServiceDialog(true); };
   const handleSaveService = async () => {
     if (!serviceForm.name) { toast.error('Name required'); return; }
     try {
@@ -214,25 +215,44 @@ const StaffPage = () => {
               <Plus className="w-4 h-4" strokeWidth={2} /> Add Service
             </button>
             {services.length === 0 ? <EmptyState icon={Star} title="No services yet" sub="Add your menu of services" /> : (
-              <div className="bg-white rounded-3xl shadow-[0_4px_24px_rgb(0,0,0,0.04)] border border-[#F0EBE6]/60 overflow-hidden divide-y divide-[#F0EBE6]">
-                {services.map(s => (
-                  <div key={s.service_id} className="px-6 py-5 flex items-center justify-between hover:bg-[#FDFCFA] transition-colors group" data-testid={`service-card-${s.service_id}`}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-['Cormorant_Garamond'] text-lg text-[#2C2A29]">{s.name}</h3>
-                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-[#F7F3EE] text-[#9E948F] flex items-center gap-1"><Clock className="w-3 h-3" strokeWidth={1.5} />{s.duration}m</span>
+              <div className="space-y-3">
+                {/* Group by category */}
+                {(() => {
+                  const cats = {}; services.forEach(s => { const c = s.category || 'Uncategorized'; if (!cats[c]) cats[c] = []; cats[c].push(s); });
+                  return Object.entries(cats).map(([cat, svcs]) => (
+                    <div key={cat}>
+                      {cat !== 'Uncategorized' && <p className="text-xs tracking-[0.15em] uppercase text-[#9E948F] font-medium mb-2 mt-4">{cat}</p>}
+                      <div className="bg-white rounded-3xl shadow-[0_4px_24px_rgb(0,0,0,0.04)] border border-[#F0EBE6]/60 overflow-hidden divide-y divide-[#F0EBE6]">
+                        {svcs.map(s => {
+                          const assignedStaff = s.staff_ids?.length > 0 ? s.staff_ids.map(id => staff.find(st => st.staff_id === id)?.name).filter(Boolean) : [];
+                          return (
+                            <div key={s.service_id} className="px-6 py-5 flex items-center justify-between hover:bg-[#FDFCFA] transition-colors group" data-testid={`service-card-${s.service_id}`}>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2.5 flex-wrap">
+                                  <h3 className="font-['Cormorant_Garamond'] text-lg text-[#2C2A29]">{s.name}</h3>
+                                  <span className="text-[10px] px-2.5 py-1 rounded-full bg-[#F7F3EE] text-[#9E948F] flex items-center gap-1"><Clock className="w-3 h-3" strokeWidth={1.5} />{s.duration}m</span>
+                                  {s.buffer_time > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FAF8F6] text-[#9E948F]">+{s.buffer_time}m buffer</span>}
+                                  {s.visible_online === false && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#C4898E]/10 text-[#C4898E]">Hidden</span>}
+                                  {s.deposit_required && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#D4A373]/10 text-[#D4A373]">Deposit &euro;{s.deposit_amount}</span>}
+                                </div>
+                                {s.description && <p className="text-sm text-[#9E948F] mt-1">{s.description}</p>}
+                                {assignedStaff.length > 0 && <p className="text-[11px] text-[#9E948F] mt-1.5">{assignedStaff.join(', ')}</p>}
+                                {s.add_ons?.length > 0 && <div className="flex gap-1.5 mt-1.5">{s.add_ons.map((a, i) => <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8C5C8]/20 text-[#C4898E]">+ {a.name} &euro;{a.price}</span>)}</div>}
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <span className="font-['Cormorant_Garamond'] text-xl text-[#2C2A29]">&euro;{s.price}</span>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => openEditService(s)} className="p-2 rounded-xl text-[#9E948F] hover:text-[#2C2A29] hover:bg-[#F7F3EE] transition-colors"><Pencil className="w-4 h-4" strokeWidth={1.5} /></button>
+                                  <button onClick={() => handleDeleteService(s.service_id)} className="p-2 rounded-xl text-[#9E948F] hover:text-[#C4898E] hover:bg-[#E8C5C8]/20 transition-colors"><Trash2 className="w-4 h-4" strokeWidth={1.5} /></button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      {s.description && <p className="text-sm text-[#9E948F] mt-1">{s.description}</p>}
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-['Cormorant_Garamond'] text-xl text-[#2C2A29]">&euro;{s.price}</span>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEditService(s)} className="p-2 rounded-xl text-[#9E948F] hover:text-[#2C2A29] hover:bg-[#F7F3EE] transition-colors"><Pencil className="w-4 h-4" strokeWidth={1.5} /></button>
-                        <button onClick={() => handleDeleteService(s.service_id)} className="p-2 rounded-xl text-[#9E948F] hover:text-[#C4898E] hover:bg-[#E8C5C8]/20 transition-colors"><Trash2 className="w-4 h-4" strokeWidth={1.5} /></button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             )}
           </div>
@@ -383,20 +403,102 @@ const StaffPage = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Service Dialog */}
+        {/* Service Dialog (Enhanced) */}
         <Dialog open={showServiceDialog} onOpenChange={setShowServiceDialog}>
-          <DialogContent className="sm:max-w-sm rounded-3xl border-[#F0EBE6]">
-            <DialogHeader><DialogTitle className="font-['Cormorant_Garamond'] text-2xl font-light">{editingService ? 'Edit' : 'Add'} Service</DialogTitle><DialogDescription className="text-[#9E948F]">Service details and pricing</DialogDescription></DialogHeader>
-            <div className="space-y-4 mt-3">
-              <Field label="Name"><Input value={serviceForm.name} onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })} placeholder="e.g. Women's Cut & Blow Dry" /></Field>
-              <Field label="Description"><Input value={serviceForm.description} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} placeholder="Optional" /></Field>
-              <div className="grid grid-cols-2 gap-3">
+          <DialogContent className="sm:max-w-lg max-h-[88vh] overflow-y-auto rounded-3xl border-[#F0EBE6]">
+            <DialogHeader>
+              <DialogTitle className="font-['Cormorant_Garamond'] text-2xl font-light">{editingService ? 'Edit' : 'Add'} Service</DialogTitle>
+              <DialogDescription className="text-[#9E948F]">Service details, pricing, and options</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-5 mt-3">
+              {/* Basics */}
+              <Field label="Service Name"><Input value={serviceForm.name} onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })} placeholder="e.g. Women's Cut & Blow Dry" /></Field>
+              <Field label="Description"><Input value={serviceForm.description} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} placeholder="Short description (optional)" /></Field>
+              <Field label="Category">
+                <Input value={serviceForm.category} onChange={e => setServiceForm({ ...serviceForm, category: e.target.value })} placeholder="e.g. Hair, Nails, Skin, Colour" list="category-suggestions" />
+                <datalist id="category-suggestions">
+                  {[...new Set(services.map(s => s.category).filter(Boolean))].map(c => <option key={c} value={c} />)}
+                </datalist>
+              </Field>
+
+              {/* Pricing & Duration */}
+              <div className="grid grid-cols-3 gap-3">
                 <Field label="Duration (min)"><Input type="number" value={serviceForm.duration} onChange={e => setServiceForm({ ...serviceForm, duration: parseInt(e.target.value) || 30 })} /></Field>
-                <Field label="Price (&euro;)"><Input type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value) || 0 })} /></Field>
+                <Field label="Price (&euro;)"><Input type="number" step="0.01" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value) || 0 })} /></Field>
+                <Field label="Buffer (min)"><Input type="number" value={serviceForm.buffer_time} onChange={e => setServiceForm({ ...serviceForm, buffer_time: parseInt(e.target.value) || 0 })} /></Field>
               </div>
-              <div className="flex gap-3 pt-2">
+
+              {/* Visibility */}
+              <div className="flex items-center justify-between py-3 border-t border-[#F0EBE6]">
+                <div><p className="text-sm font-medium text-[#2C2A29]">Visible Online</p><p className="text-xs text-[#9E948F]">Show on public booking page</p></div>
+                <Switch checked={serviceForm.visible_online} onCheckedChange={v => setServiceForm({ ...serviceForm, visible_online: v })} />
+              </div>
+
+              {/* Deposit */}
+              <div className="bg-[#FAF8F6] rounded-2xl p-4 border border-[#EDE8E3]">
+                <div className="flex items-center justify-between">
+                  <div><p className="text-sm font-medium text-[#2C2A29]">Require Deposit</p><p className="text-xs text-[#9E948F]">Collect a deposit when booking</p></div>
+                  <Switch checked={serviceForm.deposit_required} onCheckedChange={v => setServiceForm({ ...serviceForm, deposit_required: v })} />
+                </div>
+                {serviceForm.deposit_required && (
+                  <div className="mt-3">
+                    <Field label="Deposit Amount (&euro;)"><Input type="number" step="0.01" value={serviceForm.deposit_amount} onChange={e => setServiceForm({ ...serviceForm, deposit_amount: parseFloat(e.target.value) || 0 })} /></Field>
+                  </div>
+                )}
+              </div>
+
+              {/* Staff Assignment */}
+              {staff.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs tracking-[0.1em] uppercase text-[#9E948F] font-medium">Assigned Staff</Label>
+                    <button onClick={() => setServiceForm({ ...serviceForm, staff_ids: serviceForm.staff_ids.length === staff.length ? [] : staff.map(s => s.staff_id) })} className="text-[11px] text-[#C4898E] font-medium">
+                      {serviceForm.staff_ids.length === staff.length ? 'Clear' : 'All Staff'}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {staff.map((s, i) => {
+                      const sel = serviceForm.staff_ids.includes(s.staff_id);
+                      return (
+                        <button key={s.staff_id} onClick={() => setServiceForm({ ...serviceForm, staff_ids: sel ? serviceForm.staff_ids.filter(x => x !== s.staff_id) : [...serviceForm.staff_ids, s.staff_id] })}
+                          className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${sel ? 'bg-[#2C2A29] text-white shadow-sm' : 'bg-[#F7F3EE] text-[#706B68] hover:bg-[#EDE8E3]'}`}>
+                          {s.name?.split(' ')[0]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-[#9E948F] mt-1.5">{serviceForm.staff_ids.length === 0 ? 'All staff (no restriction)' : `${serviceForm.staff_ids.length} staff assigned`}</p>
+                </div>
+              )}
+
+              {/* Add-ons */}
+              <div>
+                <Label className="text-xs tracking-[0.1em] uppercase text-[#9E948F] font-medium mb-2 block">Add-Ons</Label>
+                {serviceForm.add_ons.length > 0 && (
+                  <div className="space-y-1.5 mb-3">
+                    {serviceForm.add_ons.map((a, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-[#FAF8F6] rounded-xl px-3 py-2">
+                        <span className="text-sm text-[#2C2A29] flex-1">{a.name}</span>
+                        <span className="text-xs text-[#9E948F]">{a.duration > 0 ? `${a.duration}m` : ''}</span>
+                        <span className="text-xs font-medium text-[#2C2A29]">&euro;{a.price}</span>
+                        <button onClick={() => setServiceForm({ ...serviceForm, add_ons: serviceForm.add_ons.filter((_, j) => j !== i) })} className="p-1 text-[#9E948F] hover:text-[#C4898E]"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input value={newAddOn.name} onChange={e => setNewAddOn({ ...newAddOn, name: e.target.value })} placeholder="Add-on name" className="flex-1 h-9 text-xs rounded-lg bg-[#FAF8F6] border-[#EDE8E3]" />
+                  <Input type="number" value={newAddOn.price} onChange={e => setNewAddOn({ ...newAddOn, price: parseFloat(e.target.value) || 0 })} placeholder="Price" className="w-20 h-9 text-xs rounded-lg bg-[#FAF8F6] border-[#EDE8E3]" />
+                  <Input type="number" value={newAddOn.duration} onChange={e => setNewAddOn({ ...newAddOn, duration: parseInt(e.target.value) || 0 })} placeholder="Min" className="w-16 h-9 text-xs rounded-lg bg-[#FAF8F6] border-[#EDE8E3]" />
+                  <button onClick={() => { if (newAddOn.name) { setServiceForm({ ...serviceForm, add_ons: [...serviceForm.add_ons, { ...newAddOn }] }); setNewAddOn({ name: '', price: 0, duration: 0 }); } }}
+                    className="h-9 w-9 rounded-lg bg-[#2C2A29] text-white flex items-center justify-center hover:bg-[#3D3A38] transition-colors shrink-0"><Plus className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
+
+              {/* Save */}
+              <div className="flex gap-3 pt-2 border-t border-[#F0EBE6]">
                 <Button variant="outline" className="flex-1 h-11 rounded-full border-[#E5DFD9] text-[#706B68]" onClick={() => setShowServiceDialog(false)}>Cancel</Button>
-                <Button className="flex-1 h-11 rounded-full bg-[#2C2A29] text-white hover:bg-[#3D3A38]" onClick={handleSaveService}>Save</Button>
+                <Button className="flex-1 h-11 rounded-full bg-[#2C2A29] text-white hover:bg-[#3D3A38]" onClick={handleSaveService}>Save Service</Button>
               </div>
             </div>
           </DialogContent>

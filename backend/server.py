@@ -316,8 +316,11 @@ class ServiceBase(BaseModel):
     price: float = 0.0
     deposit_required: bool = False
     deposit_amount: float = 0.0
-    color: str = "#E34A33"
+    color: str = "#C4898E"
     category: Optional[str] = None
+    visible_online: bool = True
+    add_ons: Optional[List[Dict[str, Any]]] = []  # [{name, price, duration}]
+    staff_ids: Optional[List[str]] = []  # Which staff can perform this service
     is_active: bool = True
 
 class ServiceCreate(ServiceBase):
