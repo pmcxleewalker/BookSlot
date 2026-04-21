@@ -1,92 +1,140 @@
 {
-  "theme": "light",
-  "archetype": "Swiss & High-Contrast",
-  "typography": {
-    "headings_marketing": "Cormorant Garamond",
-    "headings_dashboard": "Manrope",
-    "body": "Manrope",
-    "mono": "JetBrains Mono"
-  },
+  "theme": "Light",
+  "archetype": "3 (Pastel & Soft) mixed with 5 (Jewel & Luxury) - 'Soft Luxury' Aesthetic",
+  "mood": "Premium, feminine but professional, editorial, elegant, high-end beauty brand",
   "colors": {
-    "background_primary": "#FFFFFF",
-    "background_secondary": "#FAFAFA",
-    "text_primary": "#0A0A0A",
-    "text_secondary": "#666666",
-    "accent_brand": "#121212",
-    "accent_interaction": "#E34A33",
-    "ai_widget_brand": "#4F46E5",
-    "borders": "#E5E5E5"
-  },
-  "visual_enhancers": {
-    "shadows": "Diffuse ambient shadows only on hover. Default is flat with 1px border.",
-    "border_radius": "rounded-none or rounded-md (max 6px) to maintain a highly structured, strict Swiss look.",
-    "glassmorphism": "Used only on the sticky nav and AI chat widget: bg-white/70 backdrop-blur-xl border-b border-black/5.",
-    "textures": "Subtle noise overlay on the hero section for the 'elite' tactile feel."
-  },
-  "grids_and_layouts": {
-    "marketing": "Asymmetrical Bento Grid (Tetris Mode) with wide gaps (gap-12) and massive padding (p-16 to p-32).",
-    "dashboard": "High Density Grid with strict column alignment (gap-4). Use border-collapse patterns for tables."
-  },
-  "motion": {
-    "hover": "Slight lift (-translate-y-1) and sharp border darkening.",
-    "transitions": "Use specific properties (transition-transform, transition-opacity) duration 300ms ease-out.",
-    "animations": "Framer Motion for page entrances. Smooth stagger children for the calendar grid."
-  },
-  "accessibility": {
-    "contrast": "Ensure 4.5:1 for normal text, 3:1 for large text. Use dark text (#0A0A0A) on light backgrounds.",
-    "focus": "focus:ring-2 focus:ring-black focus:outline-none focus:ring-offset-2",
-    "prefers_reduced_motion": "Respect prefers-reduced-motion media query for all Framer Motion and CSS animations."
-  },
-  "media": {
-    "images": [
-      {
-        "url": "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Spacious and stylish hair salon interior",
-        "category": "industry_template_salon"
-      },
-      {
-        "url": "https://images.pexels.com/photos/4269276/pexels-photo-4269276.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Contemporary dental office interior",
-        "category": "industry_template_dental"
-      },
-      {
-        "url": "https://images.pexels.com/photos/1774986/pexels-photo-1774986.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Close-up of textured white plaster",
-        "category": "marketing_background_texture"
-      }
-    ],
-    "icons": "lucide-react"
-  },
-  "3d_libraries": {
-    "recommendation": "Framer Motion 3D for simple, performant card transitions on pricing. Avoid heavy 3D canvas libraries to keep the SaaS booking engine blisteringly fast and professional."
-  },
-  "components": {
-    "calendar": {
-      "rules": "Must support drag-and-drop, color-coded appointments, and multi-view. Use CSS Grid for the layout. No full-calendar library overhead if possible, use standard date-fns math + framer-motion.",
-      "ui": "Flat, 1px border, high-contrast text. Current day highlighted with a Vermillion dot or border."
+    "background": {
+      "page": "#FCFCFA", 
+      "card": "#FFFFFF",
+      "sidebar": "#F7F3EE" 
     },
-    "ai_receptionist_widget": {
-      "rules": "Floating glassmorphic chat interface. Fixed at bottom right. Smooth slide-up animation.",
-      "ui": "bg-white/80 backdrop-blur-2xl border border-black/10 shadow-[0_8px_32px_rgba(0,0,0,0.08)]."
+    "primary": {
+      "main": "#2C2A29", 
+      "hover": "#4A4745",
+      "text": "#FFFFFF"
     },
-    "general": {
-      "shadcn": "Use heavily customized Shadcn components for complex logic (Select, DatePicker, Dialog). Strip rounded borders to match the sharp Swiss design."
+    "accent": {
+      "rose": "#B8868B",
+      "blush": "#E8C5C8",
+      "champagne": "#E5DFD9",
+      "taupe": "#9E948F"
+    },
+    "text": {
+      "primary": "#2C2A29",
+      "secondary": "#706B68",
+      "muted": "#9E948F"
+    },
+    "borders": {
+      "subtle": "#F0EBE6",
+      "strong": "#E5DFD9"
+    },
+    "status": {
+      "success": "#8FA68F",
+      "warning": "#D4A373",
+      "info": "#A8B8CC"
     }
   },
-  "instructions_to_main_agent": [
-    "DO NOT use Inter for headings.",
-    "Create a strict, high-contrast interface. No soft SaaS blues.",
-    "Use Manrope for all UI text, JetBrains Mono for times/metrics.",
-    "Use 1px borders extensively instead of card shadows.",
-    "Padding should be generous on marketing (py-24) and dense on dashboards (p-4).",
-    "All interactive elements MUST have data-testid attributes."
-  ],
-  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
-    "Use named exports for components, default exports for pages.",
-    "Prioritize existing components from src/components/ui.",
-    "Use sonner for toasts.",
-    "DO NOT apply transition: all universally.",
-    "DO NOT center align the app container in global CSS.",
-    "Never use generic AI emojis for icons; strictly use lucide-react."
-  ]
+  "typography": {
+    "font_family": {
+      "headings": "Cormorant Garamond, serif",
+      "body": "Manrope, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "sizes": {
+      "h1": "text-4xl sm:text-5xl tracking-tight",
+      "h2": "text-3xl sm:text-4xl tracking-tight",
+      "h3": "text-2xl",
+      "h4": "text-xl",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm",
+      "overline": "text-xs tracking-[0.2em] uppercase font-bold text-[#9E948F]"
+    },
+    "weights": {
+      "headings": "font-light",
+      "body": "font-normal",
+      "buttons": "font-medium"
+    }
+  },
+  "layout_spacing": {
+    "container": "max-w-7xl mx-auto px-6 sm:px-8 lg:px-12",
+    "card_padding": "p-6 sm:p-8",
+    "section_gap": "gap-12 lg:gap-16",
+    "grid_bento": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+    "border_radius": {
+      "card": "rounded-3xl",
+      "button": "rounded-full",
+      "badge": "rounded-full",
+      "image": "rounded-2xl"
+    }
+  },
+  "components": {
+    "cards": "White background, no hard borders or 1px subtle #F0EBE6 border. Use shadow-[0_8px_30px_rgb(0,0,0,0.04)]. Generous p-8 padding. Use rounded-3xl.",
+    "buttons": "Rounded-full. Primary: bg-[#2C2A29] text-white hover:bg-[#4A4745]. Secondary: bg-[#F7F3EE] text-[#2C2A29] hover:bg-[#E5DFD9]. Accent: bg-[#B8868B] text-white. Padding: px-6 py-3.",
+    "inputs": "bg-[#F7F3EE] border-transparent focus:bg-white focus:border-[#B8868B] focus:ring-1 focus:ring-[#B8868B]. rounded-xl or rounded-full. py-3.",
+    "navigation": "Sidebar or top nav with backdrop-blur-xl bg-white/80. Active links indicated by muted rose background or bold text with a subtle dot.",
+    "badges": "Soft tinted backgrounds (e.g. bg-[#E8C5C8]/30 text-[#B8868B]) for status like Confirmed or Completed.",
+    "calendar": "Soft UI. Hide heavy grid lines. Use subtle borders for days. Event blocks should have soft rounded corners (rounded-lg) and pastel backgrounds (blush, champagne, sage).",
+    "chat_bubble": "Floating action button, bottom right. bg-[#2C2A29] text-[#E8C5C8] rounded-full shadow-2xl. Avatar inside using the image url provided."
+  },
+  "motion": {
+    "hover": "transition-all duration-300 ease-out. Cards: -translate-y-1 shadow-lg. Buttons: scale-[1.02]",
+    "page_load": "Framer motion: initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} transition={{duration:0.4, staggerChildren:0.1}}",
+    "interactions": "Smooth accordion expansions, modal popups with backdrop blur fade-in."
+  },
+  "media": {
+    "staff_portraits": [
+      {
+        "url": "https://images.pexels.com/photos/3993458/pexels-photo-3993458.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Hairstylist with scissors",
+        "category": "team_member"
+      },
+      {
+        "url": "https://images.pexels.com/photos/3993455/pexels-photo-3993455.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Hairstylist portrait",
+        "category": "team_member"
+      }
+    ],
+    "salon_interiors": [
+      {
+        "url": "https://images.pexels.com/photos/13068357/pexels-photo-13068357.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Sleek modern salon interior",
+        "category": "hero_or_placeholder"
+      },
+      {
+        "url": "https://images.pexels.com/photos/7195811/pexels-photo-7195811.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Black backwash chairs salon",
+        "category": "background_context"
+      }
+    ],
+    "textures": [
+      {
+        "url": "https://images.pexels.com/photos/4709519/pexels-photo-4709519.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Soft pink marble texture",
+        "category": "abstract_background"
+      }
+    ],
+    "ai_assistant": [
+      {
+        "url": "https://images.pexels.com/photos/36689542/pexels-photo-36689542.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Artistic silhouette for AI",
+        "category": "avatar"
+      }
+    ]
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "stroke-1.5, minimalist, elegant. Use text-[#2C2A29] or text-[#9E948F]."
+  },
+  "pages_instructions": {
+    "Dashboard": "Bento grid layout. Top area: Greeting 'Good Morning, [Name]' with elegant serif. Key stats in clean rounded-3xl cards. Main area: 'Today's Schedule' timeline vs 'Quick Actions'. Use soft shadows.",
+    "Calendar": "Editorial calendar. Not generic full-calendar. Day/Week/Month tabs in a soft pill. Appointments are soft blocks of color (blush, sage, champagne) with stylist avatar and client name.",
+    "Team": "Masonry or clean grid. Large portrait photos using the staff media URLs. Very clean typography: Stylist Name (Serif), Role (Sans overline). Elegant 'Book' or 'View Schedule' hover action.",
+    "Services": "Categorized list or grid. Not clinical tables. Use expansive rows with generous padding. Service Name (bold serif), duration, dotted line or flex-grow space, Price (mono or serif).",
+    "Reports": "Sleek stat cards. Use Recharts with custom tooltips (rounded borders, soft shadows) and colors matching the brand palette (rose, taupe, charcoal). No harsh default blue lines.",
+    "AI_Chat": "Floating circular button with AI avatar. When clicked, opens a polished chat window with backdrop-blur. System messages in charcoal, user messages in muted rose."
+  },
+  "accessibility_and_testing": {
+    "contrast": "Ensure white text on charcoal, and dark charcoal on champagne/blush backgrounds passes APCA.",
+    "data_testids": "All interactive elements MUST have data-testid attributes (e.g., data-testid='book-appointment-btn', data-testid='team-member-card')."
+  }
 }
