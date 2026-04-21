@@ -153,14 +153,13 @@ Build a production-ready multi-tenant SaaS booking platform for V1 appointment-b
   - Clean 8-tab navigation: Dashboard, Calendar, Staff, Services, Clients, AI Receptionist, Reports, Settings
 
 ### Design
-- Swiss/High-contrast design system
-- Fonts: Cormorant Garamond (headings), Manrope (body), JetBrains Mono (code)
-- Colors: #0A0A0A (primary), #E34A33 (accent), #4F46E5 (AI widget)
-- Sharp-edged buttons and cards
-- Mobile-responsive
-- **Franchise Command Centre:** Dark navy sidebar (#1a1f2e), blue accent active states, grid dashboard
-- **Tenant Custom Branding:** Dynamic primary/secondary/accent colors from tenant settings
-- **Tenant Dashboard:** Minimalist 4-tab layout (Today, Calendar, Team, Settings)
+- **Premium Soft Luxury** design system (April 2026 redesign)
+- Fonts: Cormorant Garamond (headings, light weight), Manrope (body)
+- Colors: #FCFCFA (page bg), #F7F3EE (sidebar/inputs), #2C2A29 (charcoal primary), #B8868B (rose accent), #E8C5C8 (blush), #E5DFD9 (champagne), #9E948F (taupe text)
+- Cards: rounded-3xl, shadow-[0_8px_30px_rgb(0,0,0,0.04)]
+- Buttons: rounded-full, charcoal primary
+- Inputs: bg-[#F7F3EE] border-transparent
+- Editorial, feminine but professional, high-end beauty brand aesthetic
 
 ## Pricing Tiers & Features
 | Feature | Starter (€29) | Growth (€79) | Pro (€149) |
