@@ -6,14 +6,12 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Clock, Check, Phone, Plus, ChevronRight, RefreshCw,
-  CalendarDays, Sparkles, TrendingUp, Users, Zap, Brain
+  CalendarDays, Sparkles, TrendingUp, Users, Zap, DollarSign, ArrowUpRight
 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { toast } from 'sonner';
 import { format, parseISO, differenceInMinutes, isToday, isTomorrow, addDays } from 'date-fns';
 
 const DashboardPage = () => {
-  const { token, tenant } = useAuth();
+  const { token, tenant, user } = useAuth();
   const { tenantSlug } = useParams();
   const navigate = useNavigate();
   const theme = getTheme(tenant?.industry);
@@ -21,10 +19,9 @@ const DashboardPage = () => {
   const [todayAppointments, setTodayAppointments] = useState([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
-  const [stats, setStats] = useState({ todayTotal: 0, weekTotal: 0, pendingTotal: 0 });
-  const [aiInsights, setAiInsights] = useState([]);
+  const [stats, setStats] = useState({ todayTotal: 0, weekTotal: 0, pendingTotal: 0, revenue: 0 });
+  const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const urlPrefix = tenantSlug ? `/${tenantSlug}` : '';
@@ -35,354 +32,216 @@ const DashboardPage = () => {
       const today = format(now, 'yyyy-MM-dd');
       const weekEnd = format(addDays(now, 7), 'yyyy-MM-dd');
 
-      const [todayRes, weekRes, pendingRes] = await Promise.all([
-        axios.get(`${API}/appointments`, {
-          params: { start_date: today, end_date: today + 'T23:59:59' },
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get(`${API}/appointments`, {
-          params: { start_date: today, end_date: weekEnd + 'T23:59:59' },
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get(`${API}/appointments`, {
-          params: { status: 'pending' },
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      const [todayRes, weekRes, pendingRes, staffRes] = await Promise.all([
+        axios.get(`${API}/appointments`, { params: { start_date: today, end_date: today + 'T23:59:59' }, headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/appointments`, { params: { start_date: today, end_date: weekEnd + 'T23:59:59' }, headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/appointments`, { params: { status: 'pending' }, headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/staff`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
-      const todayAppts = (todayRes.data.appointments || [])
-        .filter(a => a.status !== 'cancelled')
-        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-
-      const allWeekAppts = (weekRes.data.appointments || [])
-        .filter(a => a.status !== 'cancelled')
-        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-
-      const upcomingAppts = allWeekAppts.filter(a => {
-        try { return !isToday(parseISO(a.start_time)); } catch { return true; }
-      });
-
+      const todayAppts = (todayRes.data.appointments || []).filter(a => a.status !== 'cancelled').sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+      const allWeekAppts = (weekRes.data.appointments || []).filter(a => a.status !== 'cancelled').sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+      const upcomingAppts = allWeekAppts.filter(a => { try { return !isToday(parseISO(a.start_time)); } catch { return true; } });
       const pending = pendingRes.data.appointments || [];
+      const revenue = allWeekAppts.reduce((sum, a) => sum + (a.price || a.total_price || 0), 0);
 
       setTodayAppointments(todayAppts);
       setUpcomingAppointments(upcomingAppts);
       setPendingApprovals(pending);
-      setStats({
-        todayTotal: todayAppts.length,
-        weekTotal: allWeekAppts.length,
-        pendingTotal: pending.length,
-      });
-
-      // Generate AI insights
-      const insights = [];
-      if (pending.length > 0) insights.push({ icon: Zap, text: `${pending.length} booking${pending.length > 1 ? 's' : ''} awaiting your approval`, type: 'warning' });
-      if (todayAppts.length === 0 && upcomingAppts.length > 0) insights.push({ icon: CalendarDays, text: `Quiet today — ${upcomingAppts.length} upcoming this week`, type: 'info' });
-      if (todayAppts.length > 5) insights.push({ icon: TrendingUp, text: `Busy day ahead! ${todayAppts.length} appointments scheduled`, type: 'success' });
-      if (allWeekAppts.length === 0) insights.push({ icon: Users, text: 'No bookings this week — share your booking link to get started', type: 'info' });
-      const confirmed = todayAppts.filter(a => a.status === 'confirmed').length;
-      if (confirmed > 0) insights.push({ icon: Brain, text: `AI monitoring ${confirmed} active appointment${confirmed > 1 ? 's' : ''} for no-show risk`, type: 'ai' });
-      setAiInsights(insights);
-      setLastRefresh(new Date());
-    } catch (error) {
-      console.error('Failed to load dashboard:', error);
-    } finally {
-      setLoading(false);
-    }
+      setStaff(staffRes.data.staff || []);
+      setStats({ todayTotal: todayAppts.length, weekTotal: allWeekAppts.length, pendingTotal: pending.length, revenue });
+    } catch (error) { console.error('Failed:', error); }
+    finally { setLoading(false); }
   }, [token]);
 
   useEffect(() => {
     fetchAllData();
-    const dataTimer = setInterval(fetchAllData, 30000);
-    const clockTimer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => { clearInterval(dataTimer); clearInterval(clockTimer); };
+    const t1 = setInterval(fetchAllData, 30000);
+    const t2 = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => { clearInterval(t1); clearInterval(t2); };
   }, [fetchAllData]);
 
   const handleComplete = async (id) => {
-    try {
-      await axios.put(`${API}/appointments/${id}`, { status: 'completed' }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Done');
-      fetchAllData();
-    } catch (error) {
-      toast.error('Failed');
-    }
+    try { await axios.put(`${API}/appointments/${id}`, { status: 'completed' }, { headers: { Authorization: `Bearer ${token}` } }); fetchAllData(); } catch {}
   };
-
-  const getTimeUntil = (startTime) => {
-    try {
-      const start = parseISO(startTime);
-      const mins = differenceInMinutes(start, currentTime);
-      if (mins <= 0) return null;
-      if (mins < 60) return `${mins}m`;
-      return `${Math.floor(mins / 60)}h`;
-    } catch { return null; }
-  };
-
-  const formatDayLabel = (startTime) => {
-    try {
-      const date = parseISO(startTime);
-      if (isToday(date)) return 'Today';
-      if (isTomorrow(date)) return 'Tomorrow';
-      return format(date, 'EEE, MMM d');
-    } catch { return ''; }
-  };
-
-  const groupedUpcoming = upcomingAppointments.reduce((groups, appt) => {
-    const label = formatDayLabel(appt.start_time);
-    if (!groups[label]) groups[label] = [];
-    groups[label].push(appt);
-    return groups;
-  }, {});
 
   const todayConfirmed = todayAppointments.filter(a => a.status === 'confirmed');
   const todayCompleted = todayAppointments.filter(a => a.status === 'completed');
 
-  const insightColors = {
-    warning: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', icon: 'text-amber-500' },
-    info: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', icon: 'text-blue-500' },
-    success: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', icon: 'text-emerald-500' },
-    ai: { bg: `bg-[${theme.primaryLight}]`, border: `border-[${theme.cardBorder}]`, text: 'text-gray-700', icon: '' },
-  };
+  const groupedUpcoming = upcomingAppointments.reduce((g, a) => {
+    const label = (() => { try { const d = parseISO(a.start_time); if (isTomorrow(d)) return 'Tomorrow'; return format(d, 'EEE, MMM d'); } catch { return ''; } })();
+    if (!g[label]) g[label] = [];
+    g[label].push(a);
+    return g;
+  }, {});
 
   return (
     <TenantLayout title="Today">
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-400">Loading...</div>
-        </div>
+        <div className="flex items-center justify-center h-64"><div className="text-[#9E948F]">Loading...</div></div>
       ) : (
-        <div className="max-w-2xl mx-auto">
-          {/* Hero Section */}
-          <div
-            className="rounded-2xl p-6 mb-6 text-white relative overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
-            data-testid="dashboard-hero"
-          >
-            <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-10 translate-x-10" />
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-10 -translate-x-10" />
-            <div className="relative z-10">
-              <p className="text-white/70 text-sm">{format(currentTime, 'EEEE, MMMM d')}</p>
-              <p className="text-4xl font-light mt-1 font-mono tracking-tight">
-                {format(currentTime, 'HH:mm')}
-              </p>
-              <div className="flex items-center gap-6 mt-4">
-                <div>
-                  <p className="text-3xl font-bold">{stats.todayTotal}</p>
-                  <p className="text-white/60 text-xs">Today</p>
-                </div>
-                <div className="w-px h-10 bg-white/20" />
-                <div>
-                  <p className="text-3xl font-bold">{stats.weekTotal}</p>
-                  <p className="text-white/60 text-xs">This Week</p>
-                </div>
-                <div className="w-px h-10 bg-white/20" />
-                <div>
-                  <p className="text-3xl font-bold">{stats.pendingTotal}</p>
-                  <p className="text-white/60 text-xs">Pending</p>
-                </div>
-              </div>
-              <button
-                onClick={() => { setLoading(true); fetchAllData(); }}
-                className="absolute top-4 right-4 text-white/40 hover:text-white/70 transition-colors"
-                data-testid="refresh-dashboard-btn"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-            </div>
+        <div className="max-w-5xl mx-auto">
+          {/* Stat Cards - Bento Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" data-testid="dashboard-stats">
+            <StatCard icon={CalendarDays} label="Today" value={stats.todayTotal} sublabel={`${todayConfirmed.length} upcoming`} color="#2C2A29" />
+            <StatCard icon={TrendingUp} label="This Week" value={stats.weekTotal} sublabel="appointments" color="#B8868B" />
+            <StatCard icon={DollarSign} label="Revenue" value={`€${stats.revenue}`} sublabel="this week" color="#8FA68F" />
+            <StatCard icon={Users} label="Team" value={staff.length} sublabel={`${staff.filter(s => s.is_active).length} active`} color="#D4A373" />
           </div>
 
-          {/* AI Intelligence Banner */}
-          {aiInsights.length > 0 && (
-            <div className="mb-6 space-y-2" data-testid="ai-insights-banner">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-4 h-4" style={{ color: theme.primary }} />
-                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: theme.primary }}>
-                  {theme.aiName} Intelligence
-                </span>
-              </div>
-              {aiInsights.map((insight, i) => {
-                const colors = insightColors[insight.type] || insightColors.info;
-                const Icon = insight.icon;
-                return (
-                  <div key={i} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${colors.bg} ${colors.border}`}>
-                    <Icon className={`w-4 h-4 shrink-0 ${colors.icon}`} style={insight.type === 'ai' ? { color: theme.primary } : {}} />
-                    <span className={`text-sm ${colors.text}`}>{insight.text}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column: Today's Schedule */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Pending Banner */}
+              {pendingApprovals.length > 0 && (
+                <button onClick={() => navigate(`${urlPrefix}/calendar`)}
+                  className="w-full bg-[#E8C5C8]/20 border border-[#E8C5C8]/40 rounded-3xl p-5 flex items-center justify-between hover:bg-[#E8C5C8]/30 transition-all duration-300"
+                  data-testid="pending-approvals-banner"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-2xl bg-[#B8868B]/10 flex items-center justify-center"><Zap className="w-5 h-5 text-[#B8868B]" strokeWidth={1.5} /></div>
+                    <div className="text-left"><p className="font-medium text-[#2C2A29]">{pendingApprovals.length} booking{pendingApprovals.length !== 1 ? 's' : ''} need approval</p><p className="text-sm text-[#9E948F]">Tap to review</p></div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                  <ChevronRight className="w-5 h-5 text-[#B8868B]" />
+                </button>
+              )}
 
-          {/* Pending Approvals */}
-          {pendingApprovals.length > 0 && (
-            <button
-              onClick={() => navigate(`${urlPrefix}/calendar`)}
-              className="w-full mb-5 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between hover:bg-amber-100 transition-colors"
-              data-testid="pending-approvals-banner"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-amber-600" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium text-amber-800">{pendingApprovals.length} pending approval{pendingApprovals.length !== 1 ? 's' : ''}</p>
-                  <p className="text-sm text-amber-600">Tap to review</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-amber-400" />
-            </button>
-          )}
+              {/* New Appointment Button */}
+              <button onClick={() => navigate(`${urlPrefix}/calendar`)}
+                className="w-full bg-[#2C2A29] text-white rounded-full py-3.5 flex items-center justify-center gap-2.5 text-sm font-medium hover:bg-[#4A4745] transition-all duration-300 hover:scale-[1.01] shadow-[0_4px_20px_rgb(44,42,41,0.2)]"
+                data-testid="new-appointment-btn"
+              >
+                <Plus className="w-4 h-4" strokeWidth={2} /> New {theme.terminology.appointment}
+              </button>
 
-          {/* Quick Actions */}
-          <Button
-            className="w-full mb-6 h-12 text-white rounded-xl text-base font-medium shadow-lg hover:shadow-xl transition-shadow"
-            style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
-            onClick={() => navigate(`${urlPrefix}/calendar`)}
-            data-testid="new-appointment-btn"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            New {theme.terminology.appointment}
-          </Button>
+              {/* Today's Timeline */}
+              <div data-testid="today-appointments-section">
+                <p className="text-xs tracking-[0.2em] uppercase text-[#9E948F] font-medium mb-4">
+                  Today's Schedule · {todayAppointments.length}
+                </p>
 
-          {/* Today's Appointments */}
-          <div className="mb-8" data-testid="today-appointments-section">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
-              Today &middot; {todayAppointments.length} {theme.terminology.appointment.toLowerCase()}{todayAppointments.length !== 1 ? 's' : ''}
-            </h2>
-
-            {todayConfirmed.length === 0 && todayCompleted.length === 0 ? (
-              <div className="text-center py-8 bg-white rounded-xl border border-gray-200">
-                <Clock className="w-6 h-6 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No {theme.terminology.appointment.toLowerCase()}s today</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {todayConfirmed.map((appt) => {
-                  const timeUntil = getTimeUntil(appt.start_time);
-                  return (
-                    <div
-                      key={appt.appointment_id}
-                      className="bg-white rounded-xl p-4 border border-gray-200 hover:border-gray-300 transition-colors"
-                      data-testid={`appt-${appt.appointment_id}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="text-center min-w-[50px]">
-                            <p className="text-lg font-semibold text-gray-900 font-mono">
-                              {format(parseISO(appt.start_time), 'HH:mm')}
-                            </p>
-                            {timeUntil && (
-                              <p className="text-[10px] uppercase tracking-wide" style={{ color: theme.primary }}>{timeUntil}</p>
-                            )}
-                          </div>
-                          <div className="w-px h-10" style={{ backgroundColor: theme.cardBorder }} />
-                          <div>
-                            <p className="font-medium text-gray-900">{appt.client_name || 'Walk-in'}</p>
-                            <p className="text-sm text-gray-500">{appt.service_name || theme.terminology.service}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {appt.client_phone && (
-                            <a href={`tel:${appt.client_phone}`} className="p-2 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100">
-                              <Phone className="w-4 h-4" />
-                            </a>
-                          )}
-                          <Button
-                            size="sm"
-                            className="h-8 px-3 rounded-lg text-white"
-                            style={{ backgroundColor: theme.primary }}
-                            onClick={() => handleComplete(appt.appointment_id)}
-                            data-testid={`complete-btn-${appt.appointment_id}`}
-                          >
-                            <Check className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
+                {todayConfirmed.length === 0 && todayCompleted.length === 0 ? (
+                  <div className="text-center py-14 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                    <div className="w-16 h-16 rounded-full bg-[#F7F3EE] flex items-center justify-center mx-auto mb-4">
+                      <CalendarDays className="w-7 h-7 text-[#9E948F]" strokeWidth={1.5} />
                     </div>
-                  );
-                })}
-                {todayCompleted.length > 0 && (
-                  <div className="pt-2">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 px-1">
-                      Completed &middot; {todayCompleted.length}
-                    </p>
-                    {todayCompleted.map((appt) => (
-                      <div key={appt.appointment_id} className="flex items-center gap-4 py-2 px-1 opacity-50">
-                        <Check className="w-4 h-4 text-emerald-500" />
-                        <span className="text-sm text-gray-600">{appt.client_name}</span>
-                        <span className="text-xs text-gray-400 ml-auto font-mono">
-                          {format(parseISO(appt.start_time), 'HH:mm')}
-                        </span>
+                    <p className="text-[#706B68] font-medium">No appointments today</p>
+                    <p className="text-sm text-[#9E948F] mt-1">Your day is clear — time to plan ahead</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {todayConfirmed.map((appt) => (
+                      <div key={appt.appointment_id}
+                        className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-0.5 group"
+                        data-testid={`appt-${appt.appointment_id}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-2xl bg-[#F7F3EE] flex flex-col items-center justify-center">
+                              <p className="text-base font-medium text-[#2C2A29] font-mono">{format(parseISO(appt.start_time), 'HH:mm')}</p>
+                              <p className="text-[9px] text-[#9E948F] uppercase tracking-wider">{differenceInMinutes(parseISO(appt.end_time), parseISO(appt.start_time))}min</p>
+                            </div>
+                            <div>
+                              <p className="font-medium text-[#2C2A29]">{appt.client_name || 'Walk-in'}</p>
+                              <p className="text-sm text-[#9E948F]">{appt.service_name || theme.terminology.service}{appt.staff_name ? ` · ${appt.staff_name}` : ''}</p>
+                              {appt.notes && <p className="text-xs text-[#B8868B] mt-0.5 italic">"{appt.notes.substring(0, 50)}{appt.notes.length > 50 ? '...' : ''}"</p>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {appt.client_phone && <a href={`tel:${appt.client_phone}`} className="p-2.5 text-[#9E948F] hover:text-[#2C2A29] rounded-xl hover:bg-[#F7F3EE] transition-colors"><Phone className="w-4 h-4" strokeWidth={1.5} /></a>}
+                            <button onClick={() => handleComplete(appt.appointment_id)} className="px-4 py-2 rounded-full bg-[#2C2A29] text-white text-xs font-medium hover:bg-[#4A4745] transition-colors" data-testid={`complete-btn-${appt.appointment_id}`}>Done</button>
+                          </div>
+                        </div>
                       </div>
                     ))}
+                    {todayCompleted.length > 0 && (
+                      <div className="pt-4">
+                        <p className="text-xs tracking-[0.2em] uppercase text-[#9E948F] font-medium mb-3">Completed · {todayCompleted.length}</p>
+                        {todayCompleted.map((appt) => (
+                          <div key={appt.appointment_id} className="flex items-center gap-4 py-2.5 px-2 opacity-50">
+                            <div className="w-5 h-5 rounded-full bg-[#8FA68F]/20 flex items-center justify-center"><Check className="w-3 h-3 text-[#8FA68F]" /></div>
+                            <span className="text-sm text-[#706B68]">{appt.client_name}</span>
+                            <span className="text-xs text-[#9E948F] ml-auto font-mono">{format(parseISO(appt.start_time), 'HH:mm')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Upcoming */}
-          {Object.keys(groupedUpcoming).length > 0 && (
-            <div data-testid="upcoming-appointments-section">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
-                Upcoming &middot; Next 7 Days
-              </h2>
-              <div className="space-y-4">
-                {Object.entries(groupedUpcoming).map(([dayLabel, appts]) => (
-                  <div key={dayLabel}>
-                    <p className="text-sm font-medium text-gray-900 mb-2 px-1 flex items-center gap-2">
-                      <CalendarDays className="w-4 h-4 text-gray-400" />
-                      {dayLabel}
-                      <span className="text-gray-400 font-normal">&middot; {appts.length}</span>
-                    </p>
-                    <div className="space-y-1.5">
-                      {appts.map((appt) => (
-                        <div
-                          key={appt.appointment_id}
-                          className="bg-white rounded-lg px-4 py-3 border border-gray-200 flex items-center gap-4"
-                        >
-                          <span className="text-sm font-mono font-medium text-gray-900 min-w-[45px]">
-                            {format(parseISO(appt.start_time), 'HH:mm')}
-                          </span>
-                          <div className="w-px h-6 bg-gray-200" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">{appt.client_name || 'Walk-in'}</p>
-                            <p className="text-xs text-gray-400">{appt.service_name || theme.terminology.service}</p>
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* Quick Actions */}
+              <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                <p className="text-xs tracking-[0.2em] uppercase text-[#9E948F] font-medium mb-4">Quick Actions</p>
+                <div className="space-y-2">
+                  {[
+                    { label: 'View Calendar', path: `${urlPrefix}/calendar`, icon: CalendarDays },
+                    { label: 'Manage Team', path: `${urlPrefix}/staff`, icon: Users },
+                    { label: 'View Reports', path: `${urlPrefix}/reports`, icon: TrendingUp },
+                  ].map(action => (
+                    <button key={action.label} onClick={() => navigate(action.path)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm text-[#2C2A29] hover:bg-[#F7F3EE] transition-all duration-200 group"
+                    >
+                      <action.icon className="w-4 h-4 text-[#9E948F] group-hover:text-[#B8868B] transition-colors" strokeWidth={1.5} />
+                      <span className="flex-1 text-left">{action.label}</span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-[#9E948F] opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI Insights */}
+              <div className="bg-gradient-to-br from-[#2C2A29] to-[#4A4745] rounded-3xl p-6 text-white">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="w-4 h-4 text-[#E8C5C8]" strokeWidth={1.5} />
+                  <span className="text-xs tracking-[0.15em] uppercase text-[#E8C5C8] font-medium">{theme.aiName} Insights</span>
+                </div>
+                <div className="space-y-2.5 text-sm">
+                  {stats.pendingTotal > 0 && <p className="text-white/80">{stats.pendingTotal} booking{stats.pendingTotal !== 1 ? 's' : ''} awaiting approval</p>}
+                  {stats.todayTotal > 5 && <p className="text-white/80">Busy day — {stats.todayTotal} appointments lined up</p>}
+                  {stats.todayTotal === 0 && stats.weekTotal > 0 && <p className="text-white/80">Quiet today. {stats.weekTotal} bookings coming this week</p>}
+                  {stats.todayTotal === 0 && stats.weekTotal === 0 && <p className="text-white/80">No bookings yet. Share your link to start getting clients</p>}
+                  <p className="text-white/60 text-xs">AI monitoring {todayConfirmed.length} active appointment{todayConfirmed.length !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+
+              {/* Upcoming */}
+              {Object.keys(groupedUpcoming).length > 0 && (
+                <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                  <p className="text-xs tracking-[0.2em] uppercase text-[#9E948F] font-medium mb-4">Coming Up</p>
+                  <div className="space-y-4">
+                    {Object.entries(groupedUpcoming).slice(0, 3).map(([dayLabel, appts]) => (
+                      <div key={dayLabel}>
+                        <p className="text-sm font-medium text-[#2C2A29] mb-2">{dayLabel} <span className="text-[#9E948F] font-normal">· {appts.length}</span></p>
+                        {appts.slice(0, 3).map(a => (
+                          <div key={a.appointment_id} className="flex items-center gap-3 py-1.5">
+                            <span className="text-xs font-mono text-[#9E948F] w-10">{format(parseISO(a.start_time), 'HH:mm')}</span>
+                            <div className="w-px h-4 bg-[#E5DFD9]" />
+                            <span className="text-sm text-[#706B68] truncate">{a.client_name}</span>
                           </div>
-                          <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-medium ${
-                            appt.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' :
-                            appt.status === 'pending' ? 'bg-amber-50 text-amber-700' :
-                            'bg-gray-100 text-gray-600'
-                          }`}>
-                            {appt.status}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Empty State */}
-          {todayAppointments.length === 0 && Object.keys(groupedUpcoming).length === 0 && pendingApprovals.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-xl border border-gray-200" data-testid="empty-state">
-              <div
-                className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-                style={{ backgroundColor: theme.primaryLight }}
-              >
-                <CalendarDays className="w-6 h-6" style={{ color: theme.primary }} />
-              </div>
-              <p className="text-gray-700 font-medium">No upcoming {theme.terminology.appointment.toLowerCase()}s</p>
-              <p className="text-sm text-gray-400 mt-1">Create one or share your booking link</p>
-            </div>
-          )}
+          </div>
         </div>
       )}
     </TenantLayout>
   );
 };
+
+const StatCard = ({ icon: Icon, label, value, sublabel, color }) => (
+  <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-0.5">
+    <Icon className="w-5 h-5 mb-3" style={{ color }} strokeWidth={1.5} />
+    <p className="font-['Cormorant_Garamond'] text-3xl font-light text-[#2C2A29]">{value}</p>
+    <p className="text-xs text-[#9E948F] mt-1">{sublabel}</p>
+  </div>
+);
 
 export default DashboardPage;

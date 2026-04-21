@@ -17,7 +17,7 @@ const AIAdminAssistant = () => {
   const theme = getTheme(tenant?.industry);
 
   // Show on admin pages only
-  const adminPaths = ['/dashboard', '/calendar', '/staff', '/settings', '/no-show-shield'];
+  const adminPaths = ['/dashboard', '/calendar', '/staff', '/reports', '/settings', '/no-show-shield'];
   const shouldShow = user && tenant && adminPaths.some(p => location.pathname.endsWith(p));
 
   // Set greeting when tenant loads
@@ -85,7 +85,7 @@ const AIAdminAssistant = () => {
 
       {/* Chat Panel */}
       <div
-        className={`fixed bottom-6 right-6 w-[380px] h-[520px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 z-[9999] border border-gray-200 ${
+        className={`fixed bottom-6 right-6 w-[380px] h-[520px] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 z-[9999] border border-[#F0EBE6] ${
           isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'
         }`}
         style={{ transformOrigin: 'bottom right' }}
@@ -94,7 +94,7 @@ const AIAdminAssistant = () => {
         {/* Header */}
         <div
           className="px-5 py-4 text-white flex items-center justify-between shrink-0"
-          style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
+          style={{ background: '#2C2A29' }}
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
