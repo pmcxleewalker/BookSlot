@@ -270,6 +270,7 @@ class StaffBase(BaseModel):
     can_manage_staff: bool = False
     can_view_reports: bool = False
     can_manage_customers: bool = True
+    bookable_online: bool = True  # Whether clients can book this staff member online
 
 class StaffCreate(StaffBase):
     password: Optional[str] = None  # For creating staff login
