@@ -337,3 +337,12 @@ The AI conversation system will automatically:
 - Understand booking intents
 - Execute actions (book, cancel, reschedule)
 - Send confirmation responses
+
+## Phase 1: Visual Brightness + Real Settings (April 21, 2026)
+- [x] Brightened color palette with warmer stat card icons
+- [x] Settings rebuilt as 4-tab Business Setup Centre
+- [x] Branding with real working color pickers + Live Preview
+- [x] 10 real Booking Rules controls connected to API
+- [x] New API: GET/PUT /api/tenants/me/booking-rules
+- [x] All tests passing (iteration_13)
+
