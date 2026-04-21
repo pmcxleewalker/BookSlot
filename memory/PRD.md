@@ -346,3 +346,14 @@ The AI conversation system will automatically:
 - [x] New API: GET/PUT /api/tenants/me/booking-rules
 - [x] All tests passing (iteration_13)
 
+
+## Phase 2: Staff Management & Availability (April 21, 2026)
+- [x] Multi-tab staff edit dialog: Details, Schedule, Services, Access
+- [x] Working hours editor: Mon-Sun toggles with start/end/break times
+- [x] Calendar color picker (8 salon-inspired preset colors)
+- [x] Bookable Online toggle per staff member
+- [x] Active/Inactive toggle per staff
+- [x] Role-based permissions: Owner/Manager/Staff + 5 permission toggles
+- [x] Staff cards show days/week and Online Booking badges
+- [x] All tests passing (iteration_14)
+
