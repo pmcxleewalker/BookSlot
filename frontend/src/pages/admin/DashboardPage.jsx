@@ -83,10 +83,10 @@ const DashboardPage = () => {
         <div className="max-w-5xl mx-auto">
           {/* Stat Cards - Bento Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" data-testid="dashboard-stats">
-            <StatCard icon={CalendarDays} label="Today" value={stats.todayTotal} sublabel={`${todayConfirmed.length} upcoming`} color="#2C2A29" />
-            <StatCard icon={TrendingUp} label="This Week" value={stats.weekTotal} sublabel="appointments" color="#B8868B" />
-            <StatCard icon={DollarSign} label="Revenue" value={`€${stats.revenue}`} sublabel="this week" color="#8FA68F" />
-            <StatCard icon={Users} label="Team" value={staff.length} sublabel={`${staff.filter(s => s.is_active).length} active`} color="#D4A373" />
+            <StatCard icon={CalendarDays} label="Today" value={stats.todayTotal} sublabel={`${todayConfirmed.length} upcoming`} color="#C4898E" />
+            <StatCard icon={TrendingUp} label="This Week" value={stats.weekTotal} sublabel="appointments" color="#D4A373" />
+            <StatCard icon={DollarSign} label="Revenue" value={`€${stats.revenue}`} sublabel="this week" color="#7BA07B" />
+            <StatCard icon={Users} label="Team" value={staff.length} sublabel={`${staff.filter(s => s.is_active).length} active`} color="#9AADCC" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -108,7 +108,7 @@ const DashboardPage = () => {
 
               {/* New Appointment Button */}
               <button onClick={() => navigate(`${urlPrefix}/calendar`)}
-                className="w-full bg-[#2C2A29] text-white rounded-full py-3.5 flex items-center justify-center gap-2.5 text-sm font-medium hover:bg-[#4A4745] transition-all duration-300 hover:scale-[1.01] shadow-[0_4px_20px_rgb(44,42,41,0.2)]"
+                className="w-full bg-[#2C2A29] text-white rounded-full py-3.5 flex items-center justify-center gap-2.5 text-sm font-medium hover:bg-[#3D3A38] transition-all duration-300 hover:scale-[1.01] shadow-[0_4px_20px_rgb(44,42,41,0.15)] hover:shadow-[0_8px_30px_rgb(44,42,41,0.25)]"
                 data-testid="new-appointment-btn"
               >
                 <Plus className="w-4 h-4" strokeWidth={2} /> New {theme.terminology.appointment}
@@ -194,7 +194,7 @@ const DashboardPage = () => {
               </div>
 
               {/* AI Insights */}
-              <div className="bg-gradient-to-br from-[#2C2A29] to-[#4A4745] rounded-3xl p-6 text-white">
+              <div className="bg-gradient-to-br from-[#2C2A29] to-[#3D3A38] rounded-3xl p-6 text-white shadow-lg">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles className="w-4 h-4 text-[#E8C5C8]" strokeWidth={1.5} />
                   <span className="text-xs tracking-[0.15em] uppercase text-[#E8C5C8] font-medium">{theme.aiName} Insights</span>
@@ -237,9 +237,11 @@ const DashboardPage = () => {
 };
 
 const StatCard = ({ icon: Icon, label, value, sublabel, color }) => (
-  <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-0.5">
-    <Icon className="w-5 h-5 mb-3" style={{ color }} strokeWidth={1.5} />
-    <p className="font-['Cormorant_Garamond'] text-3xl font-light text-[#2C2A29]">{value}</p>
+  <div className="bg-white rounded-3xl p-6 shadow-[0_4px_24px_rgb(0,0,0,0.04)] border border-[#F0EBE6]/60 hover:shadow-[0_8px_32px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 group">
+    <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110" style={{ backgroundColor: color + '12' }}>
+      <Icon className="w-5 h-5" style={{ color }} strokeWidth={1.5} />
+    </div>
+    <p className="font-['Cormorant_Garamond'] text-3xl font-light text-[#2C2A29] tracking-tight">{value}</p>
     <p className="text-xs text-[#9E948F] mt-1">{sublabel}</p>
   </div>
 );

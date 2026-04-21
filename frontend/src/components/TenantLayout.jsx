@@ -50,7 +50,7 @@ const TenantLayout = ({ children, title }) => {
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   return (
-    <div className="min-h-screen bg-[#FCFCFA]">
+    <div className="min-h-screen bg-[#FDFCFA]">
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-xl z-50 flex items-center justify-between px-5 border-b border-[#F0EBE6]">
         <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 text-[#2C2A29]">

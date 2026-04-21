@@ -1134,6 +1134,45 @@ async def get_tenant_branding(user: Dict = Depends(get_current_user)):
     
     return {"branding": tenant.get("branding", default_branding), "logo_url": tenant.get("logo_url")}
 
+@api_router.get("/tenants/me/booking-rules")
+async def get_booking_rules(user: Dict = Depends(get_current_user)):
+    """Get tenant booking rules"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=404, detail="No business found")
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
+    defaults = {
+        "online_booking_enabled": True,
+        "approval_required": True,
+        "cancellation_window_hours": 24,
+        "reschedule_window_hours": 24,
+        "lead_time_hours": 1,
+        "buffer_minutes": 0,
+        "max_bookings_per_day": 0,
+        "require_phone": True,
+        "require_email": False,
+        "client_self_cancel": True,
+    }
+    rules = tenant.get("booking_rules", defaults) if tenant else defaults
+    return {"booking_rules": {**defaults, **rules}}
+
+@api_router.put("/tenants/me/booking-rules")
+async def update_booking_rules(body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Update tenant booking rules"""
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=404, detail="No business found")
+    allowed = ["online_booking_enabled", "approval_required", "cancellation_window_hours",
+               "reschedule_window_hours", "lead_time_hours", "buffer_minutes",
+               "max_bookings_per_day", "require_phone", "require_email", "client_self_cancel"]
+    clean = {k: v for k, v in body.items() if k in allowed}
+    clean["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.tenants.update_one(
+        {"tenant_id": user["tenant_id"]},
+        {"$set": {"booking_rules": clean}}
+    )
+    return {"message": "Booking rules updated", "booking_rules": clean}
+
+
+
 # ================== FILE UPLOAD ==================
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
