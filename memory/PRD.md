@@ -357,3 +357,14 @@ The AI conversation system will automatically:
 - [x] Staff cards show days/week and Online Booking badges
 - [x] All tests passing (iteration_14)
 
+
+## Phase 3: Service Enhancements (April 21, 2026)
+- [x] Service categories with grouping in list view + autocomplete
+- [x] Buffer time per service (gap between appointments)
+- [x] Add-ons system (name/price/duration) with inline add/remove
+- [x] Deposit settings (required toggle + deposit amount)
+- [x] Visible Online toggle (show/hide on public booking page)
+- [x] Staff assignment per service (pill-button UI with All Staff toggle)
+- [x] Enhanced service dialog with full premium layout
+- [x] All tests passing (iteration_15, 27/27 backend)
+
