@@ -1,0 +1,75 @@
+{
+  "summary": "Tested iteration-16 targeted changes: admin calendar click-to-book, premium PublicBookingPage redesign, and backend public-endpoint filtering by visible_online/bookable_online. Backend visibility filters PASS. Admin calendar click-to-book and bold borders PASS. Public booking premium aesthetic PASS. CRITICAL regression: public booking availability endpoint returns zero slots for every date and every staff, breaking end-to-end public booking beyond step 3.",
+
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/public/booking/{slug}/availability",
+        "issue": "Returns empty slots with message 'Staff not available on this day' for ALL days for ALL staff. Root cause: line 2228 server.py checks day_schedule.get('enabled', False) but staff.working_hours in DB stores {start, end, breaks} per day with NO 'enabled' key. Default False -> every weekday is treated as 'not working'. This breaks the entire public booking flow on step 3.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "CalendarPage WeekGrid",
+        "issue": "Half-hour and hour slot buttons have no z-index, while appointment blocks have z-index:5. When a week slot overlaps an existing appointment cell, clicking the slot opens the appointment detail dialog instead of opening New Booking. Workaround: click empty cells only. Add z-index>5 on empty slot buttons OR move appointment block only over the occupied rows.",
+        "selector": "[data-testid^='slot-']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Public booking end-to-end (steps 3-5)",
+        "issue": "Date picker on Step 3 shows all future dates as disabled/greyed (calendar has no selectable dates) because availability API returns empty slots for every day. Cannot proceed to Details/Confirm. Blocks all public bookings for all tenants.",
+        "affected_selectors": ["[data-testid='booking-calendar']", "[data-testid^='slot-']"]
+      }
+    ],
+    "design_issues": []
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_iteration16_calendar_public_booking.py",
+    "/app/test_reports/pytest/iteration16.xml"
+  ],
+
+  "action_items": [
+    "FIX BACKEND: In /api/public/booking/{slug}/availability (server.py ~line 2225-2229) treat presence of 'start' and 'end' keys as enabled. Recommended change: `if not day_schedule or not day_schedule.get('start') or not day_schedule.get('end'): return empty slots`. Alternatively migrate the seeded staff.working_hours to include enabled=true per day.",
+    "FIX CALENDAR Z-INDEX: Give WeekGrid/DayView slot buttons a z-index lower than appointment blocks but ensure empty-area clicks still reach slot buttons. Current issue: appointments (z-5) intercept clicks on slot buttons behind them. Consider rendering slots in a separate layer with pointer-events-none on appointment OR only render slot buttons in gaps between appointments.",
+    "ADD data-testid='service-card-{id}' alias if test suite expects it (currently only 'service-{id}' exists)."
+  ],
+
+  "critical_code_review_comments": [
+    "server.py:2228 - schema drift: endpoint expects day_schedule.enabled but seeded data uses presence of start/end. This is a P0 data-contract bug.",
+    "CalendarPage.jsx:259-276 - slot <button>s lack z-index; appointments overlay them (z:5). Users clicking 'behind' an appt will open detail dialog unintentionally.",
+    "CalendarPage.jsx:66-72 openNewAppt - pre-fill logic is correct; time rounds to :00/:30; date label uses selectedDate - verified visually.",
+    "CalendarPage.jsx:236-249 - WeekGrid has border-2 outlines on columns and header as required.",
+    "PublicBookingPage.jsx - premium aesthetic verified: Cormorant Garamond title, 'BOOK YOUR VISIT' eyebrow, Sparkles badge hero, rounded-3xl cards with primary-color left border, 'POWERED BY BOOKSLOT' footer all rendered correctly."
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_iteration16_calendar_public_booking.py"
+  ],
+
+  "success_rate": {
+    "backend": "83% (5/6 executable, 1 skipped due to no availability which is the P0 bug)",
+    "frontend": "60% (admin calendar features PASS, public design PASS, public booking flow blocked at step 3)"
+  },
+
+  "test_credentials": {
+    "salon": "salon@bookslot.io / Demo123!",
+    "super_admin": "admin@bookslot.io / Admin123!"
+  },
+
+  "seed_data_creation": "None - only temporary toggles of visible_online/bookable_online on existing services/staff (reverted in fixtures).",
+
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "The P0 bug is in backend availability endpoint (server.py line 2225-2229). After main agent fixes, rerun test_iteration16_calendar_public_booking.py::test_submit_booking_returns_requires_approval which currently skips due to no slots. Also retest end-to-end public booking flow from step 3 onward (date picker, time slot selection, details form, confirmation). The admin calendar click-to-book works for empty slots - overlapping-appointment slot buttons open detail dialog instead (medium priority z-index fix needed).",
+
+  "rca_of_the_issue": "SCHEMA MISMATCH BETWEEN SEED AND RUNTIME: Staff documents in MongoDB have working_hours of shape {monday: {start, end, breaks}, ...} (no 'enabled' flag). The public availability endpoint at /api/public/booking/{slug}/availability in server.py checks `day_schedule.get('enabled', False)` and defaults to False when missing, causing every day of the week to be treated as non-working. Result: calendar on the public booking page has all dates greyed out and step 3 cannot progress. Mitigation: (a) treat presence of start+end as enabled, OR (b) migrate seed data to include enabled:true per day. Option (a) is backwards compatible and recommended."
+}

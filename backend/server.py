@@ -2129,8 +2129,8 @@ async def get_public_booking_page(slug: str):
     if not tenant:
         raise HTTPException(status_code=404, detail="Business not found")
     
-    services = await db.services.find({"tenant_id": tenant["tenant_id"], "is_active": True}, {"_id": 0}).to_list(100)
-    staff = await db.staff.find({"tenant_id": tenant["tenant_id"], "is_active": True}, {"_id": 0}).to_list(100)
+    services = await db.services.find({"tenant_id": tenant["tenant_id"], "is_active": True, "visible_online": {"$ne": False}}, {"_id": 0}).to_list(100)
+    staff = await db.staff.find({"tenant_id": tenant["tenant_id"], "is_active": True, "bookable_online": {"$ne": False}}, {"_id": 0}).to_list(100)
     
     # Check if AI receptionist is enabled (growth/pro tiers)
     plan = tenant.get("plan", "starter")
@@ -2173,8 +2173,8 @@ async def get_staff_for_service(slug: str, service_id: str):
     if not tenant:
         raise HTTPException(status_code=404, detail="Business not found")
     
-    # Get all active staff
-    all_staff = await db.staff.find({"tenant_id": tenant["tenant_id"], "is_active": True}, {"_id": 0}).to_list(100)
+    # Get all active bookable staff
+    all_staff = await db.staff.find({"tenant_id": tenant["tenant_id"], "is_active": True, "bookable_online": {"$ne": False}}, {"_id": 0}).to_list(100)
     
     # Filter staff who can perform this service
     # If staff has no services assigned, they can perform all services (backwards compatible)

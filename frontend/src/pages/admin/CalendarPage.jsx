@@ -9,7 +9,7 @@ import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Plus, X, Check, Phone, Zap, Repeat, StickyNote, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Check, Phone, Zap, Repeat, StickyNote, Save, CalendarDays } from 'lucide-react';
 import { format, addDays, subDays, addWeeks, subWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO, addMinutes, differenceInMinutes, isToday } from 'date-fns';
 
 const BLOCK_COLORS = [
@@ -63,6 +63,14 @@ const CalendarPage = () => {
   const handleComplete = async (id) => { try { await axios.put(`${API}/appointments/${id}`, { status: 'completed' }, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Done'); fetchData(); setSelectedAppt(null); } catch { toast.error('Failed'); } };
   const handleSaveNotes = async (id, notes) => { try { await axios.put(`${API}/appointments/${id}`, { notes }, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Notes saved'); fetchData(); } catch { toast.error('Failed'); } };
 
+  const openNewAppt = (date, time) => {
+    if (date) setSelectedDate(date);
+    const now = new Date();
+    const defaultTime = time || `${String(now.getHours()).padStart(2, '0')}:${now.getMinutes() < 30 ? '00' : '30'}`;
+    setNewAppt({ service_id: '', staff_id: selectedStaff !== 'all' ? selectedStaff : '', client_name: '', client_phone: '', client_email: '', time: defaultTime, notes: '', repeat_weeks: 0, repeat_count: 1 });
+    setShowNewAppt(true);
+  };
+
   const handleCreate = async () => {
     if (!newAppt.service_id || !newAppt.staff_id || !newAppt.client_name || !newAppt.time) { toast.error('Fill required fields'); return; }
     try {
@@ -99,7 +107,7 @@ const CalendarPage = () => {
                 <button key={m} onClick={() => setViewMode(m)} className={`px-5 py-2 text-xs font-medium rounded-full transition-all capitalize ${viewMode === m ? 'bg-white text-[#2C2A29] shadow-sm' : 'text-[#9E948F] hover:text-[#706B68]'}`}>{m}</button>
               ))}
             </div>
-            <button onClick={() => setShowNewAppt(true)} className="h-10 px-5 rounded-full bg-[#2C2A29] text-white text-sm font-medium flex items-center gap-2 hover:bg-[#4A4745] transition-all hover:shadow-lg hover:scale-[1.02]" data-testid="new-appointment-calendar-btn">
+            <button onClick={() => openNewAppt()} className="h-10 px-5 rounded-full bg-[#2C2A29] text-white text-sm font-medium flex items-center gap-2 hover:bg-[#4A4745] transition-all hover:shadow-lg hover:scale-[1.02]" data-testid="new-appointment-calendar-btn">
               <Plus className="w-4 h-4" strokeWidth={2} /> Book
             </button>
           </div>
@@ -146,14 +154,14 @@ const CalendarPage = () => {
 
         {/* Calendar Grid */}
         {loading ? <div className="text-center py-16 text-[#9E948F]">Loading...</div> :
-          viewMode === 'week' ? <WeekGrid selectedDate={selectedDate} appointments={filteredAppts} staffColorMap={staffColorMap} onDayClick={d => { setSelectedDate(d); setViewMode('day'); }} onApptClick={setSelectedAppt} /> :
-          <DayList appointments={filteredAppts.filter(a => isSameDay(parseISO(a.start_time), selectedDate) && a.status !== 'cancelled')} staffColorMap={staffColorMap} onComplete={handleComplete} onApptClick={setSelectedAppt} />
+          viewMode === 'week' ? <WeekGrid selectedDate={selectedDate} appointments={filteredAppts} staffColorMap={staffColorMap} onDayClick={d => { setSelectedDate(d); setViewMode('day'); }} onApptClick={setSelectedAppt} onSlotClick={openNewAppt} /> :
+          <DayView selectedDate={selectedDate} appointments={filteredAppts.filter(a => isSameDay(parseISO(a.start_time), selectedDate) && a.status !== 'cancelled')} allDayAppts={filteredAppts.filter(a => isSameDay(parseISO(a.start_time), selectedDate))} staffColorMap={staffColorMap} onComplete={handleComplete} onApptClick={setSelectedAppt} onSlotClick={openNewAppt} />
         }
 
         {/* New Appointment Dialog */}
         <Dialog open={showNewAppt} onOpenChange={setShowNewAppt}>
           <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto rounded-3xl border-[#F0EBE6]">
-            <DialogHeader><DialogTitle className="font-['Cormorant_Garamond'] text-2xl font-light">New Booking</DialogTitle><DialogDescription className="text-[#9E948F] text-sm">Schedule an appointment</DialogDescription></DialogHeader>
+            <DialogHeader><DialogTitle className="font-['Cormorant_Garamond'] text-2xl font-light">New Booking</DialogTitle><DialogDescription className="text-[#9E948F] text-sm">Schedule for <span className="text-[#B8868B] font-medium">{format(selectedDate, 'EEEE, MMMM d')}</span></DialogDescription></DialogHeader>
             <div className="space-y-4 mt-3">
               <div><Label className="text-xs text-[#9E948F] uppercase tracking-wider">Service</Label>
                 <Select value={newAppt.service_id} onValueChange={v => setNewAppt({ ...newAppt, service_id: v })}><SelectTrigger className="mt-1.5 h-11 rounded-xl bg-[#F7F3EE] border-transparent"><SelectValue placeholder="Choose a service" /></SelectTrigger><SelectContent>{services.map(s => <SelectItem key={s.service_id} value={s.service_id}>{s.name} ({s.duration}m)</SelectItem>)}</SelectContent></Select>
@@ -218,41 +226,63 @@ const ApptDetail = ({ appt, onClose, onSaveNotes, onComplete }) => {
   );
 };
 
-const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApptClick }) => {
+const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApptClick, onSlotClick }) => {
   const ws = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: ws, end: endOfWeek(selectedDate, { weekStartsOn: 1 }) });
   const getAppts = (d) => appointments.filter(a => isSameDay(parseISO(a.start_time), d) && a.status !== 'cancelled');
   const getStyle = (a) => { try { const s = parseISO(a.start_time), e = parseISO(a.end_time); return { top: `${(s.getHours() + s.getMinutes() / 60 - 8) * 56}px`, height: `${Math.max(differenceInMinutes(e, s) / 60 * 56, 24)}px` }; } catch { return { top: '0', height: '28px' }; } };
 
   return (
-    <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-      <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-[#F0EBE6]">
+    <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden border-2 border-[#E5DFD9]">
+      <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b-2 border-[#E5DFD9]">
         <div className="p-2" />
         {days.map(d => {
           const today = isToday(d);
           return (
-            <button key={d.toISOString()} onClick={() => onDayClick(d)} className={`py-4 text-center border-l border-[#F0EBE6] transition-colors ${today ? '' : 'hover:bg-[#FCFCFA]'}`}>
-              <p className={`text-[10px] uppercase tracking-[0.15em] font-medium ${today ? 'text-[#B8868B]' : 'text-[#9E948F]'}`}>{format(d, 'EEE')}</p>
-              <p className={`text-lg mt-0.5 ${today ? 'font-medium text-[#2C2A29]' : 'text-[#706B68]'}`}>{format(d, 'd')}</p>
+            <button key={d.toISOString()} onClick={() => onDayClick(d)} className={`py-4 text-center border-l-2 border-[#E5DFD9] transition-colors ${today ? 'bg-[#FAF5F0]' : 'hover:bg-[#FCFCFA]'}`}>
+              <p className={`text-[10px] uppercase tracking-[0.15em] font-semibold ${today ? 'text-[#B8868B]' : 'text-[#9E948F]'}`}>{format(d, 'EEE')}</p>
+              <p className={`text-lg mt-0.5 ${today ? 'font-semibold text-[#2C2A29]' : 'text-[#706B68]'}`}>{format(d, 'd')}</p>
               {today && <div className="w-1 h-1 rounded-full bg-[#B8868B] mx-auto mt-1" />}
             </button>
           );
         })}
       </div>
       <div className="grid grid-cols-[56px_repeat(7,1fr)] relative" style={{ height: `${HOURS.length * 56}px` }}>
-        <div className="relative">{HOURS.map(h => <div key={h} className="absolute w-full text-right pr-2 text-[10px] text-[#9E948F] font-mono" style={{ top: `${(h - 8) * 56}px` }}>{String(h).padStart(2, '0')}:00</div>)}</div>
+        <div className="relative border-r-2 border-[#E5DFD9]">{HOURS.map(h => <div key={h} className="absolute w-full text-right pr-2 text-[10px] text-[#706B68] font-mono font-semibold" style={{ top: `${(h - 8) * 56 - 6}px` }}>{String(h).padStart(2, '0')}:00</div>)}</div>
         {days.map(d => {
           const da = getAppts(d); const today = isToday(d);
           return (
-            <div key={d.toISOString()} className="relative border-l border-[#F0EBE6]" style={today ? { backgroundColor: '#FCFCFA' } : {}}>
-              {HOURS.map(h => <div key={h} className="absolute w-full border-t border-[#F0EBE6]/60" style={{ top: `${(h - 8) * 56}px` }} />)}
+            <div key={d.toISOString()} className="relative border-l-2 border-[#E5DFD9]" style={today ? { backgroundColor: '#FCFCFA' } : {}}>
+              {HOURS.map(h => (
+                <React.Fragment key={h}>
+                  <div className="absolute w-full border-t-2 border-[#F0EBE6]" style={{ top: `${(h - 8) * 56}px` }} />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onSlotClick(d, `${String(h).padStart(2, '0')}:00`); }}
+                    className="absolute w-full h-7 hover:bg-[#E8C5C8]/15 group flex items-center justify-center transition-colors"
+                    style={{ top: `${(h - 8) * 56}px` }}
+                    data-testid={`slot-${format(d, 'yyyy-MM-dd')}-${h}-00`}
+                    aria-label={`Book at ${h}:00`}
+                  >
+                    <span className="text-[9px] text-[#B8868B] opacity-0 group-hover:opacity-100 transition-opacity font-medium tracking-wider uppercase">+ Book</span>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onSlotClick(d, `${String(h).padStart(2, '0')}:30`); }}
+                    className="absolute w-full h-7 hover:bg-[#E8C5C8]/15 group flex items-center justify-center border-t border-dashed border-[#F0EBE6]/80 transition-colors"
+                    style={{ top: `${(h - 8) * 56 + 28}px` }}
+                    data-testid={`slot-${format(d, 'yyyy-MM-dd')}-${h}-30`}
+                    aria-label={`Book at ${h}:30`}
+                  >
+                    <span className="text-[9px] text-[#B8868B] opacity-0 group-hover:opacity-100 transition-opacity font-medium tracking-wider uppercase">+ Book</span>
+                  </button>
+                </React.Fragment>
+              ))}
               {da.map(a => {
                 const s = getStyle(a);
                 const c = staffColorMap[a.staff_id] || BLOCK_COLORS[0];
                 return (
-                  <div key={a.appointment_id} className="absolute left-1 right-1 rounded-xl px-2 py-1 overflow-hidden cursor-pointer transition-all hover:scale-[1.03] hover:shadow-md hover:z-10"
-                    style={{ ...s, backgroundColor: c.bg }} onClick={() => onApptClick(a)}>
-                    <p className="text-[10px] font-medium truncate" style={{ color: c.text }}>{a.client_name}</p>
+                  <div key={a.appointment_id} className="absolute left-1 right-1 rounded-xl px-2 py-1 overflow-hidden cursor-pointer transition-all hover:scale-[1.03] hover:shadow-md hover:z-10 border border-white/50"
+                    style={{ ...s, backgroundColor: c.bg, zIndex: 5 }} onClick={(e) => { e.stopPropagation(); onApptClick(a); }}>
+                    <p className="text-[10px] font-semibold truncate" style={{ color: c.text }}>{a.client_name}</p>
                     <p className="text-[9px] truncate" style={{ color: c.text + '99' }}>{a.service_name}</p>
                   </div>
                 );
@@ -265,45 +295,108 @@ const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApp
   );
 };
 
-const DayList = ({ appointments, staffColorMap, onComplete, onApptClick }) => {
+const DayView = ({ selectedDate, appointments, allDayAppts, staffColorMap, onComplete, onApptClick, onSlotClick }) => {
   const confirmed = appointments.filter(a => a.status === 'confirmed');
   const completed = appointments.filter(a => a.status === 'completed');
-  if (!confirmed.length && !completed.length) return (
-    <div className="text-center py-16 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-      <div className="w-16 h-16 rounded-full bg-[#F7F3EE] flex items-center justify-center mx-auto mb-4"><CalendarDays className="w-7 h-7 text-[#9E948F]" strokeWidth={1.5} /></div>
-      <p className="text-[#706B68] font-medium">No appointments this day</p>
-      <p className="text-sm text-[#9E948F] mt-1">Click "Book" to schedule one</p>
-    </div>
-  );
+  const getStyle = (a) => { try { const s = parseISO(a.start_time), e = parseISO(a.end_time); return { top: `${(s.getHours() + s.getMinutes() / 60 - 8) * 56}px`, height: `${Math.max(differenceInMinutes(e, s) / 60 * 56, 28)}px` }; } catch { return { top: '0', height: '28px' }; } };
+  const dayAppts = appointments.filter(a => a.status !== 'cancelled');
+
   return (
-    <div className="space-y-3">
-      {confirmed.map(a => {
-        const c = staffColorMap[a.staff_id] || BLOCK_COLORS[0];
-        return (
-          <div key={a.appointment_id} className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group" onClick={() => onApptClick(a)} style={{ borderLeft: `4px solid ${c.text}` }}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl flex flex-col items-center justify-center" style={{ backgroundColor: c.bg }}>
-                  <p className="text-sm font-medium font-mono" style={{ color: c.text }}>{format(parseISO(a.start_time), 'HH:mm')}</p>
-                  <p className="text-[9px]" style={{ color: c.text + '80' }}>{differenceInMinutes(parseISO(a.end_time), parseISO(a.start_time))}m</p>
-                </div>
-                <div>
-                  <p className="font-medium text-[#2C2A29]">{a.client_name || 'Walk-in'}</p>
-                  <p className="text-sm text-[#9E948F]">{a.service_name}{a.staff_name ? ` · ${a.staff_name}` : ''}</p>
-                  {a.notes && <p className="text-xs text-[#B8868B] mt-0.5 italic">"{a.notes.substring(0, 50)}{a.notes.length > 50 ? '...' : ''}"</p>}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                {a.client_phone && <a href={`tel:${a.client_phone}`} className="p-2.5 text-[#9E948F] hover:text-[#2C2A29] rounded-xl hover:bg-[#F7F3EE]"><Phone className="w-4 h-4" strokeWidth={1.5} /></a>}
-                <button onClick={() => onComplete(a.appointment_id)} className="px-4 py-2 rounded-full bg-[#2C2A29] text-white text-xs font-medium hover:bg-[#4A4745] transition-colors">Done</button>
-              </div>
-            </div>
+    <div className="space-y-5">
+      {/* Clickable Day Time Grid */}
+      <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden border-2 border-[#E5DFD9]">
+        <div className="px-6 py-4 border-b-2 border-[#E5DFD9] flex items-center justify-between">
+          <div className="flex items-center gap-2"><CalendarDays className="w-4 h-4 text-[#B8868B]" strokeWidth={1.5} /><span className="text-sm font-semibold text-[#2C2A29]">{format(selectedDate, 'EEEE, MMMM d')}</span></div>
+          <span className="text-[11px] text-[#9E948F] uppercase tracking-[0.15em]">Click a slot to book</span>
+        </div>
+        <div className="grid grid-cols-[72px_1fr] relative" style={{ height: `${HOURS.length * 56}px` }}>
+          <div className="relative border-r-2 border-[#E5DFD9] bg-[#FCFCFA]">
+            {HOURS.map(h => <div key={h} className="absolute w-full text-right pr-3 text-xs text-[#706B68] font-mono font-semibold" style={{ top: `${(h - 8) * 56 - 7}px` }}>{String(h).padStart(2, '0')}:00</div>)}
           </div>
-        );
-      })}
-      {completed.length > 0 && (
-        <div className="pt-4"><p className="text-xs tracking-[0.2em] uppercase text-[#9E948F] font-medium mb-3">Completed · {completed.length}</p>
-          {completed.map(a => <div key={a.appointment_id} className="flex items-center gap-4 py-2.5 px-2 opacity-50 cursor-pointer hover:opacity-70" onClick={() => onApptClick(a)}><div className="w-5 h-5 rounded-full bg-[#8FA68F]/20 flex items-center justify-center"><Check className="w-3 h-3 text-[#8FA68F]" /></div><span className="text-sm text-[#706B68]">{a.client_name}</span><span className="text-xs text-[#9E948F] ml-auto font-mono">{format(parseISO(a.start_time), 'HH:mm')}</span></div>)}
+          <div className="relative">
+            {HOURS.map(h => (
+              <React.Fragment key={h}>
+                <div className="absolute w-full border-t-2 border-[#F0EBE6]" style={{ top: `${(h - 8) * 56}px` }} />
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSlotClick(selectedDate, `${String(h).padStart(2, '0')}:00`); }}
+                  className="absolute w-full h-7 hover:bg-[#E8C5C8]/15 group flex items-center px-4 transition-colors"
+                  style={{ top: `${(h - 8) * 56}px` }}
+                  data-testid={`day-slot-${h}-00`}
+                  aria-label={`Book at ${h}:00`}
+                >
+                  <span className="text-[10px] text-[#B8868B] opacity-0 group-hover:opacity-100 transition-opacity font-medium tracking-wider uppercase">+ Book at {String(h).padStart(2, '0')}:00</span>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSlotClick(selectedDate, `${String(h).padStart(2, '0')}:30`); }}
+                  className="absolute w-full h-7 hover:bg-[#E8C5C8]/15 group flex items-center px-4 border-t border-dashed border-[#F0EBE6]/80 transition-colors"
+                  style={{ top: `${(h - 8) * 56 + 28}px` }}
+                  data-testid={`day-slot-${h}-30`}
+                  aria-label={`Book at ${h}:30`}
+                >
+                  <span className="text-[10px] text-[#B8868B] opacity-0 group-hover:opacity-100 transition-opacity font-medium tracking-wider uppercase">+ Book at {String(h).padStart(2, '0')}:30</span>
+                </button>
+              </React.Fragment>
+            ))}
+            {dayAppts.map(a => {
+              const s = getStyle(a);
+              const c = staffColorMap[a.staff_id] || BLOCK_COLORS[0];
+              const isDone = a.status === 'completed';
+              return (
+                <div key={a.appointment_id}
+                  className={`absolute left-2 right-2 rounded-xl px-3 py-2 overflow-hidden cursor-pointer transition-all hover:scale-[1.01] hover:shadow-md hover:z-10 border border-white/50 ${isDone ? 'opacity-60' : ''}`}
+                  style={{ ...s, backgroundColor: c.bg, zIndex: 5 }}
+                  onClick={(e) => { e.stopPropagation(); onApptClick(a); }}
+                >
+                  <p className="text-xs font-semibold truncate" style={{ color: c.text }}>{a.client_name}{isDone && ' ✓'}</p>
+                  <p className="text-[10px] truncate" style={{ color: c.text + '99' }}>{a.service_name} · {format(parseISO(a.start_time), 'HH:mm')}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Today's List Summary */}
+      {(confirmed.length > 0 || completed.length > 0) && (
+        <div className="space-y-3">
+          <p className="text-xs tracking-[0.2em] uppercase text-[#9E948F] font-semibold">Today's Schedule · {confirmed.length + completed.length}</p>
+          {confirmed.map(a => {
+            const c = staffColorMap[a.staff_id] || BLOCK_COLORS[0];
+            return (
+              <div key={a.appointment_id} className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group" onClick={() => onApptClick(a)} style={{ borderLeft: `4px solid ${c.text}` }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl flex flex-col items-center justify-center" style={{ backgroundColor: c.bg }}>
+                      <p className="text-sm font-semibold font-mono" style={{ color: c.text }}>{format(parseISO(a.start_time), 'HH:mm')}</p>
+                      <p className="text-[9px]" style={{ color: c.text + '80' }}>{differenceInMinutes(parseISO(a.end_time), parseISO(a.start_time))}m</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-[#2C2A29]">{a.client_name || 'Walk-in'}</p>
+                      <p className="text-sm text-[#9E948F]">{a.service_name}{a.staff_name ? ` · ${a.staff_name}` : ''}</p>
+                      {a.notes && <p className="text-xs text-[#B8868B] mt-0.5 italic">"{a.notes.substring(0, 50)}{a.notes.length > 50 ? '...' : ''}"</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                    {a.client_phone && <a href={`tel:${a.client_phone}`} className="p-2.5 text-[#9E948F] hover:text-[#2C2A29] rounded-xl hover:bg-[#F7F3EE]"><Phone className="w-4 h-4" strokeWidth={1.5} /></a>}
+                    <button onClick={() => onComplete(a.appointment_id)} className="px-4 py-2 rounded-full bg-[#2C2A29] text-white text-xs font-medium hover:bg-[#4A4745] transition-colors">Done</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {completed.length > 0 && (
+            <div className="pt-2">
+              <p className="text-xs tracking-[0.2em] uppercase text-[#9E948F] font-semibold mb-3">Completed · {completed.length}</p>
+              {completed.map(a => <div key={a.appointment_id} className="flex items-center gap-4 py-2.5 px-2 opacity-50 cursor-pointer hover:opacity-70" onClick={() => onApptClick(a)}><div className="w-5 h-5 rounded-full bg-[#8FA68F]/20 flex items-center justify-center"><Check className="w-3 h-3 text-[#8FA68F]" /></div><span className="text-sm text-[#706B68]">{a.client_name}</span><span className="text-xs text-[#9E948F] ml-auto font-mono">{format(parseISO(a.start_time), 'HH:mm')}</span></div>)}
+            </div>
+          )}
+        </div>
+      )}
+      {confirmed.length === 0 && completed.length === 0 && (
+        <div className="text-center py-10 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-[#F0EBE6]">
+          <div className="w-14 h-14 rounded-full bg-[#F7F3EE] flex items-center justify-center mx-auto mb-3"><CalendarDays className="w-6 h-6 text-[#9E948F]" strokeWidth={1.5} /></div>
+          <p className="text-[#706B68] font-medium">No appointments yet</p>
+          <p className="text-sm text-[#9E948F] mt-1">Tap any time slot above to book</p>
         </div>
       )}
     </div>
