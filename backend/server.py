@@ -2222,10 +2222,12 @@ async def get_availability(
     except:
         raise HTTPException(status_code=400, detail="Invalid date format")
     
-    day_schedule = working_hours.get(day_name, {"enabled": False})
+    day_schedule = working_hours.get(day_name) or {}
     
-    # If staff doesn't work this day, return empty slots
-    if not day_schedule.get("enabled", False):
+    # Staff is considered working this day when a start+end exist (or explicit enabled=True).
+    # The 'enabled' key is optional in seed data — presence of start/end is the source of truth.
+    is_working = bool(day_schedule.get("start") and day_schedule.get("end")) or day_schedule.get("enabled") is True
+    if not is_working:
         return {"slots": [], "date": date, "message": "Staff not available on this day"}
     
     # Get working hours for the day
@@ -2323,9 +2325,10 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
     
     # Check 1: Staff working hours for that day
     working_hours = staff.get("working_hours", {})
-    day_schedule = working_hours.get(day_of_week, {})
+    day_schedule = working_hours.get(day_of_week) or {}
+    is_working_day = bool(day_schedule.get("start") and day_schedule.get("end")) or day_schedule.get("enabled") is True
     
-    if not day_schedule.get("enabled", False):
+    if not is_working_day:
         # Staff not working that day - suggest alternative days
         alternative_days = await find_alternative_days(tenant["tenant_id"], staff["staff_id"], service, start_dt)
         alternative_staff = await find_available_staff_for_time(tenant["tenant_id"], booking_data["service_id"], requested_start, requested_end)
@@ -2468,9 +2471,10 @@ async def find_alternative_days(tenant_id: str, staff_id: str, service: Dict, fr
     
     for _ in range(14):  # Look up to 2 weeks ahead
         day_name = current_date.strftime("%A").lower()
-        day_schedule = working_hours.get(day_name, {})
+        day_schedule = working_hours.get(day_name) or {}
+        is_working = bool(day_schedule.get("start") and day_schedule.get("end")) or day_schedule.get("enabled") is True
         
-        if day_schedule.get("enabled", False):
+        if is_working:
             alternatives.append({
                 "date": current_date.strftime("%Y-%m-%d"),
                 "day": current_date.strftime("%A"),
@@ -2508,9 +2512,10 @@ async def find_available_staff_for_time(tenant_id: str, service_id: str, start_t
         
         # Check working hours
         working_hours = staff.get("working_hours", {})
-        day_schedule = working_hours.get(day_of_week, {})
+        day_schedule = working_hours.get(day_of_week) or {}
+        is_working = bool(day_schedule.get("start") and day_schedule.get("end")) or day_schedule.get("enabled") is True
         
-        if not day_schedule.get("enabled", False):
+        if not is_working:
             continue
         
         work_start = day_schedule.get("start", "09:00")
@@ -2559,9 +2564,10 @@ async def get_available_slots_for_day(tenant_id: str, staff_id: str, service: Di
     """Get available time slots for a specific staff on a specific day"""
     day_obj = datetime.strptime(date, "%Y-%m-%d")
     day_of_week = day_obj.strftime("%A").lower()
-    day_schedule = working_hours.get(day_of_week, {})
+    day_schedule = working_hours.get(day_of_week) or {}
+    is_working = bool(day_schedule.get("start") and day_schedule.get("end")) or day_schedule.get("enabled") is True
     
-    if not day_schedule.get("enabled", False):
+    if not is_working:
         return []
     
     work_start = day_schedule.get("start", "09:00")
