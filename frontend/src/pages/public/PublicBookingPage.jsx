@@ -40,6 +40,21 @@ const PublicBookingPage = () => {
   const brandPrimary = business?.branding?.primary_color || '#B8868B';
   const brandSecondary = business?.branding?.secondary_color || '#E8C5C8';
 
+  // Days that at least one eligible staff member works on (used to disable the rest in the date picker)
+  const workingDaysOfWeek = useMemo(() => {
+    const days = new Set();
+    staff.forEach(s => {
+      const wh = s.working_hours || {};
+      Object.entries(wh).forEach(([day, schedule]) => {
+        if (!schedule) return;
+        const working = (schedule.start && schedule.end) || schedule.enabled === true;
+        if (working) days.add(day.toLowerCase());
+      });
+    });
+    return days;
+  }, [staff]);
+  const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
   useEffect(() => { fetchBusinessData(); }, [slug]);
   useEffect(() => { if (selectedService && selectedStaff && selectedDate) fetchAvailability(); }, [selectedService, selectedStaff, selectedDate]);
 
@@ -244,7 +259,12 @@ const PublicBookingPage = () => {
                   mode="single"
                   selected={selectedDate}
                   onSelect={(d) => { setSelectedDate(d); setSelectedSlot(null); }}
-                  disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                  disabled={(date) => {
+                    const past = date < new Date(new Date().setHours(0, 0, 0, 0));
+                    const dayName = DAY_NAMES[date.getDay()];
+                    const noStaffWorking = workingDaysOfWeek.size > 0 && !workingDaysOfWeek.has(dayName);
+                    return past || noStaffWorking;
+                  }}
                   className="w-full"
                   data-testid="booking-calendar"
                 />

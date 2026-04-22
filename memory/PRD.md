@@ -368,3 +368,34 @@ The AI conversation system will automatically:
 - [x] Enhanced service dialog with full premium layout
 - [x] All tests passing (iteration_15, 27/27 backend)
 
+
+
+## Phase 4: Calendar Quick-Book & Public Booking Premium Redesign (April 22, 2026)
+### Admin Calendar UX
+- [x] Click-to-book on every empty time slot in Week view (hour + half-hour slots)
+- [x] Click-to-book on every time slot in new Day view (replaces DayList — grid-based timeline)
+- [x] "Book" button opens New Booking dialog pre-filled with current time (rounded to :00/:30) and the currently selected date (visible in the dialog description)
+- [x] Bolder `border-2` outlines on calendar grid columns and headers for better visibility
+- [x] Staff filter selection now also pre-fills new bookings
+
+### Public Booking Page Premium Redesign
+- [x] Full redesign to match premium salon aesthetic: Cormorant Garamond typography, blush/champagne palette, rounded-3xl cards, bento-style layout
+- [x] Tenant branding color (primary_color from tenant.branding) drives hero badge, CTA buttons, service card accents, time-slot highlights, and stepper progress
+- [x] Sparkles badge hero with tenant name + address; "Powered by BookSlot" footer
+- [x] Step 2 now honors staff-service assignments (only eligible staff shown for selected service)
+- [x] Date picker greys out past dates AND non-working days (derived from staff.working_hours across all eligible staff)
+
+### Backend Booking Rules Enforcement
+- [x] GET /api/public/booking/{slug} now filters services by `visible_online!=false` and staff by `bookable_online!=false`
+- [x] GET /api/public/booking/{slug}/staff-for-service filters by `bookable_online!=false`
+- [x] Public staff response now includes `working_hours` so the frontend can disable non-working days
+- [x] Fixed P0 bug in 5 availability helpers: `day_schedule.get('enabled')` check replaced with `bool(start and end) or enabled is True` (backwards compatible with both seeded shapes)
+- [x] iteration_17.json: 43/43 regression tests PASS, 3/3 new tests PASS, end-to-end booking confirmed with `confirmation_code` and `requires_approval=true`
+
+## Backlog (next up)
+- [ ] P2: Client self-service portal
+- [ ] P2: Instant Rebooking at Checkout (AI suggestion for next appointment)
+- [ ] P2: "Fill My Day" mode (last-minute availability blast to opted-in clients)
+- [ ] P2: Client Lifetime Value tracking / VIP tagging
+- [ ] P3: Refactor server.py (~5770 lines) into route modules
+- [ ] P3 (polish): Fix admin calendar slot-button z-index so clicks on partially-overlapped slots open New Booking instead of appointment detail

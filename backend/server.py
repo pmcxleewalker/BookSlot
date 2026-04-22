@@ -2157,7 +2157,8 @@ async def get_public_booking_page(slug: str):
             "name": s["name"],
             "title": s.get("title"),
             "avatar_url": s.get("avatar_url"),
-            "services": s.get("services", [])  # List of service_ids this staff can perform
+            "services": s.get("services", []),  # List of service_ids this staff can perform
+            "working_hours": s.get("working_hours", {})  # Used by frontend to disable non-working days
         })
     
     return {
