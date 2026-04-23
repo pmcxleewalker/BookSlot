@@ -1993,6 +1993,17 @@ async def get_appointments(
         query["status"] = status
     
     appointments = await db.appointments.find(query, {"_id": 0}).sort("start_time", 1).to_list(1000)
+    
+    # Enrich every appointment with service_name and staff_name so the calendar always has them
+    # (public bookings store service_id only; admin-created ones already include a snapshot).
+    service_map = {s["service_id"]: s for s in await db.services.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(500)}
+    staff_map = {s["staff_id"]: s for s in await db.staff.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(500)}
+    for appt in appointments:
+        if not appt.get("service_name"):
+            appt["service_name"] = service_map.get(appt.get("service_id"), {}).get("name", "Service")
+        if not appt.get("staff_name"):
+            appt["staff_name"] = staff_map.get(appt.get("staff_id"), {}).get("name", "")
+    
     return {"appointments": appointments}
 
 @api_router.post("/appointments")
@@ -2444,6 +2455,11 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
     appointment.total_price = service.get("price", 0)
     
     appt_dict = appointment.model_dump()
+    # Snapshot service/staff name on the appointment so the calendar always has them,
+    # even if the service or staff is later renamed/deleted.
+    staff_doc = await db.staff.find_one({"staff_id": booking_data["staff_id"]}, {"_id": 0})
+    appt_dict["service_name"] = service.get("name", "Service")
+    appt_dict["staff_name"] = (staff_doc or {}).get("name", "")
     appt_dict["start_time"] = appt_dict["start_time"].isoformat()
     appt_dict["end_time"] = appt_dict["end_time"].isoformat()
     appt_dict["created_at"] = appt_dict["created_at"].isoformat()
