@@ -86,7 +86,14 @@ const CalendarPage = () => {
 
   const filteredAppts = selectedStaff === 'all' ? appointments : appointments.filter(a => a.staff_id === selectedStaff);
   const staffColorMap = {};
-  staff.forEach((s, i) => { staffColorMap[s.staff_id] = BLOCK_COLORS[i % BLOCK_COLORS.length]; });
+  staff.forEach((s, i) => {
+    // Honour the color set on the staff profile first; fall back to the preset palette.
+    if (s.color) {
+      staffColorMap[s.staff_id] = { bg: s.color, text: '#2C2A29' };
+    } else {
+      staffColorMap[s.staff_id] = BLOCK_COLORS[i % BLOCK_COLORS.length];
+    }
+  });
 
   return (
     <TenantLayout title="Calendar">
@@ -120,7 +127,7 @@ const CalendarPage = () => {
             <span className="text-[10px] text-[#9E948F]">Everyone</span>
           </button>
           {staff.map((s, i) => {
-            const c = BLOCK_COLORS[i % BLOCK_COLORS.length];
+            const c = staffColorMap[s.staff_id] || BLOCK_COLORS[i % BLOCK_COLORS.length];
             return (
               <button key={s.staff_id} onClick={() => setSelectedStaff(s.staff_id === selectedStaff ? 'all' : s.staff_id)} className={`flex flex-col items-center gap-1.5 min-w-[56px] transition-all ${selectedStaff === s.staff_id ? '' : selectedStaff === 'all' ? '' : 'opacity-40 hover:opacity-80'}`}>
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-medium transition-all ${selectedStaff === s.staff_id ? 'ring-2 ring-offset-2' : ''}`}
