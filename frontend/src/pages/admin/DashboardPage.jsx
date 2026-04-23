@@ -192,6 +192,16 @@ const DashboardPage = () => {
                 icon={UserCog}
                 accent="#7BA07B"
                 testIdPrefix="staff-login"
+                hint={
+                  <>
+                    <p className="text-[11px] text-[#706B68] leading-relaxed">
+                      <span className="font-semibold text-[#2C2A29]">Temporary password:</span> <code className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#FAF7F3] text-[#2C2A29]">123</code>
+                    </p>
+                    <p className="text-[10px] text-[#9E948F] mt-1 leading-relaxed">
+                      Staff use their email + <code className="font-mono px-1 bg-[#FAF7F3] rounded">123</code> on first sign-in. They'll be asked to set a new password straight away.
+                    </p>
+                  </>
+                }
               />
 
               {/* Quick Actions */}
@@ -257,7 +267,7 @@ const DashboardPage = () => {
   );
 };
 
-const ShareCard = ({ title, description, url, icon: Icon, accent, testIdPrefix }) => {
+const ShareCard = ({ title, description, url, icon: Icon, accent, testIdPrefix, hint }) => {
   const [expanded, setExpanded] = useState(false);
   const qrRef = useRef(null);
 
@@ -357,6 +367,12 @@ const ShareCard = ({ title, description, url, icon: Icon, accent, testIdPrefix }
             <Download className="w-3.5 h-3.5" strokeWidth={1.5} />
             Download PNG
           </button>
+        </div>
+      )}
+
+      {hint && (
+        <div className="mt-4 pt-4 border-t border-[#F0EBE6]" data-testid={`${testIdPrefix}-hint`}>
+          {hint}
         </div>
       )}
     </div>
