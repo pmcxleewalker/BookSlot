@@ -20,6 +20,8 @@ const TenantLayout = ({ children, title }) => {
   const urlPrefix = tenantSlug ? `/${tenantSlug}` : '';
   const theme = getTheme(tenant?.industry);
   const businessName = tenant?.branding?.business_name || tenant?.name || 'BookSlot';
+  const brandPrimary = tenant?.branding?.primary_color || '#B8868B';
+  const logoUrl = tenant?.logo_url;
 
   useEffect(() => {
     const fetchPending = async () => {
@@ -67,9 +69,13 @@ const TenantLayout = ({ children, title }) => {
         {/* Brand */}
         <div className="h-16 flex items-center justify-between px-6">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#2C2A29] flex items-center justify-center">
-              <span className="text-white text-sm font-['Cormorant_Garamond'] font-light">{businessName.charAt(0)}</span>
-            </div>
+            {logoUrl ? (
+              <img src={logoUrl} alt={businessName} className="w-8 h-8 rounded-full object-cover border border-[#E5DFD9]" />
+            ) : (
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: brandPrimary }}>
+                <span className="text-white text-sm font-['Cormorant_Garamond'] font-light">{businessName.charAt(0)}</span>
+              </div>
+            )}
             <span className="font-['Cormorant_Garamond'] text-lg font-light text-[#2C2A29] tracking-tight">{businessName}</span>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-[#9E948F]"><X className="w-4 h-4" /></button>
@@ -78,8 +84,8 @@ const TenantLayout = ({ children, title }) => {
         {/* AI Status */}
         <div className="mx-4 mb-3 px-4 py-2.5 rounded-2xl bg-white/60 border border-[#F0EBE6]">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-[#B8868B]" strokeWidth={1.5} />
-            <span className="text-[11px] font-medium text-[#B8868B] tracking-wide">{theme.aiName} AI Active</span>
+            <Sparkles className="w-3.5 h-3.5" style={{ color: brandPrimary }} strokeWidth={1.5} />
+            <span className="text-[11px] font-medium tracking-wide" style={{ color: brandPrimary }}>{theme.aiName} AI Active</span>
             <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#8FA68F]" />
           </div>
         </div>
@@ -99,7 +105,7 @@ const TenantLayout = ({ children, title }) => {
                 <Icon className="w-[18px] h-[18px]" strokeWidth={1.5} />
                 <span className="flex-1">{item.label}</span>
                 {item.badge && (
-                  <span className="text-[10px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center bg-[#B8868B] text-white">{item.badge}</span>
+                  <span className="text-[10px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center text-white" style={{ backgroundColor: brandPrimary }}>{item.badge}</span>
                 )}
               </Link>
             );
@@ -147,7 +153,7 @@ const TenantLayout = ({ children, title }) => {
           </div>
           <div className="flex items-center gap-3">
             {pendingCount > 0 && (
-              <button onClick={() => navigate(`${urlPrefix}/calendar`)} className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#E8C5C8]/30 text-[#B8868B] text-sm font-medium hover:bg-[#E8C5C8]/50 transition-colors" data-testid="pending-badge">
+              <button onClick={() => navigate(`${urlPrefix}/calendar`)} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors" style={{ backgroundColor: brandPrimary + '22', color: brandPrimary }} data-testid="pending-badge">
                 <Bell className="w-4 h-4" strokeWidth={1.5} />
                 {pendingCount} pending
               </button>

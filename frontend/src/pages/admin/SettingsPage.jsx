@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import axios from 'axios';
@@ -23,9 +24,12 @@ const TABS = [
 
 const SettingsPage = () => {
   const { tenant, token, updateTenant } = useAuth();
+  const navigate = useNavigate();
+  const { tenantSlug } = useParams();
   const { permission, isSubscribed, isSupported, subscribe, unsubscribe } = usePushNotifications(token);
   const [activeTab, setActiveTab] = useState('business');
   const [saving, setSaving] = useState(false);
+  const exitToDashboard = () => navigate(tenantSlug ? `/${tenantSlug}/dashboard` : '/dashboard');
 
   // Business
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', timezone: 'Europe/Dublin', currency: 'EUR' });
@@ -80,21 +84,23 @@ const SettingsPage = () => {
   // Save handlers
   const handleSaveBusiness = async () => {
     setSaving(true);
-    try { await updateTenant(formData); toast.success('Business details saved'); } catch { toast.error('Failed'); } finally { setSaving(false); }
+    try { await updateTenant(formData); toast.success('Business details saved'); exitToDashboard(); } catch { toast.error('Failed'); } finally { setSaving(false); }
   };
 
   const handleSaveBranding = async () => {
     setSaving(true);
     try {
       await axios.put(`${API}/tenants/me/branding`, branding, { headers: { Authorization: `Bearer ${token}` } });
-      if (logoUrl) await updateTenant({ logo_url: logoUrl });
-      toast.success('Branding saved — refresh to see changes');
-    } catch { toast.error('Failed'); } finally { setSaving(false); }
+      // Persist logo_url on the tenant doc AND refresh the in-memory tenant so the sidebar updates instantly
+      await updateTenant({ logo_url: logoUrl || null });
+      toast.success('Branding saved');
+      exitToDashboard();
+    } catch { toast.error('Failed to save branding'); } finally { setSaving(false); }
   };
 
   const handleSaveRules = async () => {
     setSaving(true);
-    try { await axios.put(`${API}/tenants/me/booking-rules`, rules, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Booking rules saved'); } catch { toast.error('Failed'); } finally { setSaving(false); }
+    try { await axios.put(`${API}/tenants/me/booking-rules`, rules, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Booking rules saved'); exitToDashboard(); } catch { toast.error('Failed'); } finally { setSaving(false); }
   };
 
   const handleLogoUpload = async (e) => {
