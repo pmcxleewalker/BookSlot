@@ -788,6 +788,8 @@ async def auto_promote_waitlist(tenant_id: str, appointment: Dict[str, Any]) -> 
 @api_router.post("/auth/register")
 async def register(user_data: UserCreate, response: Response):
     """Register new user with email/password"""
+    # Normalise email to lowercase for consistent storage & lookup
+    user_data.email = (user_data.email or "").strip().lower()
     existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -828,8 +830,16 @@ async def register(user_data: UserCreate, response: Response):
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin, response: Response):
-    """Login with email/password"""
-    user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    """Login with email/password (case-insensitive email lookup)"""
+    # Emails are stored lowercased — normalise the input so "Test@salon.com" and "test@salon.com" match.
+    email_lower = (credentials.email or "").strip().lower()
+    user = await db.users.find_one({"email": email_lower}, {"_id": 0})
+    if not user:
+        # Fallback for any legacy docs that stored mixed-case emails
+        user = await db.users.find_one(
+            {"email": {"$regex": f"^{re.escape(email_lower)}$", "$options": "i"}},
+            {"_id": 0}
+        )
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
