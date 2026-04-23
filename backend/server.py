@@ -1532,6 +1532,55 @@ async def change_password(body: Dict[str, Any], user: Dict = Depends(get_current
     )
     return {"message": "Password updated"}
 
+@api_router.post("/staff/{staff_id}/reset-password")
+async def admin_reset_staff_password(staff_id: str, user: Dict = Depends(get_current_user)):
+    """Owner/admin resets a staff member's password back to the default so the staff
+    can sign in and be forced to set a new one.
+    Default password = email prefix + "123" (e.g. sarah@salon.com -> sarah123).
+    Creates a login if one doesn't already exist.
+    """
+    if user.get("role") not in ["owner", "admin"]:
+        raise HTTPException(status_code=403, detail="Only owners/admins can reset staff passwords")
+    
+    staff = await db.staff.find_one({"staff_id": staff_id, "tenant_id": user.get("tenant_id")}, {"_id": 0})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    email = (staff.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Add an email to this staff member before creating a login")
+    
+    prefix = email.split("@")[0] or "staff"
+    default_password = f"{prefix}123"
+    password_hash = hash_password(default_password)
+    
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
+    if existing:
+        await db.users.update_one(
+            {"email": email},
+            {"$set": {
+                "password_hash": password_hash,
+                "must_change_password": True,
+                "linked_staff_id": staff_id,
+                "is_active": True
+            }}
+        )
+    else:
+        await db.users.insert_one({
+            "user_id": f"user_{uuid.uuid4().hex[:12]}",
+            "email": email,
+            "name": staff.get("name"),
+            "tenant_id": user.get("tenant_id"),
+            "role": "staff",
+            "password_hash": password_hash,
+            "must_change_password": True,
+            "linked_staff_id": staff_id,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    return {"message": "Password reset", "email": email, "default_password": default_password}
+
 @api_router.get("/staff")
 async def get_staff(user: Dict = Depends(get_current_user)):
     """Get all staff for tenant"""
@@ -1561,20 +1610,24 @@ async def create_staff(staff_data: StaffCreate, user: Dict = Depends(get_current
     
     await db.staff.insert_one({**staff_dict})
     
-    # If the staff has an email and no user account yet, auto-create a login with default password "123"
-    # and force-change on first sign-in.
+    # If the staff has an email and no user account yet, auto-create a login with a default password
+    # Default password = email prefix + "123"  (e.g. "sarah@salon.com" -> "sarah123") — memorable for admins.
+    # The user is forced to change it on first sign-in.
     staff_login_created = False
+    default_password = None
     staff_email = (staff_dict.get("email") or "").strip().lower()
     if staff_email:
         existing_user = await db.users.find_one({"email": staff_email}, {"_id": 0})
         if not existing_user:
+            prefix = staff_email.split("@")[0] or "staff"
+            default_password = f"{prefix}123"
             await db.users.insert_one({
                 "user_id": f"user_{uuid.uuid4().hex[:12]}",
                 "email": staff_email,
                 "name": staff_dict.get("name"),
                 "tenant_id": user["tenant_id"],
                 "role": "staff",
-                "password_hash": hash_password("123"),
+                "password_hash": hash_password(default_password),
                 "must_change_password": True,
                 "linked_staff_id": staff_dict["staff_id"],
                 "is_active": True,
@@ -1582,7 +1635,7 @@ async def create_staff(staff_data: StaffCreate, user: Dict = Depends(get_current
             })
             staff_login_created = True
     
-    return {"staff": staff_dict, "login_created": staff_login_created, "default_password": "123" if staff_login_created else None}
+    return {"staff": staff_dict, "login_created": staff_login_created, "default_password": default_password}
 
 @api_router.put("/staff/{staff_id}")
 async def update_staff(staff_id: str, updates: Dict[str, Any], user: Dict = Depends(get_current_user)):

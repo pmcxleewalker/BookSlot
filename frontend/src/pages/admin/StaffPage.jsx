@@ -9,7 +9,7 @@ import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, User, Clock, DollarSign, Mail, Phone, Star, CheckSquare, Square, Camera, Loader2, ChevronRight, Shield, CalendarOff, Palette, Save } from 'lucide-react';
+import { Plus, Pencil, Trash2, User, Clock, DollarSign, Mail, Phone, Star, CheckSquare, Square, Camera, Loader2, ChevronRight, Shield, CalendarOff, Palette, Save, KeyRound } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -121,8 +121,8 @@ const StaffPage = () => {
       if (editingStaff) { await axios.put(`${API}/staff/${editingStaff.staff_id}`, payload, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Updated'); }
       else {
         const resp = await axios.post(`${API}/staff`, payload, { headers: { Authorization: `Bearer ${token}` } });
-        if (resp.data?.login_created) {
-          toast.success(`Added — login sent to ${payload.email}. Default password: 123 (they'll be asked to change it on first sign-in)`, { duration: 8000 });
+        if (resp.data?.login_created && resp.data?.default_password) {
+          toast.success(`Added — login sent to ${payload.email}. Default password: ${resp.data.default_password}`, { duration: 10000 });
         } else {
           toast.success('Added');
         }
@@ -132,6 +132,17 @@ const StaffPage = () => {
   };
 
   const handleDeleteStaff = async (id) => { if (!window.confirm('Remove this team member?')) return; try { await axios.delete(`${API}/staff/${id}`, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Removed'); fetchData(); } catch { toast.error('Failed'); } };
+
+  const handleResetPassword = async (m) => {
+    if (!m.email) { toast.error('Add an email to this staff member first'); return; }
+    if (!window.confirm(`Reset ${m.name}'s password to the default? They'll need to change it on next sign-in.`)) return;
+    try {
+      const resp = await axios.post(`${API}/staff/${m.staff_id}/reset-password`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(`Password reset — ${m.name} can now sign in with: ${resp.data.default_password}`, { duration: 12000 });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to reset password');
+    }
+  };
 
   // Service handlers
   const openAddService = () => { setEditingService(null); setServiceForm({ name: '', duration: 30, price: 0, description: '', category: '', buffer_time: 0, deposit_required: false, deposit_amount: 0, visible_online: true, staff_ids: [], add_ons: [] }); setNewAddOn({ name: '', price: 0, duration: 0 }); setShowServiceDialog(true); };
@@ -191,8 +202,9 @@ const StaffPage = () => {
                                 <p className="text-[11px] tracking-[0.1em] uppercase text-[#9E948F]">{m.role || 'Team Member'}</p>
                               </div>
                               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => openEditStaff(m)} className="p-2 rounded-xl text-[#9E948F] hover:text-[#2C2A29] hover:bg-[#F7F3EE] transition-colors"><Pencil className="w-4 h-4" strokeWidth={1.5} /></button>
-                                <button onClick={() => handleDeleteStaff(m.staff_id)} className="p-2 rounded-xl text-[#9E948F] hover:text-[#C4898E] hover:bg-[#E8C5C8]/20 transition-colors"><Trash2 className="w-4 h-4" strokeWidth={1.5} /></button>
+                                <button onClick={() => openEditStaff(m)} className="p-2 rounded-xl text-[#9E948F] hover:text-[#2C2A29] hover:bg-[#F7F3EE] transition-colors" title="Edit"><Pencil className="w-4 h-4" strokeWidth={1.5} /></button>
+                                {m.email && <button onClick={() => handleResetPassword(m)} className="p-2 rounded-xl text-[#9E948F] hover:text-[#7BA07B] hover:bg-[#7BA07B]/15 transition-colors" title="Reset password" data-testid={`reset-pw-${m.staff_id}`}><KeyRound className="w-4 h-4" strokeWidth={1.5} /></button>}
+                                <button onClick={() => handleDeleteStaff(m.staff_id)} className="p-2 rounded-xl text-[#9E948F] hover:text-[#C4898E] hover:bg-[#E8C5C8]/20 transition-colors" title="Remove"><Trash2 className="w-4 h-4" strokeWidth={1.5} /></button>
                               </div>
                             </div>
                             <div className="flex items-center gap-2 mt-2 flex-wrap">

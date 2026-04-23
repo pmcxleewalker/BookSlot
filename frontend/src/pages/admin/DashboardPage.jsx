@@ -195,10 +195,10 @@ const DashboardPage = () => {
                 hint={
                   <>
                     <p className="text-[11px] text-[#706B68] leading-relaxed">
-                      <span className="font-semibold text-[#2C2A29]">Temporary password:</span> <code className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#FAF7F3] text-[#2C2A29]">123</code>
+                      <span className="font-semibold text-[#2C2A29]">Temporary password:</span> email prefix + <code className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#FAF7F3] text-[#2C2A29]">123</code>
                     </p>
                     <p className="text-[10px] text-[#9E948F] mt-1 leading-relaxed">
-                      Staff use their email + <code className="font-mono px-1 bg-[#FAF7F3] rounded">123</code> on first sign-in. They'll be asked to set a new password straight away.
+                      E.g. <code className="font-mono px-1 bg-[#FAF7F3] rounded">sarah@salon.com</code> → password <code className="font-mono px-1 bg-[#FAF7F3] rounded">sarah123</code>. They'll be asked to change it on first sign-in. (Use the key icon on the Team tab to reset a password anytime.)
                     </p>
                   </>
                 }
