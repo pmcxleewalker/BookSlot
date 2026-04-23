@@ -72,8 +72,18 @@ const AuthProvider = ({ children }) => {
       return;
     }
 
+    // Always read the freshest token from localStorage to avoid races
+    // between setToken() and this effect.
+    const activeToken = localStorage.getItem('token');
+    if (!activeToken) {
+      setUser(null);
+      setTenant(null);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers = { Authorization: `Bearer ${activeToken}` };
       const response = await axios.get(`${API}/auth/me`, { headers });
       setUser(response.data);
       
@@ -86,29 +96,44 @@ const AuthProvider = ({ children }) => {
       setUser(null);
       setTenant(null);
       localStorage.removeItem('token');
+      setToken(null);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
+  // Run auth check ONCE on mount only. After login() we set user+tenant+token
+  // synchronously in a single render, so there's no need to re-fetch /auth/me.
   useEffect(() => {
     checkAuth();
-  }, [checkAuth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const login = async (email, password) => {
     const response = await axios.post(`${API}/auth/login`, { email, password });
     const { user: userData, token: newToken } = response.data;
+    // Persist token first so any sibling effect reads it from localStorage
+    localStorage.setItem('token', newToken);
+
+    // Pre-fetch tenant (if any) BEFORE flipping user state — prevents a momentary
+    // "user without tenant" render that would bounce the user to /onboarding.
+    let tenantData = null;
+    if (userData.tenant_id) {
+      try {
+        const tenantRes = await axios.get(`${API}/tenants/me`, {
+          headers: { Authorization: `Bearer ${newToken}` }
+        });
+        tenantData = tenantRes.data.tenant;
+      } catch {
+        // Ignore — user can still get to onboarding and re-fetch later
+      }
+    }
+
+    // Single batched render with everything ready
+    setTenant(tenantData);
     setUser(userData);
     setToken(newToken);
-    localStorage.setItem('token', newToken);
-    
-    if (userData.tenant_id) {
-      const tenantRes = await axios.get(`${API}/tenants/me`, {
-        headers: { Authorization: `Bearer ${newToken}` }
-      });
-      setTenant(tenantRes.data.tenant);
-    }
-    
+
     return userData;
   };
 
