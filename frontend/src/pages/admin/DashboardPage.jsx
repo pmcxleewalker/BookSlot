@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import TenantLayout from '../../components/TenantLayout';
 import { useAuth, API } from '../../App';
 import { getTheme } from '../../config/industryThemes';
@@ -6,9 +6,12 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Clock, Check, Phone, Plus, ChevronRight, RefreshCw,
-  CalendarDays, Sparkles, TrendingUp, Users, Zap, DollarSign, ArrowUpRight
+  CalendarDays, Sparkles, TrendingUp, Users, Zap, DollarSign, ArrowUpRight,
+  Link2, QrCode, Copy, Download, UserCog, Globe
 } from 'lucide-react';
 import { format, parseISO, differenceInMinutes, isToday, isTomorrow, addDays } from 'date-fns';
+import { QRCodeSVG } from 'qrcode.react';
+import { toast } from 'sonner';
 
 const DashboardPage = () => {
   const { token, tenant, user } = useAuth();
@@ -173,6 +176,24 @@ const DashboardPage = () => {
 
             {/* Right Column */}
             <div className="space-y-6">
+              {/* Share Links & QR Codes */}
+              <ShareCard
+                title="Client Booking Link"
+                description="Print, text or Insta — clients scan to book"
+                url={tenant?.booking_url_slug ? `${window.location.origin}/book/${tenant.booking_url_slug}` : null}
+                icon={Globe}
+                accent="#B8868B"
+                testIdPrefix="client-booking"
+              />
+              <ShareCard
+                title="Team Login"
+                description="Staff scan to bookmark on their phone & check their bookings"
+                url={tenant?.booking_url_slug ? `${window.location.origin}/${tenant.booking_url_slug}/login` : `${window.location.origin}/login`}
+                icon={UserCog}
+                accent="#7BA07B"
+                testIdPrefix="staff-login"
+              />
+
               {/* Quick Actions */}
               <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                 <p className="text-xs tracking-[0.2em] uppercase text-[#9E948F] font-medium mb-4">Quick Actions</p>
@@ -233,6 +254,112 @@ const DashboardPage = () => {
         </div>
       )}
     </TenantLayout>
+  );
+};
+
+const ShareCard = ({ title, description, url, icon: Icon, accent, testIdPrefix }) => {
+  const [expanded, setExpanded] = useState(false);
+  const qrRef = useRef(null);
+
+  if (!url) {
+    return (
+      <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+        <p className="text-xs tracking-[0.2em] uppercase text-[#9E948F] font-medium mb-2">{title}</p>
+        <p className="text-sm text-[#9E948F]">Complete onboarding to generate your link.</p>
+      </div>
+    );
+  }
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied');
+    } catch {
+      toast.error('Could not copy');
+    }
+  };
+
+  const handleDownload = () => {
+    try {
+      const svg = qrRef.current?.querySelector('svg');
+      if (!svg) return;
+      const xml = new XMLSerializer().serializeToString(svg);
+      const svg64 = btoa(unescape(encodeURIComponent(xml)));
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, 512, 512);
+        ctx.drawImage(img, 0, 0, 512, 512);
+        const link = document.createElement('a');
+        link.download = `${testIdPrefix}-qr.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      };
+      img.src = 'data:image/svg+xml;base64,' + svg64;
+    } catch {
+      toast.error('Could not download');
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]" data-testid={`${testIdPrefix}-card`}>
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: accent + '18' }}>
+          <Icon className="w-5 h-5" style={{ color: accent }} strokeWidth={1.5} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs tracking-[0.2em] uppercase text-[#9E948F] font-medium">{title}</p>
+          <p className="text-xs text-[#9E948F] mt-0.5 leading-relaxed">{description}</p>
+        </div>
+      </div>
+
+      {/* URL row */}
+      <div className="flex items-center gap-2 bg-[#F7F3EE] rounded-2xl px-3 py-2.5 mb-3">
+        <Link2 className="w-3.5 h-3.5 text-[#9E948F] shrink-0" strokeWidth={1.5} />
+        <code className="flex-1 text-[11px] text-[#2C2A29] font-mono truncate" data-testid={`${testIdPrefix}-url`}>{url}</code>
+        <button
+          onClick={handleCopy}
+          className="p-1.5 text-[#9E948F] hover:text-[#2C2A29] hover:bg-white rounded-lg transition-colors shrink-0"
+          title="Copy"
+          data-testid={`${testIdPrefix}-copy`}
+        >
+          <Copy className="w-3.5 h-3.5" strokeWidth={1.5} />
+        </button>
+      </div>
+
+      {/* QR toggle */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#706B68] hover:text-[#2C2A29] transition-colors"
+        data-testid={`${testIdPrefix}-toggle-qr`}
+      >
+        <span className="flex items-center gap-2">
+          <QrCode className="w-3.5 h-3.5" strokeWidth={1.5} />
+          {expanded ? 'Hide' : 'Show'} QR code
+        </span>
+        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+      </button>
+
+      {expanded && (
+        <div className="mt-3 flex flex-col items-center gap-3 pt-3 border-t border-[#F0EBE6]">
+          <div ref={qrRef} className="p-3 bg-white rounded-2xl border-2" style={{ borderColor: accent + '40' }} data-testid={`${testIdPrefix}-qr-container`}>
+            <QRCodeSVG value={url} size={160} bgColor="#FFFFFF" fgColor="#2C2A29" level="M" />
+          </div>
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-1.5 text-xs text-[#706B68] hover:text-[#2C2A29] px-3 py-1.5 rounded-full hover:bg-[#F7F3EE] transition-colors"
+            data-testid={`${testIdPrefix}-download-qr`}
+          >
+            <Download className="w-3.5 h-3.5" strokeWidth={1.5} />
+            Download PNG
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 
