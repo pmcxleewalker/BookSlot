@@ -63,6 +63,29 @@ const CalendarPage = () => {
   const handleComplete = async (id) => { try { await axios.put(`${API}/appointments/${id}`, { status: 'completed' }, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Done'); fetchData(); setSelectedAppt(null); } catch { toast.error('Failed'); } };
   const handleSaveNotes = async (id, notes) => { try { await axios.put(`${API}/appointments/${id}`, { notes }, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Notes saved'); fetchData(); } catch { toast.error('Failed'); } };
 
+  const handleUpdateAppt = async (id, payload) => {
+    try {
+      await axios.put(`${API}/appointments/${id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Appointment updated');
+      setSelectedAppt(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update');
+    }
+  };
+
+  const handleCancelAppt = async (id) => {
+    if (!window.confirm('Cancel this appointment? The client will be notified.')) return;
+    try {
+      await axios.put(`${API}/appointments/${id}`, { status: 'cancelled' }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Appointment cancelled');
+      setSelectedAppt(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed');
+    }
+  };
+
   // Drag-and-drop: reschedule an appointment to a new day+time while keeping its duration.
   const handleDropAppt = async (appt, newDate, newTimeHHMM) => {
     try {
@@ -224,31 +247,139 @@ const CalendarPage = () => {
           </DialogContent>
         </Dialog>
 
-        <ApptDetail appt={selectedAppt} onClose={() => setSelectedAppt(null)} onSaveNotes={handleSaveNotes} onComplete={handleComplete} />
+        <ApptDetail appt={selectedAppt} staff={staff} services={services} onClose={() => setSelectedAppt(null)} onUpdate={handleUpdateAppt} onComplete={handleComplete} onCancel={handleCancelAppt} />
       </div>
     </TenantLayout>
   );
 };
 
-const ApptDetail = ({ appt, onClose, onSaveNotes, onComplete }) => {
-  const [notes, setNotes] = useState('');
-  useEffect(() => { if (appt) setNotes(appt.notes || ''); }, [appt]);
+const ApptDetail = ({ appt, staff, services, onClose, onUpdate, onComplete, onCancel }) => {
+  const [form, setForm] = useState({ service_id: '', staff_id: '', client_name: '', client_phone: '', client_email: '', date: '', time: '', notes: '' });
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!appt) return;
+    try {
+      const start = parseISO(appt.start_time);
+      setForm({
+        service_id: appt.service_id || '',
+        staff_id: appt.staff_id || '',
+        client_name: appt.client_name || '',
+        client_phone: appt.client_phone || '',
+        client_email: appt.client_email || '',
+        date: format(start, 'yyyy-MM-dd'),
+        time: format(start, 'HH:mm'),
+        notes: appt.notes || ''
+      });
+      setDirty(false);
+    } catch {
+      // ignore parse errors
+    }
+  }, [appt]);
+
   if (!appt) return null;
+
+  const updateField = (k, v) => { setForm(prev => ({ ...prev, [k]: v })); setDirty(true); };
+
+  const handleSave = async () => {
+    if (!form.service_id || !form.staff_id || !form.client_name || !form.date || !form.time) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    setSaving(true);
+    try {
+      const svc = services.find(s => s.service_id === form.service_id);
+      const duration = svc?.duration || 30;
+      const startISO = `${form.date}T${form.time}:00`;
+      const startDate = parseISO(startISO);
+      const endDate = addMinutes(startDate, duration);
+      const iso = (d) => `${format(d, 'yyyy-MM-dd')}T${format(d, 'HH:mm:ss')}`;
+      const payload = {
+        service_id: form.service_id,
+        staff_id: form.staff_id,
+        client_name: form.client_name,
+        client_phone: form.client_phone || null,
+        client_email: form.client_email || null,
+        start_time: iso(startDate),
+        end_time: iso(endDate),
+        notes: form.notes || null
+      };
+      await onUpdate(appt.appointment_id, payload);
+    } finally { setSaving(false); }
+  };
+
   return (
     <Dialog open={!!appt} onOpenChange={() => onClose()}>
-      <DialogContent className="sm:max-w-sm rounded-3xl border-[#F0EBE6]">
-        <DialogHeader><DialogTitle className="font-['Cormorant_Garamond'] text-xl font-light">{appt.client_name}</DialogTitle><DialogDescription className="text-[#9E948F] text-sm">{appt.service_name} · {appt.staff_name}</DialogDescription></DialogHeader>
-        <div className="space-y-4 mt-2">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-mono bg-[#F7F3EE] px-3 py-2 rounded-xl text-[#2C2A29]">{appt.start_time ? format(parseISO(appt.start_time), 'HH:mm') : ''} – {appt.end_time ? format(parseISO(appt.end_time), 'HH:mm') : ''}</span>
-            <span className="text-sm text-[#9E948F]">{appt.start_time ? format(parseISO(appt.start_time), 'EEEE, MMM d') : ''}</span>
+      <DialogContent className="sm:max-w-md rounded-3xl border-[#F0EBE6] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-['Cormorant_Garamond'] text-2xl font-light">Edit Booking</DialogTitle>
+          <DialogDescription className="text-[#9E948F] text-sm flex items-center gap-2 flex-wrap">
+            {appt.status === 'pending' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8C5C8]/40 text-[#B8868B] uppercase tracking-wider">Pending</span>}
+            {appt.status === 'completed' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#C8D5C8]/40 text-[#5F7A5F] uppercase tracking-wider">Completed</span>}
+            {appt.status === 'cancelled' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E5E5E5] text-[#706B68] uppercase tracking-wider">Cancelled</span>}
+            {appt.repeat_weeks ? <span className="flex items-center gap-1"><Repeat className="w-3 h-3" />Every {appt.repeat_weeks} week{appt.repeat_weeks > 1 ? 's' : ''}</span> : null}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 mt-2">
+          <div>
+            <Label className="text-xs text-[#9E948F] uppercase tracking-wider">Service *</Label>
+            <Select value={form.service_id} onValueChange={v => updateField('service_id', v)}>
+              <SelectTrigger className="mt-1.5 bg-[#F7F3EE] border-transparent rounded-xl h-11" data-testid="edit-service-select"><SelectValue placeholder="Choose a service" /></SelectTrigger>
+              <SelectContent>
+                {services.map(s => <SelectItem key={s.service_id} value={s.service_id}>{s.name} · {s.duration}min · €{s.price}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-          {appt.client_phone && <p className="text-sm text-[#706B68] flex items-center gap-2"><Phone className="w-4 h-4 text-[#9E948F]" strokeWidth={1.5} />{appt.client_phone}</p>}
-          {appt.repeat_weeks && <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-xl bg-[#E8C5C8]/20 text-[#B8868B]"><Repeat className="w-3.5 h-3.5" />Every {appt.repeat_weeks} week{appt.repeat_weeks > 1 ? 's' : ''}</div>}
-          <div><Label className="text-xs text-[#9E948F] uppercase tracking-wider">Notes</Label><textarea value={notes} onChange={e => setNotes(e.target.value)} className="mt-1.5 w-full px-4 py-3 text-sm bg-[#F7F3EE] rounded-xl border-transparent focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#B8868B] resize-none" rows={3} placeholder="Add notes..." data-testid="appointment-detail-notes" /></div>
-          <div className="flex gap-3">
-            <Button variant="outline" size="sm" className="flex-1 h-10 rounded-full border-[#E5DFD9] gap-1" onClick={() => { onSaveNotes(appt.appointment_id, notes); onClose(); }}><Save className="w-3.5 h-3.5" /> Save Notes</Button>
-            {appt.status === 'confirmed' && <Button size="sm" className="flex-1 h-10 rounded-full bg-[#2C2A29] text-white gap-1" onClick={() => onComplete(appt.appointment_id)}><Check className="w-3.5 h-3.5" /> Complete</Button>}
+
+          <div>
+            <Label className="text-xs text-[#9E948F] uppercase tracking-wider">Staff *</Label>
+            <Select value={form.staff_id} onValueChange={v => updateField('staff_id', v)}>
+              <SelectTrigger className="mt-1.5 bg-[#F7F3EE] border-transparent rounded-xl h-11" data-testid="edit-staff-select"><SelectValue placeholder="Choose staff" /></SelectTrigger>
+              <SelectContent>
+                {staff.map(s => <SelectItem key={s.staff_id} value={s.staff_id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-[#9E948F] uppercase tracking-wider">Date *</Label>
+              <Input type="date" value={form.date} onChange={e => updateField('date', e.target.value)} className="mt-1.5 bg-[#F7F3EE] border-transparent rounded-xl h-11" data-testid="edit-date" />
+            </div>
+            <div>
+              <Label className="text-xs text-[#9E948F] uppercase tracking-wider">Time *</Label>
+              <Input type="time" value={form.time} onChange={e => updateField('time', e.target.value)} className="mt-1.5 bg-[#F7F3EE] border-transparent rounded-xl h-11" data-testid="edit-time" />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs text-[#9E948F] uppercase tracking-wider">Client name *</Label>
+            <Input value={form.client_name} onChange={e => updateField('client_name', e.target.value)} className="mt-1.5 bg-[#F7F3EE] border-transparent rounded-xl h-11" data-testid="edit-client-name" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-[#9E948F] uppercase tracking-wider">Phone</Label>
+              <Input value={form.client_phone} onChange={e => updateField('client_phone', e.target.value)} className="mt-1.5 bg-[#F7F3EE] border-transparent rounded-xl h-11" data-testid="edit-client-phone" />
+            </div>
+            <div>
+              <Label className="text-xs text-[#9E948F] uppercase tracking-wider">Email</Label>
+              <Input type="email" value={form.client_email} onChange={e => updateField('client_email', e.target.value)} className="mt-1.5 bg-[#F7F3EE] border-transparent rounded-xl h-11" data-testid="edit-client-email" />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs text-[#9E948F] uppercase tracking-wider">Notes</Label>
+            <textarea value={form.notes} onChange={e => updateField('notes', e.target.value)} className="mt-1.5 w-full px-4 py-3 text-sm bg-[#F7F3EE] rounded-xl border-transparent focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#B8868B] resize-none" rows={3} placeholder="Add notes..." data-testid="edit-notes" />
+          </div>
+
+          <div className="flex gap-2 pt-3 flex-wrap">
+            <Button variant="outline" size="sm" className="flex-1 h-10 rounded-full border-[#E5DFD9] text-[#706B68] min-w-[90px]" onClick={onClose}>Close</Button>
+            {appt.status === 'confirmed' && <Button size="sm" variant="outline" className="h-10 rounded-full border-[#8FA68F]/40 text-[#5F7A5F] gap-1 min-w-[100px]" onClick={() => onComplete(appt.appointment_id)} data-testid="complete-appt"><Check className="w-3.5 h-3.5" /> Complete</Button>}
+            {appt.status !== 'cancelled' && <Button size="sm" variant="outline" className="h-10 rounded-full border-[#E5DFD9] text-[#B86868] hover:bg-[#FAF0F0] min-w-[90px]" onClick={() => onCancel(appt.appointment_id)} data-testid="cancel-appt">Cancel</Button>}
+            <Button size="sm" className="flex-1 h-10 rounded-full bg-[#2C2A29] text-white hover:bg-[#4A4745] gap-1 disabled:opacity-50 min-w-[120px]" onClick={handleSave} disabled={!dirty || saving} data-testid="save-appt"><Save className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Save changes'}</Button>
           </div>
         </div>
       </DialogContent>
