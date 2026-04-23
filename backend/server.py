@@ -143,6 +143,7 @@ class PlanType(str, Enum):
     STARTER = "starter"
     GROWTH = "growth"
     PRO = "pro"
+    CUSTOM = "custom"
 
 class AppointmentStatus(str, Enum):
     PENDING = "pending"
@@ -903,9 +904,9 @@ async def get_public_tenant_info(slug: str):
     if not tenant:
         raise HTTPException(status_code=404, detail="Business not found")
     
-    # Check if AI receptionist is enabled (growth/pro tiers)
+    # Check if AI receptionist is enabled (growth/pro/custom tiers)
     plan = tenant.get("plan", "starter")
-    ai_receptionist_enabled = plan in ["growth", "pro"]
+    ai_receptionist_enabled = bool(get_effective_features(tenant).get("ai_assistant"))
     
     return {
         "name": tenant.get("name"),
@@ -1524,8 +1525,8 @@ async def create_staff(staff_data: StaffCreate, user: Dict = Depends(get_current
     tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
     staff_count = await db.staff.count_documents({"tenant_id": user["tenant_id"], "is_active": True})
     
-    limits = {"starter": 2, "growth": 8, "pro": 999}
-    if staff_count >= limits.get(tenant.get("plan", "starter"), 2):
+    max_staff = get_effective_features(tenant).get("max_staff", 2)
+    if staff_count >= max_staff:
         raise HTTPException(status_code=403, detail=f"Staff limit reached for your plan")
     
     staff = Staff(**staff_data.model_dump(), tenant_id=user["tenant_id"])
@@ -2132,9 +2133,9 @@ async def get_public_booking_page(slug: str):
     services = await db.services.find({"tenant_id": tenant["tenant_id"], "is_active": True, "visible_online": {"$ne": False}}, {"_id": 0}).to_list(100)
     staff = await db.staff.find({"tenant_id": tenant["tenant_id"], "is_active": True, "bookable_online": {"$ne": False}}, {"_id": 0}).to_list(100)
     
-    # Check if AI receptionist is enabled (growth/pro tiers)
+    # Check if AI receptionist is enabled (feature-flag driven, honours custom plans)
     plan = tenant.get("plan", "starter")
-    ai_receptionist_enabled = plan in ["growth", "pro"]
+    ai_receptionist_enabled = bool(get_effective_features(tenant).get("ai_assistant"))
     
     # Remove sensitive data
     tenant_public = {
@@ -4658,10 +4659,10 @@ async def public_moltbot_chat(identifier: str, request: PublicChatRequest):
     tenant_id = tenant["tenant_id"]
     plan = tenant.get("plan", "starter")
     
-    # Check if AI receptionist is enabled for this plan
-    if plan not in ["growth", "pro"]:
+    # Check if AI receptionist is enabled for this plan (supports custom plans)
+    if not get_effective_features(tenant).get("ai_assistant"):
         return {
-            "response": "AI assistant is only available on Growth and Pro plans. Please contact the business directly for assistance.",
+            "response": "AI assistant is not enabled on this business's plan. Please contact the business directly for assistance.",
             "conversation_id": None,
             "ai_enabled": False
         }
@@ -5097,16 +5098,32 @@ async def get_plan_features():
     """Get all plan features for reference"""
     return {"plans": PLAN_FEATURES}
 
+def get_effective_features(tenant: Optional[Dict]) -> Dict:
+    """Return the feature dict that applies to this tenant.
+
+    Custom plans store their feature matrix directly on the tenant doc under
+    `custom_features`. Falls back to the canonical PLAN_FEATURES when plan is
+    one of starter/growth/pro (or when custom_features is missing).
+    """
+    if not tenant:
+        return PLAN_FEATURES["starter"]
+    plan = tenant.get("plan", "starter")
+    if plan == "custom":
+        custom = tenant.get("custom_features")
+        if custom:
+            return custom
+    return PLAN_FEATURES.get(plan, PLAN_FEATURES["starter"])
+
 @api_router.get("/tenants/me/features")
 async def get_my_features(user: Dict = Depends(get_current_user)):
     """Get current tenant's enabled features based on plan"""
     if not user.get("tenant_id"):
-        return {"features": PLAN_FEATURES["starter"]}
+        return {"features": PLAN_FEATURES["starter"], "plan": "starter"}
     
     tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0})
     plan = tenant.get("plan", "starter") if tenant else "starter"
     
-    return {"features": PLAN_FEATURES.get(plan, PLAN_FEATURES["starter"]), "plan": plan}
+    return {"features": get_effective_features(tenant), "plan": plan}
 
 
 # ================== AI ADMIN ASSISTANT ==================
@@ -5439,7 +5456,7 @@ async def admin_get_tenant(tenant_id: str, admin: Dict = Depends(get_super_admin
         "staff": staff,
         "services": services,
         "stats": stats,
-        "features": PLAN_FEATURES.get(tenant.get("plan", "starter"), PLAN_FEATURES["starter"])
+        "features": get_effective_features(tenant)
     }
 
 @api_router.post("/admin/tenants")
@@ -5450,6 +5467,16 @@ async def admin_create_tenant(body: Dict[str, Any], admin: Dict = Depends(get_su
     for field in required:
         if field not in body:
             raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+    
+    # Validate plan
+    if body["plan"] not in ["starter", "growth", "pro", "custom"]:
+        raise HTTPException(status_code=400, detail="Invalid plan. Must be one of: starter, growth, pro, custom")
+    
+    # For custom plan, require custom_features with at least price + limits
+    if body["plan"] == "custom":
+        cf = body.get("custom_features") or {}
+        if not isinstance(cf, dict) or "price" not in cf or "max_staff" not in cf:
+            raise HTTPException(status_code=400, detail="Custom plan requires custom_features with at minimum `price` and `max_staff`")
     
     # Check if owner email exists
     existing = await db.users.find_one({"email": body["owner_email"]}, {"_id": 0})
@@ -5470,6 +5497,7 @@ async def admin_create_tenant(body: Dict[str, Any], admin: Dict = Depends(get_su
         "timezone": body.get("timezone", "Europe/Dublin"),
         "currency": body.get("currency", "EUR"),
         "plan": body["plan"],
+        "custom_features": body.get("custom_features") if body["plan"] == "custom" else None,
         "logo_url": body.get("logo_url"),
         "booking_url_slug": slug,
         "is_active": body.get("is_active", True),
@@ -5528,7 +5556,7 @@ async def admin_create_tenant(body: Dict[str, Any], admin: Dict = Depends(get_su
     return {
         "tenant": tenant,
         "owner": {"user_id": user_id, "email": user["email"], "name": user["name"]},
-        "features": PLAN_FEATURES.get(body["plan"], PLAN_FEATURES["starter"])
+        "features": get_effective_features(tenant)
     }
 
 @api_router.put("/admin/tenants/{tenant_id}")
@@ -5541,6 +5569,20 @@ async def admin_update_tenant(tenant_id: str, updates: Dict[str, Any], admin: Di
     # Handle plan change
     old_plan = tenant.get("plan", "starter")
     new_plan = updates.get("plan", old_plan)
+    
+    # Validate plan if being changed
+    if "plan" in updates and new_plan not in ["starter", "growth", "pro", "custom"]:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    
+    # When switching TO custom, require custom_features
+    if new_plan == "custom":
+        cf = updates.get("custom_features") or tenant.get("custom_features") or {}
+        if not isinstance(cf, dict) or "price" not in cf or "max_staff" not in cf:
+            raise HTTPException(status_code=400, detail="Custom plan requires custom_features with at minimum `price` and `max_staff`")
+    
+    # When switching AWAY from custom, clear custom_features
+    if old_plan == "custom" and new_plan != "custom" and "custom_features" not in updates:
+        updates["custom_features"] = None
     
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     
@@ -5557,7 +5599,7 @@ async def admin_update_tenant(tenant_id: str, updates: Dict[str, Any], admin: Di
     
     return {
         "tenant": updated,
-        "features": PLAN_FEATURES.get(new_plan, PLAN_FEATURES["starter"]),
+        "features": get_effective_features(updated),
         "plan_changed": old_plan != new_plan
     }
 
@@ -5653,9 +5695,13 @@ async def admin_get_stats(admin: Dict = Depends(get_super_admin)):
     starter_count = await db.tenants.count_documents({"plan": "starter", "is_active": True})
     growth_count = await db.tenants.count_documents({"plan": "growth", "is_active": True})
     pro_count = await db.tenants.count_documents({"plan": "pro", "is_active": True})
+    custom_count = await db.tenants.count_documents({"plan": "custom", "is_active": True})
     
-    # Calculate MRR
+    # Calculate MRR (custom plan pulls price from tenant.custom_features.price)
     mrr = (starter_count * 29) + (growth_count * 79) + (pro_count * 149)
+    custom_tenants = await db.tenants.find({"plan": "custom", "is_active": True}, {"_id": 0, "custom_features": 1}).to_list(1000)
+    for t in custom_tenants:
+        mrr += int((t.get("custom_features") or {}).get("price") or 0)
     
     # User stats
     total_users = await db.users.count_documents({})
@@ -5677,7 +5723,8 @@ async def admin_get_stats(admin: Dict = Depends(get_super_admin)):
         "plans": {
             "starter": starter_count,
             "growth": growth_count,
-            "pro": pro_count
+            "pro": pro_count,
+            "custom": custom_count
         },
         "revenue": {
             "mrr": mrr,

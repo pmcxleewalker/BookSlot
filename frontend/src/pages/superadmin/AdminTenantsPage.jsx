@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { 
   Plus, Search, Building2, Eye, Edit2, Trash2, 
-  ToggleLeft, ToggleRight, Users, Calendar, Check, X 
+  ToggleLeft, ToggleRight, Users, Calendar, Check, X, Sparkles
 } from 'lucide-react';
+import { Switch } from '../../components/ui/switch';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -30,7 +31,55 @@ const PLAN_FEATURES = {
     name: "Pro",
     price: 219,
     features: ["Multi-location", "Unlimited staff", "Advanced permissions", "Custom forms", "White-label", "Pro analytics", "Account manager"]
+  },
+  custom: {
+    name: "Custom",
+    price: null,
+    features: ["Bespoke pricing", "Pick every feature", "Set own staff/location caps", "Built for enterprises"]
   }
+};
+
+// Every feature toggle available on a custom plan. Label + key must match backend PLAN_FEATURES shape.
+const CUSTOM_FEATURE_TOGGLES = [
+  { key: 'online_booking', label: 'Online Booking' },
+  { key: 'reminders', label: 'Reminders (email/push)' },
+  { key: 'deposits', label: 'Deposits' },
+  { key: 'calendar_sync', label: 'Calendar Sync' },
+  { key: 'basic_reports', label: 'Basic Reports' },
+  { key: 'waitlist', label: 'Waitlist' },
+  { key: 'packages', label: 'Packages' },
+  { key: 'ai_assistant', label: 'AI Receptionist' },
+  { key: 'sms_automations', label: 'SMS Automations' },
+  { key: 'advanced_reports', label: 'Advanced Reports' },
+  { key: 'multi_location', label: 'Multi-location' },
+  { key: 'advanced_permissions', label: 'Advanced Permissions' },
+  { key: 'resource_booking', label: 'Resource Booking' },
+  { key: 'custom_forms', label: 'Custom Forms' },
+  { key: 'white_label', label: 'White-label' },
+  { key: 'api_webhooks', label: 'API & Webhooks' }
+];
+
+const DEFAULT_CUSTOM_FEATURES = {
+  name: 'Custom',
+  price: 199,
+  max_staff: 10,
+  max_locations: 1,
+  online_booking: true,
+  reminders: true,
+  deposits: true,
+  calendar_sync: true,
+  basic_reports: true,
+  waitlist: false,
+  packages: false,
+  ai_assistant: false,
+  sms_automations: false,
+  advanced_reports: false,
+  multi_location: false,
+  advanced_permissions: false,
+  resource_booking: false,
+  custom_forms: false,
+  white_label: false,
+  api_webhooks: false
 };
 
 const AdminTenantsPage = () => {
@@ -52,7 +101,8 @@ const AdminTenantsPage = () => {
     owner_password: '',
     plan: 'starter',
     phone: '',
-    address: ''
+    address: '',
+    custom_features: { ...DEFAULT_CUSTOM_FEATURES }
   });
 
   const industries = [
@@ -113,11 +163,32 @@ const AdminTenantsPage = () => {
       return;
     }
 
+    // Custom plan validation
+    if (newTenant.plan === 'custom') {
+      const cf = newTenant.custom_features || {};
+      if (!cf.price || cf.price < 0) { toast.error('Enter a valid monthly price for the custom plan'); return; }
+      if (!cf.max_staff || cf.max_staff < 1) { toast.error('Max staff must be at least 1'); return; }
+      if (!cf.max_locations || cf.max_locations < 1) { toast.error('Max locations must be at least 1'); return; }
+    }
+
     setCreating(true);
     const token = localStorage.getItem('admin_token');
     
     try {
-      await axios.post(`${API}/admin/tenants`, newTenant, {
+      const payload = {
+        business_name: newTenant.business_name,
+        industry: newTenant.industry,
+        owner_name: newTenant.owner_name,
+        owner_email: newTenant.owner_email,
+        owner_password: newTenant.owner_password,
+        plan: newTenant.plan,
+        phone: newTenant.phone,
+        address: newTenant.address
+      };
+      if (newTenant.plan === 'custom') {
+        payload.custom_features = newTenant.custom_features;
+      }
+      await axios.post(`${API}/admin/tenants`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('Client created successfully');
@@ -130,7 +201,8 @@ const AdminTenantsPage = () => {
         owner_password: '',
         plan: 'starter',
         phone: '',
-        address: ''
+        address: '',
+        custom_features: { ...DEFAULT_CUSTOM_FEATURES }
       });
       fetchTenants();
     } catch (error) {
@@ -138,6 +210,10 @@ const AdminTenantsPage = () => {
     } finally {
       setCreating(false);
     }
+  };
+
+  const updateCustomFeature = (key, value) => {
+    setNewTenant(prev => ({ ...prev, custom_features: { ...prev.custom_features, [key]: value } }));
   };
 
   const handleToggleStatus = async (tenantId, currentStatus) => {
@@ -179,7 +255,8 @@ const AdminTenantsPage = () => {
   const planColors = {
     starter: 'bg-gray-100 text-gray-600 border-gray-200',
     growth: 'bg-blue-100 text-blue-600 border-blue-200',
-    pro: 'bg-amber-100 text-amber-600 border-amber-200'
+    pro: 'bg-amber-100 text-amber-600 border-amber-200',
+    custom: 'bg-purple-100 text-purple-600 border-purple-200'
   };
 
   return (
@@ -226,6 +303,7 @@ const AdminTenantsPage = () => {
               <SelectItem value="starter">Starter</SelectItem>
               <SelectItem value="growth">Growth</SelectItem>
               <SelectItem value="pro">Pro</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -369,7 +447,7 @@ const AdminTenantsPage = () => {
 
       {/* Create Tenant Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-lg bg-white border-[#E5E5E5] text-[#0A0A0A]">
+        <DialogContent className="sm:max-w-2xl bg-white border-[#E5E5E5] text-[#0A0A0A]">
           <DialogHeader>
             <DialogTitle className="text-[#0A0A0A]">Add New Client</DialogTitle>
           </DialogHeader>
@@ -378,7 +456,7 @@ const AdminTenantsPage = () => {
             {/* Plan Selection */}
             <div>
               <Label className="text-sm font-medium text-[#0A0A0A]">Select Plan *</Label>
-              <div className="grid grid-cols-3 gap-3 mt-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
                 {Object.entries(PLAN_FEATURES).map(([key, plan]) => (
                   <button
                     key={key}
@@ -387,15 +465,22 @@ const AdminTenantsPage = () => {
                       newTenant.plan === key 
                         ? 'border-[#0A0A0A] bg-[#0A0A0A]/5' 
                         : 'border-[#E5E5E5] hover:border-[#999999]'
-                    }`}
+                    } ${key === 'custom' ? 'relative overflow-hidden' : ''}`}
                     data-testid={`select-plan-${key}`}
                   >
+                    {key === 'custom' && (
+                      <Sparkles className="absolute top-2 right-2 w-3.5 h-3.5 text-purple-500" />
+                    )}
                     <p className="font-semibold text-[#0A0A0A] capitalize">{plan.name}</p>
-                    <p className="text-lg text-[#0A0A0A] font-mono">€{plan.price}/mo</p>
+                    <p className="text-lg text-[#0A0A0A] font-mono">
+                      {key === 'custom'
+                        ? (newTenant.plan === 'custom' ? `€${newTenant.custom_features?.price || '—'}/mo` : 'Your price')
+                        : `€${plan.price}/mo`}
+                    </p>
                     <ul className="mt-2 space-y-1">
                       {plan.features.slice(0, 3).map((f, i) => (
                         <li key={i} className="text-xs text-[#666666] flex items-center gap-1">
-                          <Check className="w-3 h-3 text-emerald-500" />
+                          <Check className="w-3 h-3 text-emerald-500 shrink-0" />
                           {f}
                         </li>
                       ))}
@@ -404,6 +489,70 @@ const AdminTenantsPage = () => {
                 ))}
               </div>
             </div>
+
+            {/* Custom Plan Configurator */}
+            {newTenant.plan === 'custom' && (
+              <div className="border border-purple-200 bg-purple-50/40 rounded-lg p-4 space-y-5" data-testid="custom-plan-configurator">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  <h4 className="text-sm font-semibold text-[#0A0A0A]">Custom Plan Parameters</h4>
+                </div>
+
+                {/* Pricing & Limits */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs text-[#666666]">Price €/mo *</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={newTenant.custom_features?.price ?? ''}
+                      onChange={(e) => updateCustomFeature('price', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                      className="mt-1 bg-white border-[#E5E5E5] text-[#0A0A0A]"
+                      data-testid="custom-price"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[#666666]">Max Staff *</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={newTenant.custom_features?.max_staff ?? ''}
+                      onChange={(e) => updateCustomFeature('max_staff', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                      className="mt-1 bg-white border-[#E5E5E5] text-[#0A0A0A]"
+                      data-testid="custom-max-staff"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[#666666]">Max Locations *</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={newTenant.custom_features?.max_locations ?? ''}
+                      onChange={(e) => updateCustomFeature('max_locations', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                      className="mt-1 bg-white border-[#E5E5E5] text-[#0A0A0A]"
+                      data-testid="custom-max-locations"
+                    />
+                  </div>
+                </div>
+
+                {/* Feature toggles */}
+                <div>
+                  <Label className="text-xs text-[#666666] uppercase tracking-wider">Features</Label>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
+                    {CUSTOM_FEATURE_TOGGLES.map(({ key, label }) => (
+                      <div key={key} className="flex items-center justify-between bg-white border border-[#E5E5E5] rounded-md px-3 py-2">
+                        <span className="text-xs text-[#0A0A0A]">{label}</span>
+                        <Switch
+                          checked={!!newTenant.custom_features?.[key]}
+                          onCheckedChange={(v) => updateCustomFeature(key, v)}
+                          data-testid={`custom-toggle-${key}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="border-t border-[#E5E5E5] pt-4">
               <h4 className="text-sm font-medium text-[#0A0A0A] mb-3">Business Details</h4>

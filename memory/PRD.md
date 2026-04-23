@@ -398,4 +398,14 @@ The AI conversation system will automatically:
 - [ ] P2: "Fill My Day" mode (last-minute availability blast to opted-in clients)
 - [ ] P2: Client Lifetime Value tracking / VIP tagging
 - [ ] P3: Refactor server.py (~5770 lines) into route modules
+
+## Phase 4.1: Custom Plan in Command Centre (April 23, 2026)
+- [x] Added `PlanType.CUSTOM` to backend enum and `get_effective_features()` helper
+- [x] `POST /api/admin/tenants` accepts `plan: "custom"` with a `custom_features` matrix (price, max_staff, max_locations, 16 feature toggles). Validated server-side — rejects missing/invalid payloads.
+- [x] `PUT /api/admin/tenants/{id}` supports switching to/from custom; auto-clears `custom_features` when moving back to a standard plan
+- [x] All plan-gated checks (staff limit, AI receptionist gates, `/tenants/me/features`) now read `get_effective_features(tenant)` — so custom tenants get exactly the capabilities the admin selected
+- [x] Admin stats/MRR include custom tenants (MRR pulls each custom tenant's own price)
+- [x] Command Centre UI: 4-column plan grid with a "Custom" tile (Sparkles badge) + inline configurator (Price €/mo, Max Staff, Max Locations, 16 feature switches) shown only when Custom is selected
+- [x] Filter dropdown now lets super admins filter clients by `custom` plan too
+
 - [ ] P3 (polish): Fix admin calendar slot-button z-index so clicks on partially-overlapped slots open New Booking instead of appointment detail
