@@ -13,6 +13,7 @@ import PublicBookingPage from './pages/public/PublicBookingPage';
 import ManageBookingPage from './pages/public/ManageBookingPage';
 import TenantLoginPage from './pages/public/TenantLoginPage';
 import ChangePasswordPage from './pages/public/ChangePasswordPage';
+import MyBookingsPage from './pages/public/MyBookingsPage';
 
 // Pages - Admin
 import DashboardPage from './pages/admin/DashboardPage';
@@ -209,8 +210,13 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/change-password" replace />;
   }
 
-  // Redirect to onboarding if no tenant and not already on onboarding
-  if (!tenant && location.pathname !== '/onboarding') {
+  // Clients live on their own pages, not the business dashboard/onboarding
+  if (user.role === 'client' && !location.pathname.startsWith('/my/') && location.pathname !== '/change-password') {
+    return <Navigate to="/my/bookings" replace />;
+  }
+
+  // Redirect to onboarding if no tenant and not already on onboarding (business users only)
+  if (user.role !== 'client' && !tenant && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
   }
 
@@ -266,6 +272,7 @@ const AppRouter = () => {
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/my/bookings" element={<MyBookingsPage />} />
       <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
       <Route path="/book/:slug" element={<PublicBookingPage />} />
       <Route path="/booking/:confirmationCode" element={<ManageBookingPage />} />

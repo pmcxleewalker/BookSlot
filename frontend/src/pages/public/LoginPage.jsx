@@ -34,7 +34,12 @@ const LoginPage = () => {
         return;
       }
       toast.success('Welcome back!');
-      navigate(user.tenant_id ? '/dashboard' : '/onboarding');
+      // Clients go to their bookings, business users go to dashboard/onboarding
+      if (user.role === 'client') {
+        navigate('/my/bookings');
+      } else {
+        navigate(user.tenant_id ? '/dashboard' : '/onboarding');
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Invalid credentials');
     } finally {

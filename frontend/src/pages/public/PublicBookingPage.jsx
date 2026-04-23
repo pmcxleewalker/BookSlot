@@ -5,7 +5,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Calendar } from '../../components/ui/calendar';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Clock, Check, MapPin, Sparkles, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clock, Check, MapPin, Sparkles, User, Smartphone, Share2, Plus, Home, BellRing, UserCheck } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -443,6 +443,15 @@ const PublicBookingPage = () => {
               </div>
             </div>
 
+            {/* Optional client account upsell */}
+            <ClientAccountUpsell
+              confirmationCode={confirmation.confirmation_code}
+              clientEmail={clientEmail}
+              clientName={clientName}
+              brandPrimary={brandPrimary}
+              brandSecondary={brandSecondary}
+            />
+
             <Link
               to={`/booking/${confirmation.confirmation_code}`}
               className="inline-block mt-8 text-sm hover:underline"
@@ -458,6 +467,176 @@ const PublicBookingPage = () => {
       <footer className="py-8 text-center">
         <p className="text-[10px] tracking-[0.3em] uppercase text-[#9E948F]">Powered by BookSlot</p>
       </footer>
+    </div>
+  );
+};
+
+// ============================================================================
+// Optional client-account upsell shown after a successful booking.
+// Lets the client set a password, then walks them through saving the site
+// to their phone home screen (iOS + Android detect).
+// ============================================================================
+const ClientAccountUpsell = ({ confirmationCode, clientEmail, clientName, brandPrimary, brandSecondary }) => {
+  const [mode, setMode] = useState('idle'); // idle | form | created | skipped
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Detect platform for the right install instructions
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const platform = isIOS ? 'ios' : isAndroid ? 'android' : 'desktop';
+
+  const handleCreate = async () => {
+    if (!clientEmail) { toast.error('No email on file — go back and add one to create an account'); return; }
+    if (password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (password !== confirmPassword) { toast.error('Passwords do not match'); return; }
+    setSaving(true);
+    try {
+      const resp = await axios.post(`${API}/public/booking/${confirmationCode}/create-account`, { password });
+      if (resp.data?.already_exists) {
+        toast.info('You already have an account — signing in saves your bookings here too.');
+        setMode('created');
+        return;
+      }
+      if (resp.data?.token) {
+        localStorage.setItem('token', resp.data.token);
+        localStorage.setItem('user', JSON.stringify(resp.data.user));
+      }
+      toast.success('Account created');
+      setMode('created');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not create account');
+    } finally { setSaving(false); }
+  };
+
+  if (mode === 'skipped') return null;
+
+  if (mode === 'idle') {
+    return (
+      <div className="mt-6 max-w-md mx-auto bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6" style={{ border: `1px solid ${brandSecondary}55` }} data-testid="client-account-upsell">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${brandSecondary}33` }}>
+            <UserCheck className="w-5 h-5" style={{ color: brandPrimary }} strokeWidth={1.5} />
+          </div>
+          <div className="text-left">
+            <p className="font-medium text-[#2C2A29]">Save your spot for next time?</p>
+            <p className="text-xs text-[#9E948F] mt-1 leading-relaxed">Create a quick account with just a password — no email needed, we already have yours.</p>
+          </div>
+        </div>
+        <ul className="space-y-2 mb-5 pl-1">
+          <li className="flex items-center gap-2 text-xs text-[#706B68]"><Check className="w-3.5 h-3.5 shrink-0" style={{ color: brandPrimary }} /> Rebook in seconds next time</li>
+          <li className="flex items-center gap-2 text-xs text-[#706B68]"><BellRing className="w-3.5 h-3.5 shrink-0" style={{ color: brandPrimary }} /> Get notified of changes or cancellations</li>
+          <li className="flex items-center gap-2 text-xs text-[#706B68]"><Home className="w-3.5 h-3.5 shrink-0" style={{ color: brandPrimary }} /> One-tap access from your phone's home screen</li>
+        </ul>
+        <div className="flex gap-2">
+          <button onClick={() => setMode('skipped')} className="flex-1 h-10 rounded-full text-xs font-medium text-[#706B68] hover:bg-[#FAF7F3] transition-colors" data-testid="skip-account">No thanks</button>
+          <button onClick={() => setMode('form')} className="flex-1 h-10 rounded-full text-xs font-medium text-white transition-all hover:shadow-md" style={{ backgroundColor: brandPrimary }} data-testid="start-create-account">Create account</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'form') {
+    return (
+      <div className="mt-6 max-w-md mx-auto bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6" style={{ border: `1px solid ${brandSecondary}55` }}>
+        <p className="text-[10px] uppercase tracking-[0.25em] text-[#9E948F] mb-3">Your account</p>
+        <div className="text-left space-y-3">
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-[#9E948F]">Username (your email)</Label>
+            <Input value={clientEmail} readOnly className="mt-1 h-11 rounded-xl bg-[#FAF7F3] border-transparent text-[#706B68]" />
+          </div>
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-[#9E948F]">Create password</Label>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 h-11 rounded-xl bg-[#FAF7F3] border-transparent" data-testid="account-password" minLength={6} />
+            <p className="text-[10px] text-[#9E948F] mt-1">Minimum 6 characters</p>
+          </div>
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-[#9E948F]">Confirm password</Label>
+            <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="mt-1 h-11 rounded-xl bg-[#FAF7F3] border-transparent" data-testid="account-password-confirm" minLength={6} />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button onClick={() => setMode('idle')} className="flex-1 h-10 rounded-full text-xs font-medium text-[#706B68] hover:bg-[#FAF7F3] transition-colors">Back</button>
+            <button onClick={handleCreate} disabled={saving} className="flex-1 h-10 rounded-full text-xs font-medium text-white disabled:opacity-60 transition-all hover:shadow-md" style={{ backgroundColor: brandPrimary }} data-testid="confirm-create-account">{saving ? 'Creating…' : 'Create account'}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // mode === 'created' — now show "save to home screen" instructions
+  const url = `${window.location.origin}/my/bookings`;
+  return (
+    <div className="mt-6 max-w-md mx-auto space-y-4" data-testid="homescreen-instructions">
+      {/* Success */}
+      <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-5 flex items-start gap-3" style={{ border: `1px solid ${brandSecondary}55` }}>
+        <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${brandSecondary}44` }}>
+          <Check className="w-4 h-4" style={{ color: brandPrimary }} strokeWidth={2} />
+        </div>
+        <div className="text-left">
+          <p className="font-medium text-[#2C2A29] text-sm">{clientName ? `You're in, ${clientName.split(' ')[0]}!` : "You're all set"}</p>
+          <p className="text-xs text-[#9E948F] mt-0.5">Username: <span className="font-mono text-[#2C2A29]">{clientEmail}</span></p>
+        </div>
+      </div>
+
+      {/* Homescreen panel */}
+      <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 text-left" style={{ border: `1px solid ${brandSecondary}55` }}>
+        <div className="flex items-center gap-3 mb-4">
+          <Smartphone className="w-5 h-5" style={{ color: brandPrimary }} strokeWidth={1.5} />
+          <p className="font-medium text-[#2C2A29]">Add to your home screen</p>
+        </div>
+        <p className="text-xs text-[#706B68] mb-4 leading-relaxed">So it feels like a real app — tap to open your bookings anytime.</p>
+
+        {platform === 'ios' && (
+          <ol className="space-y-3 text-sm text-[#2C2A29]" data-testid="ios-instructions">
+            <li className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{ backgroundColor: brandPrimary }}>1</span>
+              <span>Tap the <Share2 className="inline w-4 h-4 -mt-0.5" strokeWidth={1.5} /> <strong>Share</strong> button at the bottom of Safari.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{ backgroundColor: brandPrimary }}>2</span>
+              <span>Scroll down and tap <strong>"Add to Home Screen"</strong>.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{ backgroundColor: brandPrimary }}>3</span>
+              <span>Tap <strong>Add</strong> in the top-right corner — done!</span>
+            </li>
+          </ol>
+        )}
+
+        {platform === 'android' && (
+          <ol className="space-y-3 text-sm text-[#2C2A29]" data-testid="android-instructions">
+            <li className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{ backgroundColor: brandPrimary }}>1</span>
+              <span>Tap the <strong>⋮ menu</strong> in the top-right of Chrome.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{ backgroundColor: brandPrimary }}>2</span>
+              <span>Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{ backgroundColor: brandPrimary }}>3</span>
+              <span>Confirm — an icon appears on your home screen.</span>
+            </li>
+          </ol>
+        )}
+
+        {platform === 'desktop' && (
+          <div className="space-y-3 text-sm text-[#706B68]" data-testid="desktop-instructions">
+            <p>Open this link on your phone to add it to the home screen:</p>
+            <div className="flex items-center gap-2 bg-[#FAF7F3] rounded-xl px-3 py-2.5">
+              <code className="flex-1 text-[11px] text-[#2C2A29] font-mono truncate">{url}</code>
+              <button onClick={() => { navigator.clipboard.writeText(url); toast.success('Link copied'); }} className="text-xs" style={{ color: brandPrimary }} data-testid="copy-homescreen-url">Copy</button>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-5 pt-4 border-t border-[#F0EBE6] flex items-center gap-2">
+          <Plus className="w-3.5 h-3.5" style={{ color: brandPrimary }} strokeWidth={1.5} />
+          <Link to="/my/bookings" className="text-xs font-medium hover:underline" style={{ color: brandPrimary }} data-testid="my-bookings-link">View my bookings →</Link>
+        </div>
+      </div>
     </div>
   );
 };

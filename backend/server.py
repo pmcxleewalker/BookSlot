@@ -156,6 +156,7 @@ class UserRole(str, Enum):
     OWNER = "owner"
     ADMIN = "admin"
     STAFF = "staff"
+    CLIENT = "client"
 
 class IndustryType(str, Enum):
     SALON = "salon"
@@ -2802,6 +2803,99 @@ async def cancel_booking_by_code(confirmation_code: str, body: Dict[str, Any] = 
     await trigger_webhook(appointment["tenant_id"], WebhookEvent.BOOKING_CANCELLED, updated)
     
     return {"message": "Booking cancelled", "appointment": updated}
+
+# ================== CLIENT ACCOUNTS (optional, post-booking) ==================
+
+@api_router.post("/public/booking/{confirmation_code}/create-account")
+async def create_client_account_from_booking(confirmation_code: str, body: Dict[str, Any]):
+    """Create an optional client account after a successful booking.
+    Client provides a password; we use the email already on the appointment.
+    """
+    password = (body.get("password") or "").strip()
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    appointment = await db.appointments.find_one({"appointment_id": confirmation_code}, {"_id": 0})
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    email = (appointment.get("client_email") or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="This booking has no email on file. Please add one to create an account.")
+    
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
+    if existing:
+        # If the existing account is already a client — allow linking this booking instead of erroring
+        if existing.get("role") == "client":
+            return {"message": "Account already exists — please sign in", "already_exists": True}
+        raise HTTPException(status_code=400, detail="An account with this email already exists")
+    
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    await db.users.insert_one({
+        "user_id": user_id,
+        "email": email,
+        "name": appointment.get("client_name", "Client"),
+        "phone": appointment.get("client_phone"),
+        "role": UserRole.CLIENT.value,
+        "tenant_id": appointment.get("tenant_id"),  # anchor client to the tenant they booked with
+        "password_hash": hash_password(password),
+        "must_change_password": False,
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Issue a session token for auto-login
+    token = create_jwt_token(user_id, appointment.get("tenant_id"))
+    return {
+        "message": "Account created",
+        "token": token,
+        "user": {
+            "user_id": user_id,
+            "email": email,
+            "name": appointment.get("client_name", "Client"),
+            "role": UserRole.CLIENT.value,
+            "tenant_id": appointment.get("tenant_id"),
+            "is_active": True,
+            "must_change_password": False
+        }
+    }
+
+@api_router.get("/client/bookings")
+async def get_client_bookings(user: Dict = Depends(get_current_user)):
+    """Return all bookings made by the logged-in client (matched by email across their tenant)."""
+    if user.get("role") != "client":
+        raise HTTPException(status_code=403, detail="Client access only")
+    
+    email = (user.get("email") or "").strip().lower()
+    if not email:
+        return {"upcoming": [], "past": []}
+    
+    # Surface bookings by email match so walk-in bookings before account creation are included
+    query = {"client_email": {"$regex": f"^{email}$", "$options": "i"}}
+    if user.get("tenant_id"):
+        query["tenant_id"] = user["tenant_id"]
+    appointments = await db.appointments.find(query, {"_id": 0}).sort("start_time", -1).to_list(500)
+    
+    # Enrich with service/staff + tenant names
+    tenant_ids = list({a.get("tenant_id") for a in appointments if a.get("tenant_id")})
+    tenants_map = {t["tenant_id"]: t for t in await db.tenants.find({"tenant_id": {"$in": tenant_ids}}, {"_id": 0}).to_list(100)}
+    
+    now_iso = datetime.now(timezone.utc).isoformat()
+    upcoming, past = [], []
+    for a in appointments:
+        t = tenants_map.get(a.get("tenant_id"), {})
+        if not a.get("service_name"):
+            svc = await db.services.find_one({"service_id": a.get("service_id")}, {"_id": 0})
+            a["service_name"] = (svc or {}).get("name", "Service")
+        if not a.get("staff_name"):
+            stf = await db.staff.find_one({"staff_id": a.get("staff_id")}, {"_id": 0})
+            a["staff_name"] = (stf or {}).get("name", "")
+        a["business_name"] = t.get("name")
+        a["business_slug"] = t.get("booking_url_slug")
+        a["business_primary_color"] = t.get("branding", {}).get("primary_color")
+        (upcoming if (a.get("start_time", "") >= now_iso and a.get("status") not in ["cancelled", "completed"]) else past).append(a)
+    
+    return {"upcoming": upcoming, "past": past}
 
 # ================== FORMS ENDPOINTS ==================
 
