@@ -63,6 +63,29 @@ const CalendarPage = () => {
   const handleComplete = async (id) => { try { await axios.put(`${API}/appointments/${id}`, { status: 'completed' }, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Done'); fetchData(); setSelectedAppt(null); } catch { toast.error('Failed'); } };
   const handleSaveNotes = async (id, notes) => { try { await axios.put(`${API}/appointments/${id}`, { notes }, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Notes saved'); fetchData(); } catch { toast.error('Failed'); } };
 
+  // Drag-and-drop: reschedule an appointment to a new day+time while keeping its duration.
+  const handleDropAppt = async (appt, newDate, newTimeHHMM) => {
+    try {
+      const origStart = parseISO(appt.start_time);
+      const origEnd = parseISO(appt.end_time);
+      const duration = differenceInMinutes(origEnd, origStart);
+      const [h, m] = newTimeHHMM.split(':').map(Number);
+      const newStartDate = new Date(newDate);
+      newStartDate.setHours(h, m, 0, 0);
+      const newEndDate = addMinutes(newStartDate, duration);
+      // Build local-ISO strings without timezone suffix (mirrors existing appointments)
+      const iso = (d) => `${format(d, 'yyyy-MM-dd')}T${format(d, 'HH:mm:ss')}`;
+      const payload = { start_time: iso(newStartDate), end_time: iso(newEndDate) };
+      // No-op if nothing changed
+      if (payload.start_time === appt.start_time) return;
+      await axios.put(`${API}/appointments/${appt.appointment_id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(`Moved to ${format(newStartDate, 'EEE d MMM, HH:mm')}`);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not reschedule');
+    }
+  };
+
   const openNewAppt = (date, time) => {
     if (date) setSelectedDate(date);
     const now = new Date();
@@ -161,8 +184,8 @@ const CalendarPage = () => {
 
         {/* Calendar Grid */}
         {loading ? <div className="text-center py-16 text-[#9E948F]">Loading...</div> :
-          viewMode === 'week' ? <WeekGrid selectedDate={selectedDate} appointments={filteredAppts} staffColorMap={staffColorMap} onDayClick={d => { setSelectedDate(d); setViewMode('day'); }} onApptClick={setSelectedAppt} onSlotClick={openNewAppt} /> :
-          <DayView selectedDate={selectedDate} appointments={filteredAppts.filter(a => isSameDay(parseISO(a.start_time), selectedDate) && a.status !== 'cancelled')} allDayAppts={filteredAppts.filter(a => isSameDay(parseISO(a.start_time), selectedDate))} staffColorMap={staffColorMap} onComplete={handleComplete} onApptClick={setSelectedAppt} onSlotClick={openNewAppt} />
+          viewMode === 'week' ? <WeekGrid selectedDate={selectedDate} appointments={filteredAppts} staffColorMap={staffColorMap} onDayClick={d => { setSelectedDate(d); setViewMode('day'); }} onApptClick={setSelectedAppt} onSlotClick={openNewAppt} onDropAppt={handleDropAppt} /> :
+          <DayView selectedDate={selectedDate} appointments={filteredAppts.filter(a => isSameDay(parseISO(a.start_time), selectedDate) && a.status !== 'cancelled')} allDayAppts={filteredAppts.filter(a => isSameDay(parseISO(a.start_time), selectedDate))} staffColorMap={staffColorMap} onComplete={handleComplete} onApptClick={setSelectedAppt} onSlotClick={openNewAppt} onDropAppt={handleDropAppt} />
         }
 
         {/* New Appointment Dialog */}
@@ -233,7 +256,7 @@ const ApptDetail = ({ appt, onClose, onSaveNotes, onComplete }) => {
   );
 };
 
-const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApptClick, onSlotClick }) => {
+const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApptClick, onSlotClick, onDropAppt }) => {
   const ws = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: ws, end: endOfWeek(selectedDate, { weekStartsOn: 1 }) });
   const getAppts = (d) => appointments.filter(a => isSameDay(parseISO(a.start_time), d) && a.status !== 'cancelled');
@@ -265,6 +288,13 @@ const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApp
                   <div className="absolute w-full border-t-2 border-[#F0EBE6]" style={{ top: `${(h - 8) * 56}px` }} />
                   <button
                     onClick={(e) => { e.stopPropagation(); onSlotClick(d, `${String(h).padStart(2, '0')}:00`); }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const payload = e.dataTransfer.getData('application/json');
+                      if (!payload) return;
+                      try { const appt = JSON.parse(payload); onDropAppt?.(appt, d, `${String(h).padStart(2, '0')}:00`); } catch {}
+                    }}
                     className="absolute w-full h-7 hover:bg-[#E8C5C8]/15 group flex items-center justify-center transition-colors"
                     style={{ top: `${(h - 8) * 56}px` }}
                     data-testid={`slot-${format(d, 'yyyy-MM-dd')}-${h}-00`}
@@ -274,6 +304,13 @@ const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApp
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); onSlotClick(d, `${String(h).padStart(2, '0')}:30`); }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const payload = e.dataTransfer.getData('application/json');
+                      if (!payload) return;
+                      try { const appt = JSON.parse(payload); onDropAppt?.(appt, d, `${String(h).padStart(2, '0')}:30`); } catch {}
+                    }}
                     className="absolute w-full h-7 hover:bg-[#E8C5C8]/15 group flex items-center justify-center border-t border-dashed border-[#F0EBE6]/80 transition-colors"
                     style={{ top: `${(h - 8) * 56 + 28}px` }}
                     data-testid={`slot-${format(d, 'yyyy-MM-dd')}-${h}-30`}
@@ -287,8 +324,15 @@ const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApp
                 const s = getStyle(a);
                 const c = staffColorMap[a.staff_id] || BLOCK_COLORS[0];
                 return (
-                  <div key={a.appointment_id} className="absolute left-1 right-1 rounded-xl px-2 py-1 overflow-hidden cursor-pointer transition-all hover:scale-[1.03] hover:shadow-md hover:z-10 border border-white/50"
-                    style={{ ...s, backgroundColor: c.bg, zIndex: 5 }} onClick={(e) => { e.stopPropagation(); onApptClick(a); }}>
+                  <div
+                    key={a.appointment_id}
+                    className="absolute left-1 right-1 rounded-xl px-2 py-1 overflow-hidden cursor-grab active:cursor-grabbing transition-all hover:scale-[1.03] hover:shadow-md hover:z-10 border border-white/50"
+                    style={{ ...s, backgroundColor: c.bg, zIndex: 5 }}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData('application/json', JSON.stringify(a)); e.dataTransfer.effectAllowed = 'move'; }}
+                    onClick={(e) => { e.stopPropagation(); onApptClick(a); }}
+                    data-testid={`appt-${a.appointment_id}`}
+                  >
                     <p className="text-[10px] font-semibold truncate" style={{ color: c.text }}>{a.client_name}</p>
                     <p className="text-[9px] truncate" style={{ color: c.text + '99' }}>{a.service_name}</p>
                   </div>
@@ -302,7 +346,7 @@ const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApp
   );
 };
 
-const DayView = ({ selectedDate, appointments, allDayAppts, staffColorMap, onComplete, onApptClick, onSlotClick }) => {
+const DayView = ({ selectedDate, appointments, allDayAppts, staffColorMap, onComplete, onApptClick, onSlotClick, onDropAppt }) => {
   const confirmed = appointments.filter(a => a.status === 'confirmed');
   const completed = appointments.filter(a => a.status === 'completed');
   const getStyle = (a) => { try { const s = parseISO(a.start_time), e = parseISO(a.end_time); return { top: `${(s.getHours() + s.getMinutes() / 60 - 8) * 56}px`, height: `${Math.max(differenceInMinutes(e, s) / 60 * 56, 28)}px` }; } catch { return { top: '0', height: '28px' }; } };
@@ -314,7 +358,7 @@ const DayView = ({ selectedDate, appointments, allDayAppts, staffColorMap, onCom
       <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden border-2 border-[#E5DFD9]">
         <div className="px-6 py-4 border-b-2 border-[#E5DFD9] flex items-center justify-between">
           <div className="flex items-center gap-2"><CalendarDays className="w-4 h-4 text-[#B8868B]" strokeWidth={1.5} /><span className="text-sm font-semibold text-[#2C2A29]">{format(selectedDate, 'EEEE, MMMM d')}</span></div>
-          <span className="text-[11px] text-[#9E948F] uppercase tracking-[0.15em]">Click a slot to book</span>
+          <span className="text-[11px] text-[#9E948F] uppercase tracking-[0.15em]">Click or drag to reschedule</span>
         </div>
         <div className="grid grid-cols-[72px_1fr] relative" style={{ height: `${HOURS.length * 56}px` }}>
           <div className="relative border-r-2 border-[#E5DFD9] bg-[#FCFCFA]">
@@ -326,6 +370,8 @@ const DayView = ({ selectedDate, appointments, allDayAppts, staffColorMap, onCom
                 <div className="absolute w-full border-t-2 border-[#F0EBE6]" style={{ top: `${(h - 8) * 56}px` }} />
                 <button
                   onClick={(e) => { e.stopPropagation(); onSlotClick(selectedDate, `${String(h).padStart(2, '0')}:00`); }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); const payload = e.dataTransfer.getData('application/json'); if (!payload) return; try { const appt = JSON.parse(payload); onDropAppt?.(appt, selectedDate, `${String(h).padStart(2, '0')}:00`); } catch {} }}
                   className="absolute w-full h-7 hover:bg-[#E8C5C8]/15 group flex items-center px-4 transition-colors"
                   style={{ top: `${(h - 8) * 56}px` }}
                   data-testid={`day-slot-${h}-00`}
@@ -335,6 +381,8 @@ const DayView = ({ selectedDate, appointments, allDayAppts, staffColorMap, onCom
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); onSlotClick(selectedDate, `${String(h).padStart(2, '0')}:30`); }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); const payload = e.dataTransfer.getData('application/json'); if (!payload) return; try { const appt = JSON.parse(payload); onDropAppt?.(appt, selectedDate, `${String(h).padStart(2, '0')}:30`); } catch {} }}
                   className="absolute w-full h-7 hover:bg-[#E8C5C8]/15 group flex items-center px-4 border-t border-dashed border-[#F0EBE6]/80 transition-colors"
                   style={{ top: `${(h - 8) * 56 + 28}px` }}
                   data-testid={`day-slot-${h}-30`}
@@ -350,9 +398,12 @@ const DayView = ({ selectedDate, appointments, allDayAppts, staffColorMap, onCom
               const isDone = a.status === 'completed';
               return (
                 <div key={a.appointment_id}
-                  className={`absolute left-2 right-2 rounded-xl px-3 py-2 overflow-hidden cursor-pointer transition-all hover:scale-[1.01] hover:shadow-md hover:z-10 border border-white/50 ${isDone ? 'opacity-60' : ''}`}
+                  className={`absolute left-2 right-2 rounded-xl px-3 py-2 overflow-hidden cursor-grab active:cursor-grabbing transition-all hover:scale-[1.01] hover:shadow-md hover:z-10 border border-white/50 ${isDone ? 'opacity-60' : ''}`}
                   style={{ ...s, backgroundColor: c.bg, zIndex: 5 }}
+                  draggable={!isDone}
+                  onDragStart={(e) => { e.dataTransfer.setData('application/json', JSON.stringify(a)); e.dataTransfer.effectAllowed = 'move'; }}
                   onClick={(e) => { e.stopPropagation(); onApptClick(a); }}
+                  data-testid={`appt-${a.appointment_id}`}
                 >
                   <p className="text-xs font-semibold truncate" style={{ color: c.text }}>{a.client_name}{isDone && ' ✓'}</p>
                   <p className="text-[10px] truncate" style={{ color: c.text + '99' }}>{a.service_name} · {format(parseISO(a.start_time), 'HH:mm')}</p>

@@ -252,6 +252,8 @@ class UserResponse(BaseModel):
     tenant_id: Optional[str] = None
     role: UserRole
     is_active: bool
+    must_change_password: bool = False
+    linked_staff_id: Optional[str] = None
 
 # Staff Models
 class StaffBase(BaseModel):
@@ -1506,6 +1508,29 @@ async def update_approval_settings(body: Dict[str, Any], user: Dict = Depends(ge
 
 # ================== STAFF ENDPOINTS ==================
 
+@api_router.post("/auth/change-password")
+async def change_password(body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    """Authenticated user changes their own password (also clears must_change_password flag)."""
+    new_password = (body.get("new_password") or "").strip()
+    current_password = body.get("current_password") or ""
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
+    db_user = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # If the user already has a password set AND isn't on the forced-change flow, require the current one.
+    if db_user.get("password_hash") and not db_user.get("must_change_password"):
+        if not current_password or not verify_password(current_password, db_user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Current password is incorrect")
+    
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"password_hash": hash_password(new_password), "must_change_password": False}}
+    )
+    return {"message": "Password updated"}
+
 @api_router.get("/staff")
 async def get_staff(user: Dict = Depends(get_current_user)):
     """Get all staff for tenant"""
@@ -1534,7 +1559,29 @@ async def create_staff(staff_data: StaffCreate, user: Dict = Depends(get_current
     staff_dict["created_at"] = staff_dict["created_at"].isoformat()
     
     await db.staff.insert_one({**staff_dict})
-    return {"staff": staff_dict}
+    
+    # If the staff has an email and no user account yet, auto-create a login with default password "123"
+    # and force-change on first sign-in.
+    staff_login_created = False
+    staff_email = (staff_dict.get("email") or "").strip().lower()
+    if staff_email:
+        existing_user = await db.users.find_one({"email": staff_email}, {"_id": 0})
+        if not existing_user:
+            await db.users.insert_one({
+                "user_id": f"user_{uuid.uuid4().hex[:12]}",
+                "email": staff_email,
+                "name": staff_dict.get("name"),
+                "tenant_id": user["tenant_id"],
+                "role": "staff",
+                "password_hash": hash_password("123"),
+                "must_change_password": True,
+                "linked_staff_id": staff_dict["staff_id"],
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            staff_login_created = True
+    
+    return {"staff": staff_dict, "login_created": staff_login_created, "default_password": "123" if staff_login_created else None}
 
 @api_router.put("/staff/{staff_id}")
 async def update_staff(staff_id: str, updates: Dict[str, Any], user: Dict = Depends(get_current_user)):
@@ -2087,9 +2134,22 @@ async def create_appointment(appt_data: AppointmentCreate, user: Dict = Depends(
 
 @api_router.put("/appointments/{appointment_id}")
 async def update_appointment(appointment_id: str, updates: Dict[str, Any], user: Dict = Depends(get_current_user)):
-    """Update appointment"""
+    """Update appointment. Staff role can only edit appointments assigned to their linked_staff_id."""
     if not user.get("tenant_id"):
         raise HTTPException(status_code=400, detail="No business found")
+    
+    # Load the target appointment first so we can enforce per-role permissions
+    existing = await db.appointments.find_one(
+        {"appointment_id": appointment_id, "tenant_id": user["tenant_id"]}, {"_id": 0}
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Staff members can only edit their OWN bookings (matched via linked_staff_id on the user doc)
+    if user.get("role") == "staff":
+        linked = user.get("linked_staff_id")
+        if not linked or existing.get("staff_id") != linked:
+            raise HTTPException(status_code=403, detail="You can only edit your own bookings")
     
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     

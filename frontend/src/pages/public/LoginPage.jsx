@@ -28,6 +28,11 @@ const LoginPage = () => {
 
     try {
       const user = await login(email, password);
+      if (user.must_change_password) {
+        toast.info('Please set a new password to continue');
+        navigate('/change-password');
+        return;
+      }
       toast.success('Welcome back!');
       navigate(user.tenant_id ? '/dashboard' : '/onboarding');
     } catch (error) {

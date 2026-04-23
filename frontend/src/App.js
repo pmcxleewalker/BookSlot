@@ -12,6 +12,7 @@ import SignupPage from './pages/public/SignupPage';
 import PublicBookingPage from './pages/public/PublicBookingPage';
 import ManageBookingPage from './pages/public/ManageBookingPage';
 import TenantLoginPage from './pages/public/TenantLoginPage';
+import ChangePasswordPage from './pages/public/ChangePasswordPage';
 
 // Pages - Admin
 import DashboardPage from './pages/admin/DashboardPage';
@@ -203,6 +204,11 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Force first-time password change before anything else
+  if (user.must_change_password && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+
   // Redirect to onboarding if no tenant and not already on onboarding
   if (!tenant && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
@@ -260,6 +266,7 @@ const AppRouter = () => {
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
       <Route path="/book/:slug" element={<PublicBookingPage />} />
       <Route path="/booking/:confirmationCode" element={<ManageBookingPage />} />
       <Route path="/privacy" element={<PrivacyPolicyPage />} />

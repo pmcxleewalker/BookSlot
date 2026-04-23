@@ -119,7 +119,14 @@ const StaffPage = () => {
       };
       if (!payload.email) delete payload.email; if (!payload.phone) delete payload.phone;
       if (editingStaff) { await axios.put(`${API}/staff/${editingStaff.staff_id}`, payload, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Updated'); }
-      else { await axios.post(`${API}/staff`, payload, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Added'); }
+      else {
+        const resp = await axios.post(`${API}/staff`, payload, { headers: { Authorization: `Bearer ${token}` } });
+        if (resp.data?.login_created) {
+          toast.success(`Added — login sent to ${payload.email}. Default password: 123 (they'll be asked to change it on first sign-in)`, { duration: 8000 });
+        } else {
+          toast.success('Added');
+        }
+      }
       setShowStaffDialog(false); fetchData();
     } catch (error) { const d = error.response?.data?.detail; toast.error(typeof d === 'string' ? d : Array.isArray(d) ? d.map(x => x.msg || x).join(', ') : 'Failed'); }
   };
