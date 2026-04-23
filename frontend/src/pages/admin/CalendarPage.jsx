@@ -23,7 +23,7 @@ const BLOCK_COLORS = [
 const HOURS = Array.from({ length: 10 }, (_, i) => i + 8);
 
 const CalendarPage = () => {
-  const { token, tenant } = useAuth();
+  const { token, tenant, user } = useAuth();
   const theme = getTheme(tenant?.industry);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('week');
@@ -36,6 +36,14 @@ const CalendarPage = () => {
   const [selectedStaff, setSelectedStaff] = useState('all');
   const [selectedAppt, setSelectedAppt] = useState(null);
   const [newAppt, setNewAppt] = useState({ service_id: '', staff_id: '', client_name: '', client_phone: '', client_email: '', time: '', notes: '', repeat_weeks: 0, repeat_count: 1 });
+
+  // Staff-role users see ONLY their own bookings — lock the filter to their linked staff_id
+  const isStaffRole = user?.role === 'staff';
+  useEffect(() => {
+    if (isStaffRole && user?.linked_staff_id && selectedStaff !== user.linked_staff_id) {
+      setSelectedStaff(user.linked_staff_id);
+    }
+  }, [isStaffRole, user?.linked_staff_id, selectedStaff]);
 
   useEffect(() => { fetchData(); }, [selectedDate, viewMode]);
 

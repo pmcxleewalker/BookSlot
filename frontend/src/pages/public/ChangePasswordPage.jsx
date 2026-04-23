@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { useAuth, API } from '../../App';
@@ -10,6 +10,7 @@ import { KeyRound, ArrowRight } from 'lucide-react';
 const ChangePasswordPage = () => {
   const { user, token, checkAuth, tenant } = useAuth();
   const navigate = useNavigate();
+  const { tenantSlug } = useParams();
   const forced = !!user?.must_change_password;
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -28,7 +29,15 @@ const ChangePasswordPage = () => {
       await axios.post(`${API}/auth/change-password`, payload, { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Password updated');
       await checkAuth();
-      navigate(tenant ? '/dashboard' : '/onboarding');
+      // Route by role. Capture role BEFORE await-invalidation in case user state is stale.
+      const role = user?.role;
+      if (role === 'client') {
+        navigate('/my/bookings', { replace: true });
+      } else if (role === 'staff') {
+        navigate(tenantSlug ? `/${tenantSlug}/calendar` : '/calendar', { replace: true });
+      } else {
+        navigate(tenant ? '/dashboard' : '/onboarding', { replace: true });
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to update password');
     } finally {

@@ -6,12 +6,14 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
 import { ArrowRight, Building2 } from 'lucide-react';
+import { useAuth } from '../../App';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const TenantLoginPage = () => {
   const { tenantSlug } = useParams();
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -39,15 +41,24 @@ const TenantLoginPage = () => {
     setSubmitting(true);
 
     try {
-      const response = await axios.post(`${API}/auth/tenant-login`, {
-        email,
-        password,
-        tenant_slug: tenantSlug
-      });
+      // Use the global auth context so user/tenant state is populated correctly
+      const user = await login(email, password);
 
-      localStorage.setItem('token', response.data.token);
+      if (user.must_change_password) {
+        toast.info('Please set a new password to continue');
+        navigate('/change-password');
+        return;
+      }
+
       toast.success('Welcome back!');
-      navigate(`/${tenantSlug}/dashboard`);
+      // Route by role: staff → calendar (their bookings), owner/admin → dashboard
+      if (user.role === 'staff') {
+        navigate(`/${tenantSlug}/calendar`);
+      } else if (user.role === 'client') {
+        navigate('/my/bookings');
+      } else {
+        navigate(`/${tenantSlug}/dashboard`);
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Invalid credentials');
     } finally {

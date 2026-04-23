@@ -2081,6 +2081,12 @@ async def get_appointments(
     
     query = {"tenant_id": user["tenant_id"]}
     
+    # Staff role: lock to their own bookings only (regardless of the staff_id query param)
+    if user.get("role") == "staff" and user.get("linked_staff_id"):
+        query["staff_id"] = user["linked_staff_id"]
+    elif staff_id:
+        query["staff_id"] = staff_id
+    
     if start_date:
         query["start_time"] = {"$gte": start_date}
     if end_date:
@@ -2088,8 +2094,6 @@ async def get_appointments(
             query["start_time"]["$lte"] = end_date
         else:
             query["start_time"] = {"$lte": end_date}
-    if staff_id:
-        query["staff_id"] = staff_id
     if status:
         query["status"] = status
     

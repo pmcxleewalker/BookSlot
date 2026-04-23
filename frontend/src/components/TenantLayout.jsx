@@ -37,13 +37,17 @@ const TenantLayout = ({ children, title }) => {
     return () => clearInterval(interval);
   }, [token]);
 
-  const navItems = [
+  const isStaffRole = user?.role === 'staff';
+
+  // Staff see only Today + Calendar. Owners/admins see everything.
+  const allNavItems = [
     { path: `${urlPrefix}/dashboard`, label: 'Today', icon: Home },
     { path: `${urlPrefix}/calendar`, label: 'Calendar', icon: Calendar, badge: pendingCount > 0 ? pendingCount : null },
-    { path: `${urlPrefix}/staff`, label: 'Team', icon: Users },
-    { path: `${urlPrefix}/reports`, label: 'Reports', icon: BarChart3 },
-    { path: `${urlPrefix}/settings`, label: 'Settings', icon: Settings },
+    { path: `${urlPrefix}/staff`, label: 'Team', icon: Users, ownerOnly: true },
+    { path: `${urlPrefix}/reports`, label: 'Reports', icon: BarChart3, ownerOnly: true },
+    { path: `${urlPrefix}/settings`, label: 'Settings', icon: Settings, ownerOnly: true },
   ];
+  const navItems = allNavItems.filter(i => !i.ownerOnly || !isStaffRole);
 
   const handleLogout = () => { logout(); navigate(tenantSlug ? `/${tenantSlug}/login` : '/login'); };
 
@@ -123,7 +127,7 @@ const TenantLayout = ({ children, title }) => {
               </div>
               <div className="flex-1 text-left min-w-0">
                 <p className="text-sm font-medium text-[#2C2A29] truncate">{user?.name || 'User'}</p>
-                <p className="text-[11px] text-[#9E948F] truncate">Owner</p>
+                <p className="text-[11px] text-[#9E948F] truncate capitalize">{user?.role || 'Owner'}</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-[#9E948F] transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
             </button>

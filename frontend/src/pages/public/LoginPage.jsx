@@ -34,9 +34,12 @@ const LoginPage = () => {
         return;
       }
       toast.success('Welcome back!');
-      // Clients go to their bookings, business users go to dashboard/onboarding
+      // Route based on role
       if (user.role === 'client') {
         navigate('/my/bookings');
+      } else if (user.role === 'staff') {
+        // Staff land on the calendar filtered to their own bookings
+        navigate('/calendar');
       } else {
         navigate(user.tenant_id ? '/dashboard' : '/onboarding');
       }
