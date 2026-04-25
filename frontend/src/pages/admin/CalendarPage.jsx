@@ -82,6 +82,18 @@ const CalendarPage = () => {
     }
   };
 
+  const handleRefundDeposit = async (id) => {
+    if (!window.confirm('Refund this deposit? The client will be refunded via Stripe.')) return;
+    try {
+      const r = await axios.post(`${API}/appointments/${id}/refund-deposit`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(r.data?.message || 'Refunded');
+      setSelectedAppt(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Refund failed');
+    }
+  };
+
   const handleCancelAppt = async (id) => {
     if (!window.confirm('Cancel this appointment? The client will be notified.')) return;
     try {
@@ -255,13 +267,13 @@ const CalendarPage = () => {
           </DialogContent>
         </Dialog>
 
-        <ApptDetail appt={selectedAppt} staff={staff} services={services} onClose={() => setSelectedAppt(null)} onUpdate={handleUpdateAppt} onComplete={handleComplete} onCancel={handleCancelAppt} />
+        <ApptDetail appt={selectedAppt} staff={staff} services={services} onClose={() => setSelectedAppt(null)} onUpdate={handleUpdateAppt} onComplete={handleComplete} onCancel={handleCancelAppt} onRefund={handleRefundDeposit} />
       </div>
     </TenantLayout>
   );
 };
 
-const ApptDetail = ({ appt, staff, services, onClose, onUpdate, onComplete, onCancel }) => {
+const ApptDetail = ({ appt, staff, services, onClose, onUpdate, onComplete, onCancel, onRefund }) => {
   const [form, setForm] = useState({ service_id: '', staff_id: '', client_name: '', client_phone: '', client_email: '', date: '', time: '', notes: '' });
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -324,8 +336,11 @@ const ApptDetail = ({ appt, staff, services, onClose, onUpdate, onComplete, onCa
           <DialogTitle className="font-['Cormorant_Garamond'] text-2xl font-light">Edit Booking</DialogTitle>
           <DialogDescription className="text-[#9E948F] text-sm flex items-center gap-2 flex-wrap">
             {appt.status === 'pending' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8C5C8]/40 text-[#B8868B] uppercase tracking-wider">Pending</span>}
+            {appt.status === 'pending_payment' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FFE5B4] text-[#A06A1B] uppercase tracking-wider">Awaiting Payment</span>}
             {appt.status === 'completed' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#C8D5C8]/40 text-[#5F7A5F] uppercase tracking-wider">Completed</span>}
             {appt.status === 'cancelled' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E5E5E5] text-[#706B68] uppercase tracking-wider">Cancelled</span>}
+            {appt.payment_status === 'paid' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#C8D5C8]/40 text-[#5F7A5F] uppercase tracking-wider">Deposit €{appt.deposit_amount} Paid</span>}
+            {appt.payment_status === 'refunded' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E5E5E5] text-[#706B68] uppercase tracking-wider">Refunded</span>}
             {appt.repeat_weeks ? <span className="flex items-center gap-1"><Repeat className="w-3 h-3" />Every {appt.repeat_weeks} week{appt.repeat_weeks > 1 ? 's' : ''}</span> : null}
           </DialogDescription>
         </DialogHeader>
@@ -386,6 +401,7 @@ const ApptDetail = ({ appt, staff, services, onClose, onUpdate, onComplete, onCa
           <div className="flex gap-2 pt-3 flex-wrap">
             <Button variant="outline" size="sm" className="flex-1 h-10 rounded-full border-[#E5DFD9] text-[#706B68] min-w-[90px]" onClick={onClose}>Close</Button>
             {appt.status === 'confirmed' && <Button size="sm" variant="outline" className="h-10 rounded-full border-[#8FA68F]/40 text-[#5F7A5F] gap-1 min-w-[100px]" onClick={() => onComplete(appt.appointment_id)} data-testid="complete-appt"><Check className="w-3.5 h-3.5" /> Complete</Button>}
+            {appt.payment_status === 'paid' && onRefund && <Button size="sm" variant="outline" className="h-10 rounded-full border-[#E5DFD9] text-[#A06A1B] hover:bg-[#FFF6E5] min-w-[110px]" onClick={() => onRefund(appt.appointment_id)} data-testid="refund-deposit">Refund deposit</Button>}
             {appt.status !== 'cancelled' && <Button size="sm" variant="outline" className="h-10 rounded-full border-[#E5DFD9] text-[#B86868] hover:bg-[#FAF0F0] min-w-[90px]" onClick={() => onCancel(appt.appointment_id)} data-testid="cancel-appt">Cancel</Button>}
             <Button size="sm" className="flex-1 h-10 rounded-full bg-[#2C2A29] text-white hover:bg-[#4A4745] gap-1 disabled:opacity-50 min-w-[120px]" onClick={handleSave} disabled={!dirty || saving} data-testid="save-appt"><Save className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Save changes'}</Button>
           </div>

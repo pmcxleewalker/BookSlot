@@ -108,6 +108,20 @@ const PublicBookingPage = () => {
         client_phone: clientPhone,
         notes
       });
+      // If a deposit is required, kick off Stripe Checkout BEFORE showing success
+      if (response.data.requires_deposit) {
+        try {
+          toast.info(`Redirecting to secure payment for €${response.data.deposit_amount} deposit…`);
+          const checkoutRes = await axios.post(`${API}/public/booking/${slug}/checkout-deposit`, {
+            appointment_id: response.data.confirmation_code,
+            origin_url: window.location.origin
+          });
+          window.location.href = checkoutRes.data.url;
+          return; // browser navigates away
+        } catch (payErr) {
+          toast.error('Could not start payment — your booking was saved as pending. Please contact the salon.');
+        }
+      }
       setConfirmation(response.data);
       setStep(5);
       toast.success(response.data.message || 'Booking request submitted');
@@ -209,6 +223,9 @@ const PublicBookingPage = () => {
                   </div>
                   <div className="text-right shrink-0 ml-4">
                     <p className="font-['Cormorant_Garamond'] text-3xl font-light text-[#2C2A29]">€{service.price}</p>
+                    {service.deposit_required && service.deposit_amount > 0 && (
+                      <p className="text-[10px] tracking-[0.15em] uppercase font-medium mt-1" style={{ color: brandPrimary }}>€{service.deposit_amount} deposit</p>
+                    )}
                   </div>
                 </button>
               ))}
@@ -334,6 +351,12 @@ const PublicBookingPage = () => {
                 <p className="text-sm text-[#706B68]">with <span className="font-medium">{selectedStaff?.name}</span></p>
                 <p className="text-sm text-[#706B68]">{selectedDate && format(selectedDate, 'EEEE, MMMM d, yyyy')} · {selectedSlot && format(new Date(selectedSlot.start_time), 'h:mm a')}</p>
                 <p className="font-['Cormorant_Garamond'] text-2xl font-light mt-3" style={{ color: brandPrimary }}>€{selectedService?.price}</p>
+                {selectedService?.deposit_required && selectedService?.deposit_amount > 0 && (
+                  <p className="text-xs text-[#706B68] mt-2 flex items-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brandPrimary }} />
+                    Pay <strong className="text-[#2C2A29]">€{selectedService.deposit_amount}</strong> deposit now to confirm — €{selectedService.price - selectedService.deposit_amount} balance in salon
+                  </p>
+                )}
               </div>
             </div>
 
@@ -401,7 +424,11 @@ const PublicBookingPage = () => {
                 style={{ backgroundColor: brandPrimary }}
                 data-testid="confirm-booking"
               >
-                {submitting ? 'Submitting…' : 'Confirm Booking'}
+                {submitting
+                  ? 'Submitting…'
+                  : (selectedService?.deposit_required && selectedService?.deposit_amount > 0
+                      ? `Pay €${selectedService.deposit_amount} & Confirm`
+                      : 'Confirm Booking')}
                 {!submitting && <Check className="w-4 h-4" />}
               </button>
               <p className="text-[11px] text-center text-[#9E948F] pt-1">Your booking will be confirmed by {business.name} shortly.</p>

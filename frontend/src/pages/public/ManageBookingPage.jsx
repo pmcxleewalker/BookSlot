@@ -1,23 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
 import { toast } from 'sonner';
-import { Calendar, Clock, User, MapPin, AlertTriangle, Check, X } from 'lucide-react';
+import { Calendar, Clock, User, MapPin, AlertTriangle, Check, X, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const ManageBookingPage = () => {
   const { confirmationCode } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sessionId = searchParams.get('session_id');
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null); // 'checking' | 'paid' | 'unpaid'
 
   useEffect(() => {
     fetchBooking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmationCode]);
+
+  // Poll payment status if redirected back from Stripe
+  useEffect(() => {
+    if (!sessionId) return;
+    setPaymentStatus('checking');
+    let attempts = 0;
+    const maxAttempts = 6;
+    const poll = async () => {
+      attempts++;
+      try {
+        const r = await axios.get(`${API}/public/payment/status/${sessionId}`);
+        if (r.data.payment_status === 'paid') {
+          setPaymentStatus('paid');
+          toast.success('Payment received — your booking is confirmed!');
+          fetchBooking();
+          // Strip session_id from URL so a refresh doesn't re-poll forever
+          setSearchParams({});
+          return;
+        }
+        if (r.data.status === 'expired') {
+          setPaymentStatus('unpaid');
+          toast.error('Payment session expired');
+          return;
+        }
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 2000);
+        } else {
+          setPaymentStatus('checking_timeout');
+        }
+      } catch {
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 2000);
+        } else {
+          setPaymentStatus('error');
+        }
+      }
+    };
+    poll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   const fetchBooking = async () => {
     try {
@@ -83,6 +127,20 @@ const ManageBookingPage = () => {
         <h1 className="text-2xl font-semibold text-[#0A0A0A] mb-6" data-testid="manage-booking-title">
           Manage Your Booking
         </h1>
+
+        {/* Payment status banner — shown when redirected back from Stripe */}
+        {paymentStatus === 'checking' && (
+          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 mb-6 rounded-xl" data-testid="payment-checking-banner">
+            <CreditCard className="w-5 h-5 text-amber-700 animate-pulse" />
+            <p className="text-amber-800 text-sm">Confirming your payment with the bank…</p>
+          </div>
+        )}
+        {paymentStatus === 'paid' && (
+          <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 mb-6 rounded-xl" data-testid="payment-paid-banner">
+            <Check className="w-5 h-5 text-emerald-700" />
+            <p className="text-emerald-800 text-sm">Deposit received — your booking is on the books!</p>
+          </div>
+        )}
 
         {/* Status Banner */}
         {isCancelled && (
