@@ -9,7 +9,7 @@ import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { toast } from 'sonner';
 import {
-  Building2, Palette, CalendarCog, BellRing, Save, Upload, Camera, Loader2, Check, Globe, Clock
+  Building2, Palette, CalendarCog, BellRing, Save, Upload, Camera, Loader2, Check, Globe, Clock, CreditCard, ExternalLink, AlertCircle
 } from 'lucide-react';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 
@@ -19,6 +19,7 @@ const TABS = [
   { key: 'business', label: 'Business', icon: Building2 },
   { key: 'branding', label: 'Branding', icon: Palette },
   { key: 'booking', label: 'Booking Rules', icon: CalendarCog },
+  { key: 'payments', label: 'Payments', icon: CreditCard },
   { key: 'notifications', label: 'Notifications', icon: BellRing },
 ];
 
@@ -52,12 +53,51 @@ const SettingsPage = () => {
   const [reminderSettings, setReminderSettings] = useState({ push_enabled: false, reminder_hours: 24 });
   const [savingReminders, setSavingReminders] = useState(false);
 
+  // Stripe Connect
+  const [stripeStatus, setStripeStatus] = useState(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [searchParams] = (() => { try { return [new URLSearchParams(window.location.search)]; } catch { return [new URLSearchParams()]; } })();
+
+  const fetchStripeStatus = async () => {
+    try {
+      const r = await axios.get(`${API}/tenants/me/stripe/status`, { headers: { Authorization: `Bearer ${token}` } });
+      setStripeStatus(r.data);
+    } catch {
+      setStripeStatus({ connected: false, charges_enabled: false });
+    }
+  };
+
+  const handleConnectStripe = async () => {
+    setStripeLoading(true);
+    try {
+      const r = await axios.post(`${API}/tenants/me/stripe/connect-link`, { return_origin: window.location.origin }, { headers: { Authorization: `Bearer ${token}` } });
+      window.location.href = r.data.url;
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not generate Stripe onboarding link');
+    } finally {
+      setStripeLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (tenant) {
-      setFormData({ name: tenant.name || '', email: tenant.email || '', phone: tenant.phone || '', timezone: tenant.timezone || 'Europe/Dublin', currency: tenant.currency || 'EUR' });
-    }
-    fetchBranding(); fetchBookingRules(); fetchReminderSettings();
+      setFormData({ name: tenant.name || '', email: tenant.email || '', phone: tenant.phone || '', timezone: tenant.timezone || 'Europe/Dublin', currency: tenant.currency || 'EUR' });    }
+    fetchBranding(); fetchBookingRules(); fetchReminderSettings(); fetchStripeStatus();
   }, [tenant]);
+
+  // Auto-pop Payments tab + show toast if user just returned from Stripe onboarding
+  useEffect(() => {
+    const stripeParam = searchParams.get('stripe');
+    if (stripeParam === 'connected') {
+      setActiveTab('payments');
+      toast.success('Stripe connection saved — checking status…');
+      fetchStripeStatus();
+    } else if (stripeParam === 'refresh') {
+      setActiveTab('payments');
+      toast.info('Onboarding link expired — please reconnect.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchBranding = async () => {
     try {
@@ -241,6 +281,87 @@ const SettingsPage = () => {
               </div>
             </SectionCard>
             <SaveBar saving={saving} onSave={handleSaveRules} />
+          </div>
+        )}
+
+        {/* ========== PAYMENTS (Stripe Connect) ========== */}
+        {activeTab === 'payments' && (
+          <div className="space-y-6" data-testid="settings-payments">
+            <SectionCard title="Stripe Payments" subtitle="Connect your Stripe account to take card deposits at booking. Money lands directly in your bank — BookSlot only takes a small platform fee.">
+              {!stripeStatus && (
+                <div className="text-sm text-[#9E948F] flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
+              )}
+
+              {stripeStatus && !stripeStatus.connected && (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 bg-[#FAF8F6] rounded-2xl border border-[#EDE8E3]">
+                    <CreditCard className="w-5 h-5 text-[#9E948F] mt-0.5" strokeWidth={1.5} />
+                    <div>
+                      <p className="text-sm font-medium text-[#2C2A29]">Not connected yet</p>
+                      <p className="text-xs text-[#9E948F] mt-0.5">Connecting takes ~2 minutes. You'll set up your Stripe account on Stripe's secure page, then be returned here.</p>
+                    </div>
+                  </div>
+                  <button onClick={handleConnectStripe} disabled={stripeLoading} className="h-11 px-6 rounded-full bg-[#635BFF] text-white text-sm font-medium hover:bg-[#544DD1] transition-colors flex items-center gap-2 disabled:opacity-60" data-testid="connect-stripe-btn">
+                    {stripeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" strokeWidth={1.5} />}
+                    Connect with Stripe
+                    <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  </button>
+                </div>
+              )}
+
+              {stripeStatus && stripeStatus.connected && stripeStatus.charges_enabled && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-[#F2F8F2] rounded-2xl border border-[#C8D5C8]" data-testid="stripe-connected-banner">
+                    <div className="w-9 h-9 rounded-full bg-[#8FA68F]/20 flex items-center justify-center">
+                      <Check className="w-4 h-4 text-[#5F7A5F]" strokeWidth={2} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-[#2C2A29]">Stripe connected and ready</p>
+                      <p className="text-xs text-[#706B68]">Account: <code className="font-mono text-[11px]">{stripeStatus.account_id}</code></p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-[#FAF8F6] rounded-xl">
+                      <p className="text-[10px] uppercase tracking-wider text-[#9E948F]">Payouts</p>
+                      <p className="text-sm font-medium text-[#2C2A29] mt-0.5">{stripeStatus.payouts_enabled ? 'Enabled' : 'Pending verification'}</p>
+                    </div>
+                    <div className="p-3 bg-[#FAF8F6] rounded-xl">
+                      <p className="text-[10px] uppercase tracking-wider text-[#9E948F]">Platform fee</p>
+                      <p className="text-sm font-medium text-[#2C2A29] mt-0.5">€{((stripeStatus.platform_fee_cents || 50) / 100).toFixed(2)} per booking</p>
+                    </div>
+                  </div>
+                  <button onClick={handleConnectStripe} disabled={stripeLoading} className="text-xs text-[#9E948F] hover:text-[#2C2A29] flex items-center gap-1.5">
+                    <ExternalLink className="w-3 h-3" /> Manage account on Stripe
+                  </button>
+                </div>
+              )}
+
+              {stripeStatus && stripeStatus.connected && !stripeStatus.charges_enabled && (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 bg-[#FFF8E8] rounded-2xl border border-[#F5D88A]" data-testid="stripe-incomplete-banner">
+                    <AlertCircle className="w-5 h-5 text-[#A06A1B] mt-0.5" strokeWidth={1.5} />
+                    <div>
+                      <p className="text-sm font-medium text-[#2C2A29]">Onboarding incomplete</p>
+                      <p className="text-xs text-[#A06A1B] mt-0.5">{stripeStatus.details_submitted ? "Stripe is reviewing your details. We'll enable payments here as soon as Stripe approves." : 'Finish your Stripe onboarding to start taking deposits.'}</p>
+                    </div>
+                  </div>
+                  <button onClick={handleConnectStripe} disabled={stripeLoading} className="h-11 px-6 rounded-full bg-[#635BFF] text-white text-sm font-medium hover:bg-[#544DD1] transition-colors flex items-center gap-2 disabled:opacity-60">
+                    {stripeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" strokeWidth={1.5} />}
+                    Continue Stripe setup
+                  </button>
+                </div>
+              )}
+            </SectionCard>
+
+            <SectionCard title="How it works" subtitle="Plain English — no surprises">
+              <div className="space-y-3 text-sm text-[#706B68]">
+                <p>• Each service can require a deposit (set in Services tab). Clients pay it on Stripe Checkout when booking.</p>
+                <p>• Money lands directly in <span className="font-medium text-[#2C2A29]">your</span> Stripe account — Stripe pays out to your bank on a 2-day rolling schedule.</p>
+                <p>• BookSlot takes <span className="font-medium text-[#2C2A29]">€{((stripeStatus?.platform_fee_cents || 50) / 100).toFixed(2)} per booking</span> as a platform fee. That's it.</p>
+                <p>• Plus Stripe's standard processing fee (~1.5% + €0.25 in EU) — same as anywhere else.</p>
+                <p>• You can refund any deposit straight from the calendar — funds go back to the customer's card.</p>
+              </div>
+            </SectionCard>
           </div>
         )}
 

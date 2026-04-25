@@ -8,7 +8,8 @@ import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Clock, DollarSign, Briefcase } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Edit2, Trash2, Clock, DollarSign, Briefcase, AlertCircle } from 'lucide-react';
 
 const ServicesPage = () => {
   const { token } = useAuth();
@@ -16,6 +17,7 @@ const ServicesPage = () => {
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [stripeReady, setStripeReady] = useState(null); // null | true | false
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -32,7 +34,17 @@ const ServicesPage = () => {
 
   useEffect(() => {
     fetchServices();
+    fetchStripeReady();
   }, []);
+
+  const fetchStripeReady = async () => {
+    try {
+      const r = await axios.get(`${API}/tenants/me/stripe/status`, { headers: { Authorization: `Bearer ${token}` } });
+      setStripeReady(!!(r.data?.connected && r.data?.charges_enabled));
+    } catch {
+      setStripeReady(false);
+    }
+  };
 
   const fetchServices = async () => {
     try {
@@ -282,10 +294,23 @@ const ServicesPage = () => {
               </div>
               <Switch
                 checked={formData.deposit_required}
-                onCheckedChange={(checked) => setFormData({ ...formData, deposit_required: checked })}
+                onCheckedChange={(checked) => {
+                  if (checked && stripeReady === false) {
+                    toast.error('Connect Stripe in Settings → Payments first');
+                    return;
+                  }
+                  setFormData({ ...formData, deposit_required: checked });
+                }}
                 data-testid="service-deposit-toggle"
               />
             </div>
+
+            {stripeReady === false && (
+              <div className="flex items-start gap-2 p-3 bg-[#FFF8E8] border border-[#F5D88A] rounded-xl text-xs text-[#A06A1B]" data-testid="stripe-not-ready-warning">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <p>Deposits require a connected Stripe account. <Link to="/settings?tab=payments" className="underline font-medium hover:text-[#7A4F0F]">Connect Stripe</Link> in Settings → Payments first.</p>
+              </div>
+            )}
 
             {formData.deposit_required && (
               <div>
