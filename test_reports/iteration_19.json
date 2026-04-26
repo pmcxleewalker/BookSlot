@@ -1,0 +1,63 @@
+{
+  "summary": "Phase A V2 features tested. Backend: 16/17 tests PASS, 1 SKIPPED (super-admin login uses a different auth pathway, not /api/auth/login — not a regression). All 4 new endpoint families validated end-to-end against the public preview URL: (1) GET /public/booking/{code}/rebook-suggestions returns ai_suggestion_weeks + 3 (or 4) options each with weeks/is_ai_pick/next_date/display, with at least one option flagged is_ai_pick=true; (2) POST /public/booking/{code}/rebook with weeks=13 created a NEW pending appointment, visible in GET /api/appointments?status=pending, and weeks=0 / weeks=27 correctly rejected with HTTP 400; (3) POST /api/appointments/{id}/blast-availability as salon@bookslot.io returned subscribers_total/sent_count/failed_count/deep_link, persisted blasted_at on the source appointment, and inserted a push_notifications record (kind=fill_my_day) — verified by re-GETting the appointment; (4) GET/PUT /tenants/me/clv-settings round-trips, clamps to [0,100000], default 500.0 restored at end. (5) GET /api/clients now returns vip_threshold_euros at top level and lifetime_value/visit_count/is_vip_auto/is_vip_effective per client. (6) GET /api/appointments returns vip_threshold_euros at top level and client_lifetime_value/client_is_vip per appointment. (7) GET /api/clients/{id}/lifetime-stats returns all 7 expected fields. \n\nFRONTEND TESTING BLOCKED: The Emergent preview environment is showing a 'Ready to start your preview / Wake up servers' splash screen on EVERY HTML request to schedule-genius-1.preview.emergentagent.com — even GET /bella-avatar.jpg returns text/html (the splash) instead of the JPEG, and the React app never mounts. Multiple wake-button clicks + 60-180s waits did not clear the splash. Backend (/api/*) routes through fine (all 16 pytest assertions pass via the same hostname), so this is a platform-level idle interceptor on non-/api paths. UI cannot be exercised by the testing agent in this state — the main agent should verify the rebook card / VIP crown / Bella avatar / blast button manually after the preview warms up, OR re-trigger this iteration once the splash clears.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/auth/login (super admin)",
+        "issue": "admin@bookslot.io / Admin123! returns 401 on /api/auth/login. Super admin appears to use a different auth pathway (likely a separate admin login endpoint). Not a regression for this iteration but worth documenting in /app/memory/test_credentials.md so future tests don't fail. Owner login (salon@bookslot.io) works correctly."
+      },
+      {
+        "endpoint": "POST /api/public/booking/{code}/rebook",
+        "issue": "Cleanup of test-created pending appointments via DELETE /api/appointments/{id} silently succeeds (no error) but is not asserted to actually remove. Suggest verifying via GET-after-DELETE in regression tests."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "All public/admin pages",
+        "issue": "Emergent preview platform 'Wake up servers' splash screen intercepts every non-/api HTML request, including /book/{slug}, /login, /admin, AND static assets like /bella-avatar.jpg (returns text/html instead of image/jpeg). Wake button click does not unblock within 180s in headless playwright. Frontend service IS running (supervisor RUNNING, pid 44). This is a platform/CDN-level interceptor, not an app bug.",
+        "affected_selectors": ["[data-testid='rebook-card']", "[data-testid='blast-availability']", "[data-testid='ai-assistant-button']", "all admin/public routes"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration19_rebook_clv_blast.py",
+    "/app/test_reports/pytest/iteration19.xml"
+  ],
+  "action_items": [
+    "(MAIN AGENT) Frontend UI verification could not be completed in this iteration due to the Emergent preview wake-up splash blocking all HTML routes. Ask the user to load the app once in their browser to warm it up, then re-trigger UI testing — OR perform a manual smoke test of: (a) /book/bella-hair-studio-d5d6d8 → complete booking → confirm RebookCard + 3 options + AI pill + custom-weeks input + rebook-confirm; (b) /settings → Booking Rules → VIP Threshold NumberField saves to /clv-settings; (c) /calendar → Crown icon on VIP appts + Fill My Day button on cancelled appts; (d) /clients → Crown badge + €X lifetime · Y visits text; (e) Bella avatar visible in floating button + sidebar pill + chat header.",
+    "(LOW) Document the super-admin login pathway in /app/memory/test_credentials.md (which endpoint, expected token shape) so future test runs don't have to skip the super-admin-forbidden test for the blast endpoint."
+  ],
+  "critical_code_review_comments": [
+    "server.py:3110 – /rebook-suggestions correctly handles cancelled bookings with 400 and missing booking with 404. Good null-safety on service/staff lookups via 'or {}' fallback. The set comprehension {4,6,8,ai_weeks} de-duplicates when ai_weeks already in {4,6,8}, so the contract may return 3 OR 4 options — frontend should not assume exactly 3. Test file accommodates 3-4 to match.",
+    "server.py:3151 – weeks validation 0<weeks<=26 is correct. timedelta(weeks=weeks) is robust.",
+    "server.py:3161 – conflict check uses tenant_id+staff_id+status$nin[cancelled] — correct, but does NOT also exclude completed; a completed past slot wouldn't conflict with a future timestamp anyway, so this is fine.",
+    "server.py:3175 – returns success=false with reason='slot_taken' on conflict (HTTP 200, not 4xx). Fronted must check `success`, not just status code.",
+    "server.py:3210 – blast-availability gates on user.role in [owner, admin] AND tenant_id presence — correct. Inserts a push_notifications doc + sets blasted_at — both verified.",
+    "server.py:3296 – DEFAULT_VIP_THRESHOLD_EUROS=500 hardcoded. _vip_threshold_for handles missing/zero settings correctly via 'or DEFAULT'.",
+    "server.py:3353 – PUT /clv-settings clamps with max(0, min(100000, threshold)). Good. But `float(body.get('vip_threshold_euros') or DEFAULT)` means a literal 0 is replaced by 500 — surprising but harmless because the endpoint clamps to >=0 and 0 is a valid threshold; recommend `body.get('vip_threshold_euros') if 'vip_threshold_euros' in body else DEFAULT` for cleaner semantics.",
+    "server.py:2024 – GET /clients does the lifetime aggregation with one Mongo aggregation per call — fine for small tenants but O(N) appointments per client lookup; consider a single $group aggregate by client_id for big tenants.",
+    "Test cleanup: my test creates a rebook appointment 13 weeks out and deletes it; recommend the production code add an idempotency key (e.g. one rebook per source confirmation_code per day) to avoid duplicate rebooks on double-tap."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration19_rebook_clv_blast.py"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 executed pass, 1 skipped non-blocking)",
+    "frontend": "0% executed — blocked by preview wake-up splash; cannot mount React app or fetch /bella-avatar.jpg in headless browser"
+  },
+  "test_credentials": {
+    "salon_owner": "salon@bookslot.io / Demo123! (works on /api/auth/login)",
+    "super_admin_login_unverified": "admin@bookslot.io / Admin123! returns 401 on /api/auth/login — likely a separate admin login route",
+    "demo_appointment_for_rebook_blast": "appt_151aaf879e3f"
+  },
+  "seed_data_creation": "Test temporarily set vip_threshold_euros to 750 then back to 500. Created and deleted one rebook appointment (13 weeks after appt_151aaf879e3f). Marked appt_151aaf879e3f with blasted_at via the blast endpoint — this timestamp persists; main agent may want to clear it before next demo if the demo expects no prior blast.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend contract for iteration 19 is fully covered by /app/backend/tests/test_iteration19_rebook_clv_blast.py — re-run as regression. Frontend testing was blocked by an Emergent preview wake-up splash. If you encounter the splash again: (1) Click 'Wake up servers' AND wait minimum 3 minutes (per the splash text), (2) Verify by curling https://<host>/bella-avatar.jpg and checking that content-type is image/jpeg (NOT text/html). If still text/html, the platform is gating the preview and UI tests cannot proceed in headless mode. Owner credentials salon@bookslot.io / Demo123! work for /api/auth/login. Super admin uses a different route — DO NOT assume /api/auth/login. Demo salon vip_threshold_euros was reset to 500.0 at the end of this run. Demo appt appt_151aaf879e3f now has a blasted_at timestamp set — clear it manually if a 'fresh' state is needed for the Fill My Day UI test (`db.appointments.update_one({appointment_id:'appt_151aaf879e3f'},{$unset:{blasted_at:''}})`).",
+  "rca_of_the_issue": "Frontend test failure RCA — preview wake-up splash. Reproduction: GET https://schedule-genius-1.preview.emergentagent.com/bella-avatar.jpg returns HTTP 200 with content-type=text/html (the splash) instead of image/jpeg. /api/* routes bypass the splash (pytest passes), but / and /book/* and /login serve the splash. Mitigation: warm up the preview by clicking 'Wake up servers' and waiting 3-5 minutes, OR have the user load the app in a real browser. Not an app bug — platform behaviour."
+}

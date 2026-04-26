@@ -15,6 +15,8 @@ const AIAdminAssistant = () => {
   const location = useLocation();
 
   const theme = getTheme(tenant?.industry);
+  const showBellaAvatar = theme.aiName === 'Bella';
+  const bellaSrc = '/bella-avatar.jpg';
 
   // Show on admin pages only
   const adminPaths = ['/dashboard', '/calendar', '/staff', '/reports', '/settings', '/no-show-shield'];
@@ -76,11 +78,18 @@ const AIAdminAssistant = () => {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-2xl z-[9999] ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
-        style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
+        className={`fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-2xl z-[9999] overflow-hidden ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
+        style={showBellaAvatar
+          ? { boxShadow: '0 8px 24px rgba(212,175,55,0.35), 0 0 0 2px rgba(212,175,55,0.4)' }
+          : { background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
         data-testid="ai-assistant-button"
       >
-        <Sparkles className="w-6 h-6" />
+        {showBellaAvatar
+          ? <img src={bellaSrc} alt="Bella" className="w-full h-full object-cover" />
+          : <Sparkles className="w-6 h-6 text-white" />}
+        {showBellaAvatar && (
+          <span className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white" />
+        )}
       </button>
 
       {/* Chat Panel */}
@@ -123,10 +132,12 @@ const AIAdminAssistant = () => {
             >
               {msg.role === 'assistant' && (
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white"
-                  style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
+                  className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center shrink-0 text-white"
+                  style={showBellaAvatar ? { boxShadow: '0 0 0 1.5px rgba(212,175,55,0.6)' } : { background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
+                  {showBellaAvatar
+                    ? <img src={bellaSrc} alt="Bella" className="w-full h-full object-cover" />
+                    : <Sparkles className="w-3.5 h-3.5" />}
                 </div>
               )}
               {msg.role === 'user' && (
@@ -149,10 +160,12 @@ const AIAdminAssistant = () => {
           {isTyping && (
             <div className="flex items-end gap-2">
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white"
-                style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
+                className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center shrink-0 text-white"
+                style={showBellaAvatar ? { boxShadow: '0 0 0 1.5px rgba(212,175,55,0.6)' } : { background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                {showBellaAvatar
+                  ? <img src={bellaSrc} alt="Bella" className="w-full h-full object-cover" />
+                  : <Sparkles className="w-3.5 h-3.5" />}
               </div>
               <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
                 <div className="flex items-center gap-2">

@@ -9,7 +9,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Checkbox } from '../../components/ui/checkbox';
 import { toast } from 'sonner';
-import { Plus, Search, User, Mail, Phone, Calendar, Edit2, Star, AlertCircle, Scissors, Trash2 } from 'lucide-react';
+import { Plus, Search, User, Mail, Phone, Calendar, Edit2, Star, AlertCircle, Scissors, Trash2, Crown } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 const ClientsPage = () => {
@@ -49,7 +49,7 @@ const ClientsPage = () => {
       
       let data = response.data.clients || [];
       if (filterVip) {
-        data = data.filter(c => c.is_vip);
+        data = data.filter(c => c.is_vip_effective || c.is_vip);
       }
       setClients(data);
     } catch (error) {
@@ -203,10 +203,10 @@ const ClientsPage = () => {
               onClick={() => viewClientDetail(client)}
               data-testid={`client-${client.client_id}`}
             >
-              {/* VIP Badge */}
-              {client.is_vip && (
-                <div className="absolute -top-2 -right-2 bg-yellow-500 text-white p-1 rounded-full">
-                  <Star className="w-4 h-4 fill-white" />
+              {/* VIP Badge — manual or auto via lifetime spend threshold */}
+              {(client.is_vip || client.is_vip_effective) && (
+                <div className="absolute -top-2 -right-2 p-1.5 rounded-full" style={{ background: '#D4AF37', color: '#0A0A0A', boxShadow: '0 4px 12px rgba(212,175,55,0.4)' }}>
+                  <Crown className="w-4 h-4" fill="#0A0A0A" strokeWidth={1.8} />
                 </div>
               )}
 
@@ -216,8 +216,14 @@ const ClientsPage = () => {
                     <User className="w-5 h-5 text-[#666666]" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[#0A0A0A]">{client.name}</h3>
-                    {client.is_vip && <span className="text-xs text-yellow-600 font-medium">VIP Client</span>}
+                    <h3 className="font-semibold text-[#0A0A0A] flex items-center gap-1">
+                      {client.name}
+                    </h3>
+                    {(client.is_vip || client.is_vip_effective) && (
+                      <span className="text-[10px] tracking-[0.15em] uppercase font-semibold" style={{ color: '#A8842A' }}>
+                        {client.is_vip_effective && !client.is_vip ? 'Auto VIP' : 'VIP Client'}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -237,7 +243,7 @@ const ClientsPage = () => {
                 )}
                 <div className="flex items-center gap-2 text-[#666666]">
                   <Calendar className="w-4 h-4" />
-                  {client.total_appointments || 0} visits • €{(client.total_spent || 0).toFixed(0)} spent
+                  {client.visit_count ?? client.total_appointments ?? 0} visits • €{Math.round(client.lifetime_value ?? client.total_spent ?? 0)} lifetime
                 </div>
               </div>
 

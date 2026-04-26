@@ -125,7 +125,11 @@ const TenantLayout = ({ children, title }) => {
           }}
         >
           <div className="flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5" style={{ color: brandPrimary }} strokeWidth={1.5} />
+            {industryTheme.aiName === 'Bella' ? (
+              <img src="/bella-avatar.jpg" alt="Bella" className="w-6 h-6 rounded-full object-cover" style={{ boxShadow: `0 0 0 1.5px ${brandPrimary}` }} />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" style={{ color: brandPrimary }} strokeWidth={1.5} />
+            )}
             <span className="text-[11px] font-medium tracking-wide" style={{ color: brandPrimary }}>{industryTheme.aiName} AI Active</span>
             <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500" />
           </div>

@@ -9,7 +9,7 @@ import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Plus, X, Check, Phone, Zap, Repeat, StickyNote, Save, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Check, Phone, Zap, Repeat, StickyNote, Save, CalendarDays, Crown, Megaphone } from 'lucide-react';
 import { format, addDays, subDays, addWeeks, subWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO, addMinutes, differenceInMinutes, isToday } from 'date-fns';
 
 const BLOCK_COLORS = [
@@ -267,16 +267,34 @@ const CalendarPage = () => {
           </DialogContent>
         </Dialog>
 
-        <ApptDetail appt={selectedAppt} staff={staff} services={services} onClose={() => setSelectedAppt(null)} onUpdate={handleUpdateAppt} onComplete={handleComplete} onCancel={handleCancelAppt} onRefund={handleRefundDeposit} />
+        <ApptDetail appt={selectedAppt} staff={staff} services={services} token={token} onClose={() => setSelectedAppt(null)} onUpdate={handleUpdateAppt} onComplete={handleComplete} onCancel={handleCancelAppt} onRefund={handleRefundDeposit} />
       </div>
     </TenantLayout>
   );
 };
 
-const ApptDetail = ({ appt, staff, services, onClose, onUpdate, onComplete, onCancel, onRefund }) => {
+const ApptDetail = ({ appt, staff, services, token, onClose, onUpdate, onComplete, onCancel, onRefund }) => {
   const [form, setForm] = useState({ service_id: '', staff_id: '', client_name: '', client_phone: '', client_email: '', date: '', time: '', notes: '' });
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [blasting, setBlasting] = useState(false);
+
+  const handleBlast = async () => {
+    if (!appt) return;
+    setBlasting(true);
+    try {
+      const r = await axios.post(`${API}/appointments/${appt.appointment_id}/blast-availability`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      if (r.data.subscribers_total === 0) {
+        toast.info('No clients have opted in to push notifications yet.');
+      } else {
+        toast.success(`Sent to ${r.data.sent_count} of ${r.data.subscribers_total} client${r.data.subscribers_total === 1 ? '' : 's'} ✨`);
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to blast');
+    } finally {
+      setBlasting(false);
+    }
+  };
 
   useEffect(() => {
     if (!appt) return;
@@ -333,8 +351,16 @@ const ApptDetail = ({ appt, staff, services, onClose, onUpdate, onComplete, onCa
     <Dialog open={!!appt} onOpenChange={() => onClose()}>
       <DialogContent className="sm:max-w-md rounded-3xl border-[#F0EBE6] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-['Cormorant_Garamond'] text-2xl font-light">Edit Booking</DialogTitle>
+          <DialogTitle className="font-['Cormorant_Garamond'] text-2xl font-light flex items-center gap-2">
+            {appt.client_is_vip && <Crown className="w-5 h-5" style={{ color: '#D4AF37' }} fill="#D4AF37" strokeWidth={1.5} />}
+            Edit Booking
+          </DialogTitle>
           <DialogDescription className="text-[#9E948F] text-sm flex items-center gap-2 flex-wrap">
+            {appt.client_is_vip && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold" style={{ background: 'rgba(212,175,55,0.18)', color: '#A8842A' }}>
+                VIP · €{Math.round(appt.client_lifetime_value || 0)} lifetime
+              </span>
+            )}
             {appt.status === 'pending' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8C5C8]/40 text-[#B8868B] uppercase tracking-wider">Pending</span>}
             {appt.status === 'pending_payment' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FFE5B4] text-[#A06A1B] uppercase tracking-wider">Awaiting Payment</span>}
             {appt.status === 'completed' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#C8D5C8]/40 text-[#5F7A5F] uppercase tracking-wider">Completed</span>}
@@ -342,6 +368,7 @@ const ApptDetail = ({ appt, staff, services, onClose, onUpdate, onComplete, onCa
             {appt.payment_status === 'paid' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#C8D5C8]/40 text-[#5F7A5F] uppercase tracking-wider">Deposit €{appt.deposit_amount} Paid</span>}
             {appt.payment_status === 'refunded' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E5E5E5] text-[#706B68] uppercase tracking-wider">Refunded</span>}
             {appt.repeat_weeks ? <span className="flex items-center gap-1"><Repeat className="w-3 h-3" />Every {appt.repeat_weeks} week{appt.repeat_weeks > 1 ? 's' : ''}</span> : null}
+            {appt.blasted_at && <span className="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1" style={{ background: 'rgba(212,175,55,0.15)', color: '#A8842A' }}><Megaphone className="w-3 h-3" />Blasted {format(parseISO(appt.blasted_at), 'h:mm a')}</span>}
           </DialogDescription>
         </DialogHeader>
 
@@ -400,6 +427,19 @@ const ApptDetail = ({ appt, staff, services, onClose, onUpdate, onComplete, onCa
 
           <div className="flex gap-2 pt-3 flex-wrap">
             <Button variant="outline" size="sm" className="flex-1 h-10 rounded-full border-[#E5DFD9] text-[#706B68] min-w-[90px]" onClick={onClose}>Close</Button>
+            {appt.status === 'cancelled' && !appt.blasted_at && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-10 rounded-full gap-1 min-w-[140px]"
+                style={{ borderColor: 'rgba(212,175,55,0.5)', color: '#A8842A' }}
+                onClick={handleBlast}
+                disabled={blasting}
+                data-testid="blast-availability"
+              >
+                <Megaphone className="w-3.5 h-3.5" /> {blasting ? 'Blasting…' : 'Fill My Day'}
+              </Button>
+            )}
             {appt.status === 'confirmed' && <Button size="sm" variant="outline" className="h-10 rounded-full border-[#8FA68F]/40 text-[#5F7A5F] gap-1 min-w-[100px]" onClick={() => onComplete(appt.appointment_id)} data-testid="complete-appt"><Check className="w-3.5 h-3.5" /> Complete</Button>}
             {appt.payment_status === 'paid' && onRefund && <Button size="sm" variant="outline" className="h-10 rounded-full border-[#E5DFD9] text-[#A06A1B] hover:bg-[#FFF6E5] min-w-[110px]" onClick={() => onRefund(appt.appointment_id)} data-testid="refund-deposit">Refund deposit</Button>}
             {appt.status !== 'cancelled' && <Button size="sm" variant="outline" className="h-10 rounded-full border-[#E5DFD9] text-[#B86868] hover:bg-[#FAF0F0] min-w-[90px]" onClick={() => onCancel(appt.appointment_id)} data-testid="cancel-appt">Cancel</Button>}
@@ -488,7 +528,10 @@ const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApp
                     onClick={(e) => { e.stopPropagation(); onApptClick(a); }}
                     data-testid={`appt-${a.appointment_id}`}
                   >
-                    <p className="text-[10px] font-semibold truncate" style={{ color: c.text }}>{a.client_name}</p>
+                    <p className="text-[10px] font-semibold truncate flex items-center gap-1" style={{ color: c.text }}>
+                      {a.client_is_vip && <Crown className="w-2.5 h-2.5 shrink-0" style={{ color: '#D4AF37' }} fill="#D4AF37" strokeWidth={1.5} />}
+                      <span className="truncate">{a.client_name}</span>
+                    </p>
                     <p className="text-[9px] truncate" style={{ color: c.text + '99' }}>{a.service_name}</p>
                   </div>
                 );

@@ -486,6 +486,14 @@ const PublicBookingPage = () => {
               </div>
             </div>
 
+            {/* Instant Rebooking card — AI-recommended interval + manual options */}
+            <RebookCard
+              confirmationCode={confirmation.confirmation_code}
+              brandPrimary={brandPrimary}
+              brandSecondary={brandSecondary}
+              isDark={isDark}
+            />
+
             {/* Optional client account upsell */}
             <ClientAccountUpsell
               confirmationCode={confirmation.confirmation_code}
@@ -680,6 +688,152 @@ const ClientAccountUpsell = ({ confirmationCode, clientEmail, clientName, brandP
           <Link to="/my/bookings" className="text-xs font-medium hover:underline" style={{ color: brandPrimary }} data-testid="my-bookings-link">View my bookings →</Link>
         </div>
       </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// Instant Rebooking — shown after a successful booking. Suggests an AI-picked
+// interval and offers manual 4/6/8-week alternatives. One tap creates a
+// follow-up appointment at the same time on the future date.
+// ============================================================================
+const RebookCard = ({ confirmationCode, brandPrimary, brandSecondary, isDark }) => {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(null);
+  const [chosenWeeks, setChosenWeeks] = useState(null);
+  const [customWeeks, setCustomWeeks] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(null); // { weeks, next_date }
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const r = await axios.get(`${API}/public/booking/${confirmationCode}/rebook-suggestions`);
+        setData(r.data);
+        setChosenWeeks(r.data.ai_suggestion_weeks);
+      } catch {
+        setData({ options: [] });
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [confirmationCode]);
+
+  const submit = async () => {
+    const weeks = chosenWeeks === 'custom' ? parseInt(customWeeks, 10) : chosenWeeks;
+    if (!weeks || weeks < 1 || weeks > 26) { toast.error('Pick between 1 and 26 weeks'); return; }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const r = await axios.post(`${API}/public/booking/${confirmationCode}/rebook`, { weeks });
+      if (r.data.success) {
+        setDone({ weeks, next_date: r.data.start_time });
+        toast.success(`Locked in your next visit in ${weeks} weeks ✨`);
+      } else {
+        setError(r.data.reason === 'slot_taken' ? "That time is taken. Try a different interval." : 'Could not rebook');
+      }
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Could not rebook');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading || !data || !data.options?.length) return null;
+  const cardBg = isDark ? '#141414' : '#fff';
+  const accentBg = brandPrimary + '18';
+
+  if (done) {
+    return (
+      <div
+        className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 max-w-md mx-auto mt-6 text-left"
+        style={{ background: cardBg, borderLeft: `3px solid ${brandPrimary}` }}
+        data-testid="rebook-done-card"
+      >
+        <p className="text-[11px] tracking-[0.25em] uppercase font-semibold mb-2" style={{ color: brandPrimary }}>Next visit booked</p>
+        <p className="font-['Cormorant_Garamond'] text-2xl font-light">{format(new Date(done.next_date), 'EEEE, MMMM d')}</p>
+        <p className="text-xs text-[#9E948F] mt-1">at {format(new Date(done.next_date), 'h:mm a')} — confirmation will be emailed when approved.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 max-w-md mx-auto mt-6 text-left"
+      style={{ background: cardBg, borderLeft: `3px solid ${brandPrimary}` }}
+      data-testid="rebook-card"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <Sparkles className="w-4 h-4" strokeWidth={1.5} style={{ color: brandPrimary }} />
+        <p className="text-[11px] tracking-[0.25em] uppercase font-semibold" style={{ color: brandPrimary }}>Plan your next visit</p>
+      </div>
+      <p className="font-['Cormorant_Garamond'] text-2xl font-light mb-1">Rebook in advance?</p>
+      <p className="text-xs text-[#9E948F] mb-4">Bella suggests <strong style={{ color: brandPrimary }}>{data.ai_suggestion_weeks} weeks</strong> based on your treatment. Lock it in now while {data.staff_name} has the slot.</p>
+
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {data.options.map((opt) => {
+          const isSel = chosenWeeks === opt.weeks;
+          return (
+            <button
+              key={opt.weeks}
+              type="button"
+              onClick={() => setChosenWeeks(opt.weeks)}
+              className="relative py-3 rounded-2xl text-center transition-all border-2"
+              style={{
+                background: isSel ? brandPrimary : accentBg,
+                color: isSel ? (isDark ? '#0A0A0A' : '#fff') : 'inherit',
+                borderColor: isSel ? brandPrimary : 'transparent',
+              }}
+              data-testid={`rebook-option-${opt.weeks}`}
+            >
+              {opt.is_ai_pick && (
+                <span className="absolute -top-1.5 -right-1.5 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full font-bold" style={{ background: brandPrimary, color: isDark ? '#0A0A0A' : '#fff' }}>AI</span>
+              )}
+              <p className="font-mono text-sm font-semibold">{opt.weeks}w</p>
+              <p className="text-[10px] mt-0.5 opacity-80">{opt.display.split(',')[0]}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-2 mb-3">
+        <button
+          type="button"
+          onClick={() => setChosenWeeks('custom')}
+          className="text-[10px] uppercase tracking-wider font-medium hover:underline"
+          style={{ color: brandPrimary }}
+        >
+          Custom interval
+        </button>
+        {chosenWeeks === 'custom' && (
+          <Input
+            type="number"
+            min="1"
+            max="26"
+            placeholder="e.g. 10"
+            value={customWeeks}
+            onChange={(e) => setCustomWeeks(e.target.value)}
+            className="h-8 w-24 text-xs rounded-full"
+            data-testid="rebook-custom-weeks"
+          />
+        )}
+        {chosenWeeks === 'custom' && customWeeks && <span className="text-[10px] text-[#9E948F]">weeks</span>}
+      </div>
+
+      {error && <p className="text-xs mb-2" style={{ color: brandPrimary }}>{error}</p>}
+
+      <button
+        type="button"
+        onClick={submit}
+        disabled={submitting || !chosenWeeks}
+        className="w-full h-11 rounded-full text-sm font-medium transition-all disabled:opacity-60 hover:shadow-lg"
+        style={{ backgroundColor: brandPrimary, color: isDark ? '#0A0A0A' : '#fff' }}
+        data-testid="rebook-confirm"
+      >
+        {submitting ? 'Booking…' : 'Book my next visit'}
+      </button>
     </div>
   );
 };

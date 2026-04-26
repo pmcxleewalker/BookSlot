@@ -329,6 +329,7 @@ class ServiceBase(BaseModel):
     visible_online: bool = True
     add_ons: Optional[List[Dict[str, Any]]] = []  # [{name, price, duration}]
     staff_ids: Optional[List[str]] = []  # Which staff can perform this service
+    default_rebook_weeks: Optional[int] = None  # Suggest rebook every X weeks (e.g. 6 for cuts, 4 for colour)
     is_active: bool = True
 
 class ServiceCreate(ServiceBase):
@@ -2020,7 +2021,7 @@ async def delete_resource(resource_id: str, user: Dict = Depends(get_current_use
 
 @api_router.get("/clients")
 async def get_clients(user: Dict = Depends(get_current_user), search: Optional[str] = None):
-    """Get all clients for tenant"""
+    """Get all clients for tenant with lifetime value + VIP status."""
     if not user.get("tenant_id"):
         return {"clients": []}
     
@@ -2033,7 +2034,57 @@ async def get_clients(user: Dict = Depends(get_current_user), search: Optional[s
         ]
     
     clients = await db.clients.find(query, {"_id": 0}).to_list(500)
-    return {"clients": clients}
+    
+    # Compute lifetime value + VIP flag for each client (single aggregation across appointments)
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0}) or {}
+    threshold = _vip_threshold_for(tenant)
+    # Pull all confirmed/completed appointments once to avoid N+1
+    appts = await db.appointments.find({
+        "tenant_id": user["tenant_id"],
+        "status": {"$in": ["confirmed", "completed"]},
+    }, {"_id": 0, "client_id": 1, "client_email": 1, "client_phone": 1, "service_id": 1, "total_price": 1, "start_time": 1}).to_list(5000)
+    # Pre-load services for price fallback
+    services_map = {s["service_id"]: float(s.get("price") or 0) for s in await db.services.find({"tenant_id": user["tenant_id"]}, {"_id": 0, "service_id": 1, "price": 1}).to_list(500)}
+
+    # Group totals by client_id, email (lower), phone
+    by_id: Dict[str, Dict[str, Any]] = {}
+    by_email: Dict[str, Dict[str, Any]] = {}
+    by_phone: Dict[str, Dict[str, Any]] = {}
+    def bucket(d: Dict[str, Dict[str, Any]], key: Optional[str], price: float, when: Optional[str]):
+        if not key:
+            return
+        b = d.setdefault(key, {"total": 0.0, "count": 0, "last": None})
+        b["total"] += price
+        b["count"] += 1
+        if when and (b["last"] is None or when > b["last"]):
+            b["last"] = when
+
+    for a in appts:
+        price = a.get("total_price")
+        if price is None and a.get("service_id"):
+            price = services_map.get(a["service_id"], 0.0)
+        try:
+            price = float(price or 0)
+        except Exception:
+            price = 0.0
+        bucket(by_id, a.get("client_id"), price, a.get("start_time"))
+        if a.get("client_email"):
+            bucket(by_email, a["client_email"].lower(), price, a.get("start_time"))
+        bucket(by_phone, a.get("client_phone"), price, a.get("start_time"))
+
+    for c in clients:
+        agg = (by_id.get(c.get("client_id"))
+               or (by_email.get((c.get("email") or "").lower()) if c.get("email") else None)
+               or (by_phone.get(c.get("phone")) if c.get("phone") else None)
+               or {"total": 0.0, "count": 0, "last": None})
+        c["lifetime_value"] = round(agg["total"], 2)
+        c["visit_count"] = agg["count"]
+        c["last_visit_at"] = agg["last"]
+        c["is_vip_auto"] = c["lifetime_value"] >= threshold
+        # Effective VIP = manual OR auto
+        c["is_vip_effective"] = bool(c.get("is_vip")) or c["is_vip_auto"]
+
+    return {"clients": clients, "vip_threshold_euros": threshold}
 
 @api_router.post("/clients")
 async def create_client(client_data: ClientCreate, user: Dict = Depends(get_current_user)):
@@ -2117,13 +2168,60 @@ async def get_appointments(
     # (public bookings store service_id only; admin-created ones already include a snapshot).
     service_map = {s["service_id"]: s for s in await db.services.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(500)}
     staff_map = {s["staff_id"]: s for s in await db.staff.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(500)}
+    # VIP enrichment — single bulk lookup, no N+1
+    tenant_doc = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0}) or {}
+    vip_threshold = _vip_threshold_for(tenant_doc)
+    clients_list = await db.clients.find({"tenant_id": user["tenant_id"]}, {"_id": 0, "client_id": 1, "email": 1, "phone": 1, "is_vip": 1}).to_list(2000)
+    client_by_id = {c["client_id"]: c for c in clients_list}
+    client_by_email = {(c.get("email") or "").lower(): c for c in clients_list if c.get("email")}
+    client_by_phone = {c.get("phone"): c for c in clients_list if c.get("phone")}
+    # Compute LTV per client (from confirmed/completed appts) once
+    confirmed_appts = await db.appointments.find({
+        "tenant_id": user["tenant_id"],
+        "status": {"$in": ["confirmed", "completed"]}
+    }, {"_id": 0, "client_id": 1, "client_email": 1, "client_phone": 1, "service_id": 1, "total_price": 1}).to_list(5000)
+    service_prices = {sid: float(svc.get("price") or 0) for sid, svc in service_map.items()}
+    ltv_by_id: Dict[str, float] = {}
+    ltv_by_email: Dict[str, float] = {}
+    ltv_by_phone: Dict[str, float] = {}
+    for a in confirmed_appts:
+        price = a.get("total_price")
+        if price is None and a.get("service_id"):
+            price = service_prices.get(a["service_id"], 0.0)
+        try:
+            price = float(price or 0)
+        except Exception:
+            price = 0.0
+        if a.get("client_id"):
+            ltv_by_id[a["client_id"]] = ltv_by_id.get(a["client_id"], 0.0) + price
+        if a.get("client_email"):
+            ltv_by_email[a["client_email"].lower()] = ltv_by_email.get(a["client_email"].lower(), 0.0) + price
+        if a.get("client_phone"):
+            ltv_by_phone[a["client_phone"]] = ltv_by_phone.get(a["client_phone"], 0.0) + price
+
     for appt in appointments:
         if not appt.get("service_name"):
             appt["service_name"] = service_map.get(appt.get("service_id"), {}).get("name", "Service")
         if not appt.get("staff_name"):
             appt["staff_name"] = staff_map.get(appt.get("staff_id"), {}).get("name", "")
+        # VIP flag: union of (manual is_vip on client doc) + (auto LTV >= threshold)
+        manual_vip = False
+        client_record = None
+        if appt.get("client_id") and appt["client_id"] in client_by_id:
+            client_record = client_by_id[appt["client_id"]]
+        elif appt.get("client_email") and appt["client_email"].lower() in client_by_email:
+            client_record = client_by_email[appt["client_email"].lower()]
+        elif appt.get("client_phone") and appt["client_phone"] in client_by_phone:
+            client_record = client_by_phone[appt["client_phone"]]
+        if client_record:
+            manual_vip = bool(client_record.get("is_vip"))
+        ltv = (ltv_by_id.get(appt.get("client_id") or "", 0.0)
+               or (ltv_by_email.get((appt.get("client_email") or "").lower(), 0.0) if appt.get("client_email") else 0.0)
+               or (ltv_by_phone.get(appt.get("client_phone") or "", 0.0) if appt.get("client_phone") else 0.0))
+        appt["client_lifetime_value"] = round(float(ltv), 2)
+        appt["client_is_vip"] = manual_vip or (ltv >= vip_threshold)
     
-    return {"appointments": appointments}
+    return {"appointments": appointments, "vip_threshold_euros": vip_threshold}
 
 @api_router.post("/appointments")
 async def create_appointment(appt_data: AppointmentCreate, user: Dict = Depends(get_current_user)):
@@ -2983,6 +3081,310 @@ async def get_client_bookings(user: Dict = Depends(get_current_user)):
         (upcoming if (a.get("start_time", "") >= now_iso and a.get("status") not in ["cancelled", "completed"]) else past).append(a)
     
     return {"upcoming": upcoming, "past": past}
+
+
+# ================== INSTANT REBOOKING ==================
+# After a booking is confirmed, suggest the client's next visit (4/6/8 weeks).
+# AI-recommended interval comes from the service's default_rebook_weeks (set
+# by the salon owner) or a heuristic on service name + duration.
+
+def _ai_suggest_rebook_weeks(service: Dict[str, Any]) -> int:
+    """Lightweight heuristic — owner-set default wins; otherwise rule-based."""
+    if service.get("default_rebook_weeks"):
+        return int(service["default_rebook_weeks"])
+    name = (service.get("name") or "").lower()
+    duration = int(service.get("duration") or 30)
+    # Colour / highlights / balayage usually 4-6 weeks
+    if any(k in name for k in ["colour", "color", "balayage", "highlight", "tint", "root"]):
+        return 5
+    # Cut & blow-dry / restyle ~6-8 weeks
+    if any(k in name for k in ["cut", "trim", "restyle", "fringe"]):
+        return 6
+    # Treatments / longer services ~4 weeks
+    if duration >= 90:
+        return 4
+    # Default
+    return 6
+
+
+@api_router.get("/public/booking/{confirmation_code}/rebook-suggestions")
+async def get_rebook_suggestions(confirmation_code: str):
+    """Return AI-recommended + manual rebook interval options for a confirmed booking."""
+    appt = await db.appointments.find_one({"appointment_id": confirmation_code}, {"_id": 0})
+    if not appt:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if appt.get("status") == "cancelled":
+        raise HTTPException(status_code=400, detail="Cancelled bookings cannot be rebooked")
+    service = await db.services.find_one({"service_id": appt.get("service_id")}, {"_id": 0}) or {}
+    staff = await db.staff.find_one({"staff_id": appt.get("staff_id")}, {"_id": 0}) or {}
+    ai_weeks = _ai_suggest_rebook_weeks(service)
+    try:
+        anchor = datetime.fromisoformat(appt["start_time"].replace("Z", "+00:00")) if isinstance(appt["start_time"], str) else appt["start_time"]
+    except Exception:
+        anchor = datetime.now(timezone.utc)
+    options = []
+    for weeks in sorted({4, 6, 8, ai_weeks}):
+        next_dt = anchor + timedelta(weeks=weeks)
+        options.append({
+            "weeks": weeks,
+            "is_ai_pick": weeks == ai_weeks,
+            "next_date": next_dt.date().isoformat(),
+            "display": next_dt.strftime("%A, %B %-d") if hasattr(next_dt, "strftime") else next_dt.isoformat(),
+        })
+    return {
+        "ai_suggestion_weeks": ai_weeks,
+        "options": options,
+        "service_name": service.get("name"),
+        "staff_name": staff.get("name"),
+        "original_start_time": appt.get("start_time"),
+    }
+
+
+@api_router.post("/public/booking/{confirmation_code}/rebook")
+async def public_rebook(confirmation_code: str, body: Dict[str, Any]):
+    """Create a follow-up appointment X weeks after the original booking
+    (same staff, same service, same time-of-day)."""
+    appt = await db.appointments.find_one({"appointment_id": confirmation_code}, {"_id": 0})
+    if not appt:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    weeks = int(body.get("weeks") or 0)
+    if weeks <= 0 or weeks > 26:
+        raise HTTPException(status_code=400, detail="weeks must be between 1 and 26")
+    try:
+        start = datetime.fromisoformat(appt["start_time"].replace("Z", "+00:00")) if isinstance(appt["start_time"], str) else appt["start_time"]
+        end = datetime.fromisoformat(appt["end_time"].replace("Z", "+00:00")) if isinstance(appt["end_time"], str) else appt["end_time"]
+    except Exception:
+        raise HTTPException(status_code=400, detail="Original booking timing is invalid")
+    new_start = start + timedelta(weeks=weeks)
+    new_end = end + timedelta(weeks=weeks)
+    # Conflict check on the same staff
+    conflict = await db.appointments.find_one({
+        "tenant_id": appt["tenant_id"],
+        "staff_id": appt["staff_id"],
+        "status": {"$nin": ["cancelled"]},
+        "$or": [
+            {"start_time": {"$lt": new_end.isoformat(), "$gte": new_start.isoformat()}},
+            {"end_time": {"$gt": new_start.isoformat(), "$lte": new_end.isoformat()}},
+            {"$and": [
+                {"start_time": {"$lte": new_start.isoformat()}},
+                {"end_time": {"$gte": new_end.isoformat()}},
+            ]}
+        ]
+    }, {"_id": 0})
+    if conflict:
+        return {"success": False, "reason": "slot_taken", "conflict_with": conflict.get("appointment_id")}
+    new_appt = {
+        "appointment_id": f"appt_{uuid.uuid4().hex[:12]}",
+        "tenant_id": appt["tenant_id"],
+        "service_id": appt.get("service_id"),
+        "service_name": appt.get("service_name"),
+        "staff_id": appt.get("staff_id"),
+        "staff_name": appt.get("staff_name"),
+        "client_id": appt.get("client_id"),
+        "client_name": appt.get("client_name"),
+        "client_email": appt.get("client_email"),
+        "client_phone": appt.get("client_phone"),
+        "start_time": new_start.isoformat(),
+        "end_time": new_end.isoformat(),
+        "status": "pending",
+        "notes": "Auto-rebook from " + confirmation_code,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "rebook_of": confirmation_code,
+        "deposit_paid": False,
+    }
+    await db.appointments.insert_one({**new_appt})
+    return {
+        "success": True,
+        "appointment_id": new_appt["appointment_id"],
+        "start_time": new_appt["start_time"],
+        "end_time": new_appt["end_time"],
+    }
+
+
+# ================== FILL MY DAY (last-minute push blast) ==================
+# When a salon has an open same-day slot, blast it to opted-in clients via
+# web push. Clients tap the notification → deep-link to the public booking
+# page with the slot pre-filled.
+
+@api_router.post("/appointments/{appointment_id}/blast-availability")
+async def blast_availability(appointment_id: str, user: Dict = Depends(get_current_user)):
+    """Send a 'Fill My Day' push blast for the open slot left by this appointment
+    (typically used after a same-day cancellation). Sends to all push
+    subscribers tied to this tenant."""
+    if not user.get("tenant_id") or user.get("role") not in ["owner", "admin"]:
+        raise HTTPException(status_code=403, detail="Only the salon owner can blast availability")
+    appt = await db.appointments.find_one({"appointment_id": appointment_id, "tenant_id": user["tenant_id"]}, {"_id": 0})
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0}) or {}
+    service = await db.services.find_one({"service_id": appt.get("service_id")}, {"_id": 0}) or {}
+
+    try:
+        start = datetime.fromisoformat(appt["start_time"].replace("Z", "+00:00")) if isinstance(appt["start_time"], str) else appt["start_time"]
+        time_label = start.strftime("%-I:%M %p")
+        date_label = start.strftime("%A %-d %b")
+    except Exception:
+        time_label, date_label = "today", ""
+
+    business = tenant.get("name", "your salon")
+    slug = tenant.get("booking_url_slug", "")
+    deep_link = f"/book/{slug}?prefill_service={appt.get('service_id', '')}"
+
+    payload = {
+        "title": f"✨ {business}: opening at {time_label}",
+        "body": f"{date_label} — {service.get('name', 'a slot')} just opened up. Tap to grab it.",
+        "icon": "/bella-avatar.jpg",
+        "tag": f"fillmyday-{appointment_id}",
+        "data": {"url": deep_link, "appointment_id": appointment_id, "kind": "fill_my_day"},
+    }
+
+    # Find all push subscribers for this tenant.
+    subs = await db.push_subscriptions.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(2000)
+    sent_count = 0
+    failed_count = 0
+    if WEBPUSH_AVAILABLE:
+        vapid_private = os.environ.get("VAPID_PRIVATE_KEY", "")
+        vapid_email = os.environ.get("VAPID_CLAIM_EMAIL", "mailto:admin@bookslot.io")
+        if vapid_private:
+            for sub in subs:
+                if not sub.get("endpoint"):
+                    continue
+                try:
+                    import json as json_mod
+                    webpush(
+                        subscription_info={"endpoint": sub["endpoint"], "keys": sub.get("keys", {})},
+                        data=json_mod.dumps(payload),
+                        vapid_private_key=vapid_private,
+                        vapid_claims={"sub": vapid_email}
+                    )
+                    sent_count += 1
+                except WebPushException as e:
+                    failed_count += 1
+                    if e.response and e.response.status_code in [404, 410]:
+                        await db.push_subscriptions.delete_one({"endpoint": sub["endpoint"]})
+
+    await db.push_notifications.insert_one({
+        "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
+        "tenant_id": user["tenant_id"],
+        "appointment_id": appointment_id,
+        "kind": "fill_my_day",
+        "payload": payload,
+        "sent_count": sent_count,
+        "failed_count": failed_count,
+        "subscribers_total": len(subs),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    await db.appointments.update_one(
+        {"appointment_id": appointment_id, "tenant_id": user["tenant_id"]},
+        {"$set": {"blasted_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+    return {
+        "subscribers_total": len(subs),
+        "sent_count": sent_count,
+        "failed_count": failed_count,
+        "deep_link": deep_link,
+    }
+
+
+# ================== CLIENT LIFETIME VALUE / VIP TAGGING ==================
+# CLV = sum of total_price across confirmed/completed appointments.
+# VIP = lifetime_value >= tenant.settings.vip_threshold_euros (default €500).
+
+DEFAULT_VIP_THRESHOLD_EUROS = 500.0
+
+def _vip_threshold_for(tenant: Dict[str, Any]) -> float:
+    try:
+        return float((tenant.get("settings") or {}).get("vip_threshold_euros") or DEFAULT_VIP_THRESHOLD_EUROS)
+    except Exception:
+        return DEFAULT_VIP_THRESHOLD_EUROS
+
+
+async def _compute_client_ltv(tenant_id: str, client_id: Optional[str], client_email: Optional[str], client_phone: Optional[str]) -> Dict[str, Any]:
+    """Aggregate confirmed/completed appointments into lifetime stats. Falls
+    back to email/phone match when client_id isn't set on older bookings."""
+    or_clauses = []
+    if client_id:
+        or_clauses.append({"client_id": client_id})
+    if client_email:
+        or_clauses.append({"client_email": {"$regex": f"^{client_email}$", "$options": "i"}})
+    if client_phone:
+        or_clauses.append({"client_phone": client_phone})
+    if not or_clauses:
+        return {"lifetime_value": 0.0, "visit_count": 0, "last_visit": None}
+    cursor = db.appointments.find({
+        "tenant_id": tenant_id,
+        "status": {"$in": ["confirmed", "completed"]},
+        "$or": or_clauses,
+    }, {"_id": 0, "total_price": 1, "service_id": 1, "start_time": 1})
+    total = 0.0
+    count = 0
+    last_visit = None
+    service_prices: Dict[str, float] = {}
+    async for a in cursor:
+        price = a.get("total_price")
+        if price is None:
+            sid = a.get("service_id")
+            if sid and sid not in service_prices:
+                svc = await db.services.find_one({"service_id": sid}, {"_id": 0}) or {}
+                service_prices[sid] = float(svc.get("price") or 0)
+            price = service_prices.get(sid, 0.0) if sid else 0.0
+        try:
+            total += float(price or 0)
+        except Exception:
+            pass
+        count += 1
+        st = a.get("start_time")
+        if st and (last_visit is None or st > last_visit):
+            last_visit = st
+    return {"lifetime_value": round(total, 2), "visit_count": count, "last_visit": last_visit}
+
+
+@api_router.get("/tenants/me/clv-settings")
+async def get_clv_settings(user: Dict = Depends(get_current_user)):
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0}) or {}
+    return {"vip_threshold_euros": _vip_threshold_for(tenant)}
+
+
+@api_router.put("/tenants/me/clv-settings")
+async def update_clv_settings(body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    try:
+        threshold = float(body.get("vip_threshold_euros") or DEFAULT_VIP_THRESHOLD_EUROS)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid threshold")
+    threshold = max(0.0, min(threshold, 100000.0))
+    await db.tenants.update_one(
+        {"tenant_id": user["tenant_id"]},
+        {"$set": {"settings.vip_threshold_euros": threshold, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"vip_threshold_euros": threshold}
+
+
+@api_router.get("/clients/{client_id}/lifetime-stats")
+async def get_client_lifetime_stats(client_id: str, user: Dict = Depends(get_current_user)):
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    client = await db.clients.find_one({"client_id": client_id, "tenant_id": user["tenant_id"]}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0}) or {}
+    threshold = _vip_threshold_for(tenant)
+    ltv = await _compute_client_ltv(user["tenant_id"], client_id, client.get("email"), client.get("phone"))
+    avg_spend = round(ltv["lifetime_value"] / ltv["visit_count"], 2) if ltv["visit_count"] else 0.0
+    return {
+        **ltv,
+        "average_spend": avg_spend,
+        "is_vip": ltv["lifetime_value"] >= threshold,
+        "vip_threshold_euros": threshold,
+        "manual_vip": bool(client.get("is_vip")),
+    }
+
 
 # ================== STRIPE PAYMENTS (Deposits via Stripe Connect) ==================
 # Each tenant connects their OWN Stripe account (Stripe Connect Standard).

@@ -122,6 +122,13 @@ const SettingsPage = () => {
     } catch {}
   };
 
+  const fetchVipThreshold = async () => {
+    try {
+      const r = await axios.get(`${API}/tenants/me/clv-settings`, { headers: { Authorization: `Bearer ${token}` } });
+      setVipThreshold(r.data.vip_threshold_euros ?? 500);
+    } catch {}
+  };
+
   // Save handlers
   const handleSaveBusiness = async () => {
     setSaving(true);
@@ -141,7 +148,13 @@ const SettingsPage = () => {
 
   const handleSaveRules = async () => {
     setSaving(true);
-    try { await axios.put(`${API}/tenants/me/booking-rules`, rules, { headers: { Authorization: `Bearer ${token}` } }); toast.success('Booking rules saved'); exitToDashboard(); } catch { toast.error('Failed'); } finally { setSaving(false); }
+    try {
+      await axios.put(`${API}/tenants/me/booking-rules`, rules, { headers: { Authorization: `Bearer ${token}` } });
+      // Persist VIP threshold separately
+      await axios.put(`${API}/tenants/me/clv-settings`, { vip_threshold_euros: Number(vipThreshold) || 500 }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Booking rules saved');
+      exitToDashboard();
+    } catch { toast.error('Failed'); } finally { setSaving(false); }
   };
 
   const handleLogoUpload = async (e) => {
@@ -329,6 +342,18 @@ const SettingsPage = () => {
                 <NumberField label="Reschedule Window" value={rules.reschedule_window_hours} onChange={v => setRules({ ...rules, reschedule_window_hours: v })} unit="hours" hint="How far in advance clients can reschedule" />
                 <NumberField label="Lead Time" value={rules.lead_time_hours} onChange={v => setRules({ ...rules, lead_time_hours: v })} unit="hours" hint="Minimum time before earliest bookable slot" />
                 <NumberField label="Buffer Between Bookings" value={rules.buffer_minutes} onChange={v => setRules({ ...rules, buffer_minutes: v })} unit="min" hint="Gap between consecutive appointments" />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="VIP Clients" subtitle="Auto-tag clients as VIP when their lifetime spend crosses this threshold. VIPs get a crown badge on the calendar and clients page.">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <NumberField
+                  label="VIP Threshold"
+                  value={vipThreshold}
+                  onChange={v => setVipThreshold(v)}
+                  unit="EUR"
+                  hint="Lifetime spend needed for an automatic VIP tag (default €500)"
+                />
               </div>
             </SectionCard>
             <SaveBar saving={saving} onSave={handleSaveRules} />
