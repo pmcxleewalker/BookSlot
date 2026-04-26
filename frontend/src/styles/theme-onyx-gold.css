@@ -22,12 +22,25 @@
   --og-gold-deep: #A8842A;
 }
 
+/* Pull body background into the dark canvas so over-scroll never flashes white */
+[data-theme="onyx_gold"] .today-col-bg { --today-col: rgba(212,175,55,0.06) !important; }
+html:has([data-theme="onyx_gold"]),
+body:has([data-theme="onyx_gold"]) { background-color: #0A0A0A !important; }
+
+/* Calendar week-grid: dim non-working day columns so they blend into the onyx canvas */
+[data-theme="onyx_gold"] [class*="bg-white"][class*="opacity"],
+[data-theme="onyx_gold"] .bg-white\/40,
+[data-theme="onyx_gold"] .bg-white\/30,
+[data-theme="onyx_gold"] .bg-white\/20 { background-color: rgba(20,20,20,0.6) !important; }
+
 /* ----------- Surfaces ----------- */
 [data-theme="onyx_gold"] .bg-white { background-color: var(--og-surface) !important; }
 [data-theme="onyx_gold"] .bg-\[\#FAF7F3\],
 [data-theme="onyx_gold"] .bg-\[\#FDFCFA\],
 [data-theme="onyx_gold"] .bg-\[\#FAF8F6\],
 [data-theme="onyx_gold"] .bg-\[\#FAFAFA\],
+[data-theme="onyx_gold"] .bg-\[\#FAF5F0\],
+[data-theme="onyx_gold"] .bg-\[\#FCFCFA\],
 [data-theme="onyx_gold"] .bg-\[\#F7F3EE\] { background-color: var(--og-surface-2) !important; }
 [data-theme="onyx_gold"] .bg-\[\#F0EBE6\],
 [data-theme="onyx_gold"] .bg-white\/60,

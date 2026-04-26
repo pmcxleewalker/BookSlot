@@ -437,7 +437,7 @@ const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApp
         {days.map(d => {
           const da = getAppts(d); const today = isToday(d);
           return (
-            <div key={d.toISOString()} className="relative border-l-2 border-[#E5DFD9]" style={today ? { backgroundColor: '#FCFCFA' } : {}}>
+            <div key={d.toISOString()} className="relative border-l-2 border-[#E5DFD9] today-col-bg" style={today ? { '--today-col': '#FCFCFA', backgroundColor: 'var(--today-col)' } : {}}>
               {HOURS.map(h => (
                 <React.Fragment key={h}>
                   <div className="absolute w-full border-t-2 border-[#F0EBE6]" style={{ top: `${(h - 8) * 56}px` }} />

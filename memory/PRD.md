@@ -409,3 +409,21 @@ The AI conversation system will automatically:
 - [x] Filter dropdown now lets super admins filter clients by `custom` plan too
 
 - [ ] P3 (polish): Fix admin calendar slot-button z-index so clicks on partially-overlapped slots open New Booking instead of appointment detail
+
+## Phase 4.2: Onyx & Gold Theme Preset (Feb 26, 2026)
+- [x] Added `theme_preset` field to `tenant.branding` (whitelisted in `PUT /api/tenants/me/branding`)
+- [x] Created **Theme Preset system**: `/app/frontend/src/config/themePresets.js` defines two presets:
+  - `default` (Champagne & Blush — existing look)
+  - `onyx_gold` (Rich black canvas, antique-gold leaf, Cinzel serif typography)
+- [x] Added Cinzel + Allura Google Fonts to `/app/frontend/public/index.html`
+- [x] Created `/app/frontend/src/components/GoldLeafDecor.jsx` — pure-SVG gold-leaf ornaments (frame / corner / divider variants)
+- [x] Created `/app/frontend/src/styles/theme-onyx-gold.css` — scoped Tailwind utility overrides under `[data-theme="onyx_gold"]` covering surfaces, borders, text, shadows (gold glow), inputs, calendar, scrollbars, custom `card-flat`/`badge-*` classes
+- [x] **Settings → Branding tab** now opens with a Theme Preset selector (two cards with swatches, descriptions, active gold border, Check badge). Switching auto-fills the colour pickers below with the preset's palette.
+- [x] **TenantLayout** rebuilt to read theme tokens via `resolveTheme(tenant)` — sidebar, top bar, AI status pill, nav items, user menu, and gold-leaf divider at sidebar bottom all dark-themed when preset is active. Staff users inherit the same theme.
+- [x] **PublicBookingPage** renders gold-leaf flourish + Cinzel serif business name + gold divider on hero when preset is active. Booking flow (service/staff/date/time/details) entirely dark-themed via CSS scope.
+- [x] **MyBookingsPage** picks up the theme of the client's most-recently-booked salon via `business_theme_preset` (added to `/api/client/bookings` serialization)
+- [x] **ManageBookingPage** renders dark with gold business header (theme + logo + colour returned from `/api/public/booking/manage/{code}`)
+- [x] **Demo Salon tenant** (`salon@bookslot.io` → Bella Hair Studio) seeded with `theme_preset: 'onyx_gold'` so the user can see the new look out of the box at `/book/bella-hair-studio-d5d6d8`
+- [x] Backend regression: 4/4 new tests in `test_iteration18_theme_preset.py` PASS, 13/13 settings + availability regression PASS
+- [x] Frontend smoke tests pass on Public Booking, Admin Dashboard, Settings/Branding, Manage Booking, Calendar (incl. Sunday-column tint fix)
+
