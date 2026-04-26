@@ -1,0 +1,84 @@
+{
+  "summary": "Onyx & Gold theme preset feature verified end-to-end. All 4 backend tests in test_iteration18_theme_preset.py PASS. Branding GET/PUT correctly persists `theme_preset`, /api/public/booking/manage/{code} returns business_theme_preset / business_primary_color / business_logo_url, /api/client/bookings includes business_theme_preset per appointment. UI smoke tests on Public Booking, Admin Dashboard, Settings → Branding, Manage Booking, and Calendar all confirm data-theme='onyx_gold' is applied with dark sidebar (rgb(15,15,15)), gold leaf SVG decor, Cinzel serif headings (rgb(245,239,224) text), and gold price/badge accents. Theme switching (onyx_gold ↔ default) works via the Settings preset cards and persists on subsequent GETs. 13/13 regression tests in test_settings_api.py and test_iteration17_availability_fix.py also pass — no regression introduced.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "PUT /api/tenants/me/branding",
+        "issue": "Endpoint REPLACES the entire branding sub-document with a $set on `branding` (server.py line 1135-1138). If a client PUTs a partial payload (e.g. only {theme_preset: 'default'}), all other branding fields like business_name, primary_color etc. are LOST. Frontend currently sends the full payload so this is not user-visible, but the API contract is a footgun. Recommend merging fields with $set on individual `branding.*` keys, OR reject partial payloads with 400."
+      }
+    ]
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "ManageBookingPage (/booking/{code})",
+        "issue": "Price row renders as just '€' with no amount and the time-slot icon row is empty for appt_151aaf879e3f. Looks like the appointment record is missing service_price / duration_min on serialization, or the JSX expects optional fields that are not rendered cleanly when null. Not theme-related but visually broken on the dark page.",
+        "selector": "/booking/appt_151aaf879e3f",
+        "priority": "LOW"
+      },
+      {
+        "component": "CalendarPage WeekGrid (Sun column)",
+        "issue": "Non-working Sunday column renders a solid WHITE background while the rest of the grid is dark — the white block is jarring against the onyx theme. Either tint the disabled day in dark grey or hatch it.",
+        "selector": "[data-testid='week-grid']",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Public Booking Page hero",
+        "issues": ["body background-color computed as rgb(255,255,255) (white) — the dark canvas is applied to a child wrapper, not <body>. Visually fine because the wrapper covers the viewport, but if the page ever scrolls past the wrapper height it will reveal a white strip. Recommend setting body bg via [data-theme='onyx_gold'] body { background: #0A0A0A; } in theme-onyx-gold.css."]
+      }
+    ]
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_iteration18_theme_preset.py",
+    "/app/test_reports/pytest/iteration18.xml",
+    "/app/test_reports/pytest/iteration18_regression.xml"
+  ],
+
+  "action_items": [
+    "(MINOR) Harden PUT /api/tenants/me/branding: merge per-field instead of replacing the whole branding doc, OR validate via a Pydantic model that requires all known keys.",
+    "(MINOR) Fix ManageBookingPage to hide the price/duration rows when service_price / service_duration are missing, OR include those fields in the GET /api/public/booking/manage/{code} response.",
+    "(POLISH) Set body { background: #0A0A0A } under [data-theme='onyx_gold'] so any over-scroll area still reads black.",
+    "(POLISH) Tint disabled-day columns (Sun) in onyx_gold theme so the WeekGrid does not render a white column on the dark canvas."
+  ],
+
+  "critical_code_review_comments": [
+    "server.py:1132 - allowed_fields correctly whitelists 'theme_preset'. Good.",
+    "server.py:1137 - $set replaces entire `branding` doc. If frontend ever sends a partial PUT, primary_color/business_name will be lost. Same pattern was OK before but theme_preset adds a new field that increases risk of partial updates — recommend tightening.",
+    "server.py:2858 - manage-booking endpoint correctly defaults to 'default' when tenant has no branding/preset — good null-safety.",
+    "server.py:2982 - client/bookings serialization adds business_theme_preset per appt with default fallback — good.",
+    "Frontend: data-theme='onyx_gold' is applied at the wrapper level, scoping CSS overrides cleanly. Cinzel + Allura fonts loaded from Google Fonts and used via font-family chain. Gold leaf SVG decoration renders above the hero on PublicBookingPage as designed.",
+    "Frontend: theme preset selector cards in SettingsPage.jsx have data-testid='theme-preset-default' and 'theme-preset-onyx_gold' — testable. Switching auto-fills the colour pickers correctly (verified: onyx swatches #D4AF37/#0A0A0A/#E9D29A → champagne #C4898E/#2C2A29/#D4A373)."
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_iteration18_theme_preset.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (4/4 new theme tests pass; 13/13 regression tests across settings + availability also pass)",
+    "frontend": "95% (Public Booking, Admin Dashboard, Settings/Branding tab with two preset cards + auto-fill, Manage Booking page, Calendar all render correctly under onyx_gold; minor cosmetic items: ManageBookingPage missing price/duration data, Sunday column white in WeekGrid)"
+  },
+
+  "test_credentials": {
+    "salon_owner": "salon@bookslot.io / Demo123!  (tenant: Bella Hair Studio, slug: bella-hair-studio-d5d6d8, theme_preset=onyx_gold)",
+    "super_admin": "admin@bookslot.io / Admin123!",
+    "demo_client_for_client_bookings": "alice.johnson@email.com / TestPass123!  (created during test via /api/public/booking/{code}/create-account)",
+    "manage_booking_demo_code": "appt_151aaf879e3f"
+  },
+
+  "seed_data_creation": "Created (or reused) a CLIENT user alice.johnson@email.com with password TestPass123! to verify /api/client/bookings. Demo salon branding was toggled to default and back to onyx_gold during testing — fixture restores onyx_gold at module teardown, and a manual curl round-trip at the end re-asserts onyx_gold + #D4AF37.",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "Onyx & Gold theme is fully wired up. Use test_iteration18_theme_preset.py as regression guard. The branding PUT endpoint replaces the whole branding doc — if you ever PUT a partial payload during testing you will WIPE primary_color/etc. Always send full {business_name, primary_color, secondary_color, accent_color, theme_preset, show_powered_by}. Demo salon is seeded with theme_preset='onyx_gold' and demo manage-booking code is appt_151aaf879e3f (Sunday Apr 19 2026, status pending — passed).",
+
+  "rca_of_the_issue": "N/A — no critical bugs. Two minor points: (1) PUT branding replaces the whole sub-document — works because frontend sends full payload, but document this as a footgun. (2) ManageBookingPage shows '€' with no number for appt_151aaf879e3f because the appointment record doesn't have service_price (or it's zero). Theme rendering itself is solid: data-theme attribute applied, Cinzel font loaded, gold leaf SVG visible, gold accent colours (#D4AF37, rgb(245,239,224) text) confirmed across all admin and public pages."
+}

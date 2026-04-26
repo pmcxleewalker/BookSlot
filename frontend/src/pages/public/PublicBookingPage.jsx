@@ -7,6 +7,8 @@ import { Calendar } from '../../components/ui/calendar';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, Clock, Check, MapPin, Sparkles, User, Smartphone, Share2, Plus, Home, BellRing, UserCheck } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
+import { resolveTheme } from '../../config/themePresets';
+import GoldLeafDecor from '../../components/GoldLeafDecor';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -36,9 +38,11 @@ const PublicBookingPage = () => {
   const [confirmation, setConfirmation] = useState(null);
   const [bookingError, setBookingError] = useState(null);
 
-  // Tenant branding
-  const brandPrimary = business?.branding?.primary_color || '#B8868B';
-  const brandSecondary = business?.branding?.secondary_color || '#E8C5C8';
+  // Tenant branding + theme preset
+  const themeData = resolveTheme(business);
+  const { isDark, presetKey, tokens } = themeData;
+  const brandPrimary = business?.branding?.primary_color || themeData.colors.primary;
+  const brandSecondary = business?.branding?.secondary_color || themeData.colors.secondary;
 
   // Days that at least one eligible staff member works on (used to disable the rest in the date picker)
   const workingDaysOfWeek = useMemo(() => {
@@ -152,25 +156,37 @@ const PublicBookingPage = () => {
   );
 
   return (
-    <div className="min-h-screen" style={{ background: `linear-gradient(180deg, ${brandSecondary}22 0%, #FAF7F3 40%)` }}>
+    <div
+      className="min-h-screen"
+      data-theme={presetKey}
+      style={{ background: isDark ? tokens.heroBg : `linear-gradient(180deg, ${brandSecondary}22 0%, #FAF7F3 40%)` }}
+    >
       {/* Hero Header */}
       <header className="pt-12 pb-10 px-6">
         <div className="max-w-3xl mx-auto text-center">
+          {isDark && <GoldLeafDecor variant="frame" className="mb-5" />}
           {business.logo_url ? (
             <img src={business.logo_url} alt={business.name} className="h-16 mx-auto mb-6 rounded-2xl object-cover" />
           ) : (
-            <div className="w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: brandPrimary }}>
-              <Sparkles className="w-7 h-7 text-white" strokeWidth={1.5} />
+            <div className="w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: isDark ? 'transparent' : brandPrimary, border: isDark ? `1.5px solid ${brandPrimary}` : 'none' }}>
+              <Sparkles className="w-7 h-7" style={{ color: isDark ? brandPrimary : '#fff' }} strokeWidth={1.5} />
             </div>
           )}
           <p className="text-[11px] tracking-[0.3em] uppercase font-medium mb-2" style={{ color: brandPrimary }}>Book Your Visit</p>
-          <h1 className="font-['Cormorant_Garamond'] text-5xl sm:text-6xl font-light text-[#2C2A29] mb-3" data-testid="business-name">{business.name}</h1>
+          <h1
+            className="font-['Cormorant_Garamond'] text-5xl sm:text-6xl font-light text-[#2C2A29] mb-3"
+            style={isDark ? { color: tokens.textPrimary, letterSpacing: '0.06em' } : undefined}
+            data-testid="business-name"
+          >
+            {business.name}
+          </h1>
           {business.address && (
             <p className="text-sm text-[#706B68] flex items-center gap-1.5 justify-center">
               <MapPin className="w-3.5 h-3.5" strokeWidth={1.5} />
               {business.address}
             </p>
           )}
+          {isDark && <GoldLeafDecor variant="divider" className="w-56 h-3 mx-auto mt-6 opacity-80" />}
         </div>
       </header>
 

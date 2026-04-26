@@ -111,15 +111,32 @@ const ManageBookingPage = () => {
   }
 
   const { appointment, business_name, service_name, staff_name } = booking;
+  const themePreset = booking.business_theme_preset || 'default';
+  const isDark = themePreset === 'onyx_gold';
+  const goldAccent = booking.business_primary_color || '#D4AF37';
   const isCancelled = appointment.status === 'cancelled';
   const isPast = new Date(appointment.start_time) < new Date();
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div
+      className="min-h-screen"
+      data-theme={themePreset}
+      style={{ background: isDark ? '#0A0A0A' : '#FAFAFA', color: isDark ? '#F5EFE0' : '#0A0A0A' }}
+    >
       {/* Header */}
-      <header className="bg-white border-b border-[#E5E5E5] px-6 py-4">
-        <div className="max-w-2xl mx-auto">
-          <Link to="/" className="text-xl font-semibold text-[#0A0A0A]">BookSlot</Link>
+      <header
+        className="border-b px-6 py-4"
+        style={{ background: isDark ? '#141414' : '#FFFFFF', borderColor: isDark ? '#2A2218' : '#E5E5E5' }}
+      >
+        <div className="max-w-2xl mx-auto flex items-center gap-3">
+          {booking.business_logo_url && <img src={booking.business_logo_url} alt={business_name} className="h-9 w-9 rounded-xl object-cover" />}
+          <Link
+            to="/"
+            className="text-xl font-semibold"
+            style={{ color: isDark ? goldAccent : '#0A0A0A', fontFamily: isDark ? "'Cinzel', serif" : undefined, letterSpacing: isDark ? '0.06em' : 0 }}
+          >
+            {business_name || 'BookSlot'}
+          </Link>
         </div>
       </header>
 

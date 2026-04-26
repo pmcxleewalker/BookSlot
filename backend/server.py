@@ -1129,7 +1129,7 @@ async def update_tenant_branding(branding: Dict[str, Any], user: Dict = Depends(
     if not user.get("tenant_id"):
         raise HTTPException(status_code=404, detail="No business found")
     
-    allowed_fields = ["business_name", "primary_color", "secondary_color", "accent_color", "show_powered_by"]
+    allowed_fields = ["business_name", "primary_color", "secondary_color", "accent_color", "show_powered_by", "theme_preset"]
     clean_branding = {k: v for k, v in branding.items() if k in allowed_fields}
     
     await db.tenants.update_one(
@@ -2855,6 +2855,9 @@ async def get_booking_by_code(confirmation_code: str):
     return {
         "appointment": appointment,
         "business_name": tenant.get("name") if tenant else None,
+        "business_theme_preset": (tenant.get("branding", {}) or {}).get("theme_preset", "default") if tenant else "default",
+        "business_primary_color": (tenant.get("branding", {}) or {}).get("primary_color") if tenant else None,
+        "business_logo_url": tenant.get("logo_url") if tenant else None,
         "service_name": service.get("name") if service else None,
         "staff_name": staff.get("name") if staff else None
     }
@@ -2976,6 +2979,7 @@ async def get_client_bookings(user: Dict = Depends(get_current_user)):
         a["business_name"] = t.get("name")
         a["business_slug"] = t.get("booking_url_slug")
         a["business_primary_color"] = t.get("branding", {}).get("primary_color")
+        a["business_theme_preset"] = t.get("branding", {}).get("theme_preset", "default")
         (upcoming if (a.get("start_time", "") >= now_iso and a.get("status") not in ["cancelled", "completed"]) else past).append(a)
     
     return {"upcoming": upcoming, "past": past}

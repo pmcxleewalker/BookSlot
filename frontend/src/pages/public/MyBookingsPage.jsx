@@ -38,8 +38,12 @@ const MyBookingsPage = () => {
 
   if (!user) return null;
 
+  // If the client's primary salon uses a custom theme preset, apply it.
+  const primaryPreset = upcoming[0]?.business_theme_preset || past[0]?.business_theme_preset || 'default';
+  const isDark = primaryPreset === 'onyx_gold';
+
   return (
-    <div className="min-h-screen bg-[#FAF7F3]">
+    <div className="min-h-screen bg-[#FAF7F3]" data-theme={primaryPreset}>
       {/* Header */}
       <header className="bg-white border-b border-[#F0EBE6]">
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">

@@ -12,6 +12,7 @@ import {
   Building2, Palette, CalendarCog, BellRing, Save, Upload, Camera, Loader2, Check, Globe, Clock, CreditCard, ExternalLink, AlertCircle
 } from 'lucide-react';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
+import { THEME_PRESETS } from '../../config/themePresets';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -36,7 +37,7 @@ const SettingsPage = () => {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', timezone: 'Europe/Dublin', currency: 'EUR' });
 
   // Branding
-  const [branding, setBranding] = useState({ business_name: '', primary_color: '#C4898E', secondary_color: '#2C2A29', accent_color: '#D4A373' });
+  const [branding, setBranding] = useState({ business_name: '', primary_color: '#C4898E', secondary_color: '#2C2A29', accent_color: '#D4A373', theme_preset: 'default' });
   const [logoUrl, setLogoUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const logoRef = useRef(null);
@@ -212,6 +213,56 @@ const SettingsPage = () => {
         {/* ========== BRANDING ========== */}
         {activeTab === 'branding' && (
           <div className="space-y-6" data-testid="settings-branding">
+            <SectionCard title="Theme Preset" subtitle="One-click looks crafted for premium salons. Pick a base — your colours and logo override it.">
+              <div className="grid sm:grid-cols-2 gap-4">
+                {Object.values(THEME_PRESETS).map((preset) => {
+                  const active = branding.theme_preset === preset.key;
+                  return (
+                    <button
+                      key={preset.key}
+                      type="button"
+                      onClick={() => setBranding({
+                        ...branding,
+                        theme_preset: preset.key,
+                        // Pull in preset colours when switching, so save reflects the chosen aesthetic
+                        primary_color: preset.colors.primary,
+                        secondary_color: preset.colors.secondary,
+                        accent_color: preset.colors.accent,
+                      })}
+                      className={`relative text-left rounded-2xl p-5 transition-all border-2 ${active ? 'shadow-lg' : 'hover:-translate-y-0.5'}`}
+                      style={{
+                        background: preset.mode === 'dark' ? '#0A0A0A' : '#FAF8F6',
+                        borderColor: active ? preset.colors.primary : 'transparent',
+                        color: preset.mode === 'dark' ? '#F5EFE0' : '#2C2A29',
+                      }}
+                      data-testid={`theme-preset-${preset.key}`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-3">
+                        {preset.swatch.map((c, idx) => (
+                          <span key={idx} className="w-5 h-5 rounded-full" style={{ background: c, border: '1px solid rgba(255,255,255,0.1)' }} />
+                        ))}
+                      </div>
+                      <p
+                        className="text-lg font-light mb-1"
+                        style={{ fontFamily: preset.tokens.headingFont, letterSpacing: preset.mode === 'dark' ? '0.06em' : 0 }}
+                      >
+                        {preset.name}
+                      </p>
+                      <p className="text-xs opacity-80 leading-relaxed">{preset.description}</p>
+                      {active && (
+                        <span
+                          className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center"
+                          style={{ background: preset.colors.primary, color: preset.mode === 'dark' ? '#0A0A0A' : '#fff' }}
+                        >
+                          <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </SectionCard>
+
             <SectionCard title="Brand Identity" subtitle="Customize your salon's look and feel — colors update buttons, badges, and accents across the app">
               <div className="flex items-start gap-6 mb-6">
                 <div className="relative group cursor-pointer" onClick={() => logoRef.current?.click()}>

@@ -1,0 +1,159 @@
+/* =============================================================================
+   Onyx & Gold theme overrides
+   Activates only under [data-theme="onyx_gold"] — a tenant-level preset.
+   Scopes Tailwind utility classes used heavily on Public Booking, My Bookings,
+   Manage Booking, Calendar, Dashboard, Staff, Services, etc. to a dark canvas
+   with antique-gold accents.
+   ============================================================================= */
+
+[data-theme="onyx_gold"] {
+  color-scheme: dark;
+  --og-bg: #0A0A0A;
+  --og-surface: #141414;
+  --og-surface-2: #1A1A1A;
+  --og-surface-3: #1F1F1F;
+  --og-border: #2A2218;
+  --og-border-soft: #1F1B14;
+  --og-text: #F5EFE0;
+  --og-text-2: #B8AE99;
+  --og-text-3: #8A8275;
+  --og-gold: #D4AF37;
+  --og-gold-soft: #E9D29A;
+  --og-gold-deep: #A8842A;
+}
+
+/* ----------- Surfaces ----------- */
+[data-theme="onyx_gold"] .bg-white { background-color: var(--og-surface) !important; }
+[data-theme="onyx_gold"] .bg-\[\#FAF7F3\],
+[data-theme="onyx_gold"] .bg-\[\#FDFCFA\],
+[data-theme="onyx_gold"] .bg-\[\#FAF8F6\],
+[data-theme="onyx_gold"] .bg-\[\#FAFAFA\],
+[data-theme="onyx_gold"] .bg-\[\#F7F3EE\] { background-color: var(--og-surface-2) !important; }
+[data-theme="onyx_gold"] .bg-\[\#F0EBE6\],
+[data-theme="onyx_gold"] .bg-white\/60,
+[data-theme="onyx_gold"] .bg-white\/80 { background-color: var(--og-surface-3) !important; }
+
+/* ----------- Borders ----------- */
+[data-theme="onyx_gold"] .border-\[\#F0EBE6\],
+[data-theme="onyx_gold"] .border-\[\#E5DFD9\],
+[data-theme="onyx_gold"] .border-\[\#E5E5E5\],
+[data-theme="onyx_gold"] .border-\[\#EDE8E3\] { border-color: var(--og-border) !important; }
+[data-theme="onyx_gold"] .border-t.border-\[\#F0EBE6\],
+[data-theme="onyx_gold"] .border-b.border-\[\#F0EBE6\] { border-color: var(--og-border-soft) !important; }
+
+/* ----------- Text ----------- */
+[data-theme="onyx_gold"] .text-\[\#2C2A29\],
+[data-theme="onyx_gold"] .text-\[\#0A0A0A\] { color: var(--og-text) !important; }
+[data-theme="onyx_gold"] .text-\[\#706B68\],
+[data-theme="onyx_gold"] .text-\[\#666666\] { color: var(--og-text-2) !important; }
+[data-theme="onyx_gold"] .text-\[\#9E948F\] { color: var(--og-text-3) !important; }
+[data-theme="onyx_gold"] .text-\[\#B8868B\] { color: var(--og-gold) !important; }
+
+/* Hover variants */
+[data-theme="onyx_gold"] .hover\:text-\[\#2C2A29\]:hover { color: var(--og-text) !important; }
+[data-theme="onyx_gold"] .hover\:text-\[\#706B68\]:hover { color: var(--og-text-2) !important; }
+
+/* Default-coloured text inheriting from body becomes light */
+[data-theme="onyx_gold"] body, [data-theme="onyx_gold"] { color: var(--og-text); }
+
+/* ----------- Typography (luxury serif) ----------- */
+[data-theme="onyx_gold"] .font-\[\'Cormorant_Garamond\'\] {
+  font-family: 'Cinzel', 'Cormorant Garamond', serif !important;
+  letter-spacing: 0.04em;
+  font-weight: 500 !important;
+}
+
+/* ----------- Shadows: invert subtle drops to gold-tinged glows ----------- */
+[data-theme="onyx_gold"] .shadow-\[0_8px_30px_rgb\(0\,0\,0\,0\.04\)\] { box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,55,0.06) inset !important; }
+[data-theme="onyx_gold"] .shadow-\[0_8px_30px_rgb\(0\,0\,0\,0\.08\)\] { box-shadow: 0 16px 36px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,55,0.1) inset !important; }
+[data-theme="onyx_gold"] .shadow-\[0_4px_20px_rgb\(0\,0\,0\,0\.04\)\] { box-shadow: 0 8px 22px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.06) inset !important; }
+[data-theme="onyx_gold"] .shadow-\[0_2px_12px_rgb\(0\,0\,0\,0\.04\)\] { box-shadow: 0 4px 14px rgba(0,0,0,0.35) !important; }
+[data-theme="onyx_gold"] .shadow-sm,
+[data-theme="onyx_gold"] .hover\:shadow-sm:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.4) !important; }
+[data-theme="onyx_gold"] .hover\:shadow-lg:hover { box-shadow: 0 18px 40px rgba(212,175,55,0.18), 0 0 0 1px rgba(212,175,55,0.2) inset !important; }
+
+/* ----------- Inputs / form fields ----------- */
+[data-theme="onyx_gold"] input,
+[data-theme="onyx_gold"] textarea,
+[data-theme="onyx_gold"] select {
+  background-color: var(--og-surface-2) !important;
+  color: var(--og-text) !important;
+  border-color: var(--og-border) !important;
+}
+[data-theme="onyx_gold"] input::placeholder,
+[data-theme="onyx_gold"] textarea::placeholder { color: var(--og-text-3) !important; }
+[data-theme="onyx_gold"] input:focus,
+[data-theme="onyx_gold"] textarea:focus,
+[data-theme="onyx_gold"] select:focus {
+  background-color: var(--og-surface-3) !important;
+  border-color: var(--og-gold) !important;
+  outline: none !important;
+}
+
+/* Focus ring colour for tailwind ring utilities */
+[data-theme="onyx_gold"] .focus\:ring-1:focus,
+[data-theme="onyx_gold"] .focus\:ring-2:focus { --tw-ring-color: var(--og-gold) !important; }
+
+/* ----------- Calendar (react-day-picker) day cells ----------- */
+[data-theme="onyx_gold"] .rdp { color: var(--og-text); }
+[data-theme="onyx_gold"] .rdp-day { color: var(--og-text); }
+[data-theme="onyx_gold"] .rdp-day_selected,
+[data-theme="onyx_gold"] .rdp-day_selected:hover { background: var(--og-gold) !important; color: var(--og-bg) !important; }
+[data-theme="onyx_gold"] .rdp-day_today { color: var(--og-gold) !important; font-weight: 700; }
+[data-theme="onyx_gold"] .rdp-head_cell { color: var(--og-text-3) !important; }
+[data-theme="onyx_gold"] .rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
+  background: rgba(212,175,55,0.12) !important; color: var(--og-text) !important;
+}
+[data-theme="onyx_gold"] .rdp-day_disabled { color: var(--og-text-3) !important; opacity: 0.35; }
+
+/* ----------- Buttons / pills with raw white text (e.g. confirm) keep gold-on-black readable ----------- */
+[data-theme="onyx_gold"] .text-white { color: #0A0A0A !important; }
+/* …but only when the bg is the gold primary (we leave dark-bg buttons via inline style). The tenant
+   primary colour is gold for this preset, so any "text-white" on top of brandPrimary becomes black,
+   which is the correct contrast for gold buttons. */
+
+/* ----------- Subtle gold gradient accent on cards using borderLeft tenant primary ----------- */
+[data-theme="onyx_gold"] [style*="border-left: 3px solid"] {
+  background-image: linear-gradient(90deg, rgba(212,175,55,0.05), transparent 40%);
+}
+
+/* ----------- Custom component class overrides ----------- */
+[data-theme="onyx_gold"] .card-flat {
+  background-color: var(--og-surface) !important;
+  border-color: var(--og-border) !important;
+  color: var(--og-text);
+}
+[data-theme="onyx_gold"] .input-swiss,
+[data-theme="onyx_gold"] .glass,
+[data-theme="onyx_gold"] .glass-widget {
+  background-color: var(--og-surface-2) !important;
+  border-color: var(--og-border) !important;
+  color: var(--og-text) !important;
+}
+[data-theme="onyx_gold"] .badge-pending {
+  background-color: rgba(212,175,55,0.12) !important;
+  color: var(--og-gold) !important;
+  border-color: rgba(212,175,55,0.4) !important;
+}
+[data-theme="onyx_gold"] .badge-confirmed {
+  background-color: rgba(143, 166, 143, 0.18) !important;
+  color: #C9DFC9 !important;
+  border-color: rgba(143, 166, 143, 0.45) !important;
+}
+[data-theme="onyx_gold"] .badge-cancelled {
+  background-color: rgba(220, 80, 80, 0.15) !important;
+  color: #F5A0A0 !important;
+  border-color: rgba(220, 80, 80, 0.4) !important;
+}
+
+/* ----------- Loading splash ----------- */
+[data-theme="onyx_gold"] .min-h-screen.bg-\[\#FAF7F3\] { background-color: var(--og-bg) !important; }
+
+/* ----------- Animate gold underline on hover for primary anchor links ----------- */
+[data-theme="onyx_gold"] a.hover\:underline:hover { color: var(--og-gold) !important; }
+
+/* Scrollbars for dark surfaces */
+[data-theme="onyx_gold"] ::-webkit-scrollbar { width: 8px; height: 8px; }
+[data-theme="onyx_gold"] ::-webkit-scrollbar-track { background: var(--og-bg); }
+[data-theme="onyx_gold"] ::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.25); border-radius: 4px; }
+[data-theme="onyx_gold"] ::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.45); }
