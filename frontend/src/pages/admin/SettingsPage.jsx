@@ -49,6 +49,7 @@ const SettingsPage = () => {
     lead_time_hours: 1, buffer_minutes: 0, max_bookings_per_day: 0,
     require_phone: true, require_email: false, client_self_cancel: true,
   });
+  const [vipThreshold, setVipThreshold] = useState(500);
 
   // Notifications
   const [reminderSettings, setReminderSettings] = useState({ push_enabled: false, reminder_hours: 24 });

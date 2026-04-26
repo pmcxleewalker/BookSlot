@@ -392,7 +392,38 @@ The AI conversation system will automatically:
 - [x] Fixed P0 bug in 5 availability helpers: `day_schedule.get('enabled')` check replaced with `bool(start and end) or enabled is True` (backwards compatible with both seeded shapes)
 - [x] iteration_17.json: 43/43 regression tests PASS, 3/3 new tests PASS, end-to-end booking confirmed with `confirmation_code` and `requires_approval=true`
 
-## Backlog (next up)
+## Phase 5: Revenue Boosters + Bella Avatar (Feb 26, 2026)
+**Bella the Salon AI gets a face**
+- [x] Generated glamorous salon-style portrait via Gemini Nano Banana → `/app/frontend/public/bella-avatar.jpg`
+- [x] Wired into AIAdminAssistant (floating button, chat header, message rows) when `theme.aiName === 'Bella'`
+- [x] Wired into TenantLayout sidebar AI status pill
+
+**Instant Rebooking at Checkout** (post-confirmation upsell)
+- [x] Added `default_rebook_weeks` field to Service model (owner-set per service)
+- [x] AI heuristic suggests interval based on service name + duration when no override
+- [x] Public endpoints: `GET/POST /api/public/booking/{code}/rebook-suggestions` & `/rebook`
+- [x] RebookCard component on confirmation step — shows AI-recommended interval with "AI" pill, 3 fixed week options + custom interval, gold-themed CTA
+- [x] Conflict detection (same staff + overlapping window) returns `success:false`/`reason:slot_taken`
+
+**Fill My Day — push notification blast**
+- [x] Endpoint `POST /api/appointments/{id}/blast-availability` (owner auth) sends web-push to all tenant subscribers using existing VAPID keys
+- [x] Persists `blasted_at` timestamp + audit row in `push_notifications` collection
+- [x] CalendarPage ApptDetail dialog: "Fill My Day" button shown only when `status==='cancelled' && !blasted_at`
+- [x] Uses Bella's avatar as the push notification icon
+- [x] Deep-link to `/book/{slug}?prefill_service=...` for one-tap claim
+
+**Client Lifetime Value + VIP Tagging**
+- [x] `tenant.settings.vip_threshold_euros` (default 500) — owner sets in Settings → Booking Rules → "VIP Clients" section
+- [x] Endpoints: `GET/PUT /api/tenants/me/clv-settings`, `GET /api/clients/{id}/lifetime-stats`
+- [x] `GET /api/clients` enriched with `lifetime_value`, `visit_count`, `last_visit_at`, `is_vip_auto`, `is_vip_effective`
+- [x] `GET /api/appointments` enriched with `client_lifetime_value`, `client_is_vip` (single bulk aggregation, no N+1)
+- [x] Calendar appointment blocks: gold Crown icon next to VIP client names
+- [x] ApptDetail dialog: VIP badge "VIP · €X lifetime" in header
+- [x] Clients page: gold Crown badge top-right of card + "Auto VIP" / "VIP Client" label
+- [x] Tested: backend 16/16 PASS (test_iteration19_rebook_clv_blast.py)
+
+## Backlog (next)
+xt up)
 - [ ] P2: Client self-service portal
 - [ ] P2: Instant Rebooking at Checkout (AI suggestion for next appointment)
 - [ ] P2: "Fill My Day" mode (last-minute availability blast to opted-in clients)

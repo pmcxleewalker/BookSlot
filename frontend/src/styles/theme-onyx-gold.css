@@ -131,10 +131,14 @@ body:has([data-theme="onyx_gold"]) { background-color: #0A0A0A !important; }
 }
 
 /* ----------- Custom component class overrides ----------- */
-[data-theme="onyx_gold"] .card-flat {
+[data-theme="onyx_gold"] .card-flat,
+[data-theme="onyx_gold"] .card-hover {
   background-color: var(--og-surface) !important;
   border-color: var(--og-border) !important;
   color: var(--og-text);
+}
+[data-theme="onyx_gold"] .card-hover:hover {
+  border-color: var(--og-gold) !important;
 }
 [data-theme="onyx_gold"] .input-swiss,
 [data-theme="onyx_gold"] .glass,

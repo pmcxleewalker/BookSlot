@@ -4,14 +4,19 @@
 - **URL:** `/admin`
 - **Email:** `admin@bookslot.io`
 - **Password:** `Admin123!`
+- **Note:** Super admin login uses a dedicated route — NOT `/api/auth/login`. Use `/api/admin/login` (or whatever the admin auth pathway is in `/app/backend/server.py`). Do NOT assume the standard tenant auth endpoint works.
 
 ## Demo Clients (All use password: `Demo123!`)
 
-### Salon — Bella Hair Studio
+### Salon — Bella Hair Studio  ⭐ DEMO TENANT FOR ONYX & GOLD THEME
 - **Login:** `/login` with `salon@bookslot.io` / `Demo123!`
-- **Industry Theme:** Rose/Pink (AI: Bella)
+- **Public booking:** `/book/bella-hair-studio-d5d6d8`
+- **Industry Theme:** Rose/Pink (AI: **Bella** — has glamorous portrait avatar at `/bella-avatar.jpg`)
+- **Tenant Theme Preset:** `onyx_gold` (rich black + antique-gold leaf, Cinzel serif typography)
 - **Staff:** Sarah Mitchell, Mia Rossi, Jake Turner
 - **Services:** Cuts, Colour, Highlights, Balayage, Blow Dry, etc.
+- **VIP Threshold:** 500 EUR (set in Settings → Booking Rules → VIP Clients)
+- **Existing demo appointment for rebook/blast tests:** `appt_151aaf879e3f`
 
 ### Dentist — Bright Smile Dental
 - **Login:** `/login` with `dentist@bookslot.io` / `Demo123!`
