@@ -461,6 +461,15 @@ The AI conversation system will automatically:
 - [x] Two-card design echoes the brand's dual theme system (Champagne sliders + Onyx & Gold result)
 - [x] Custom blush-gold gradient slider tracks with rose-ringed thumbs
 
+## Phase 5.4: Landing Page Redesign (Feb 26, 2026)
+- [x] Removed "Features" link from nav (landing + pricing) and footer
+- [x] Hero simplified: title "Simple booking software that just works" + subtitle + "Get in Touch" + "View Pricing" + contact email
+- [x] Features section rebuilt as 6 tiles (3×2 grid): Smart Scheduling, Staff Management, Online Booking, **Custom AI Receptionist**, Reports & Analytics, Custom Branding
+- [x] Removed Industries section, Moltbot AI hero section, and generic "Ready to simplify your bookings?" CTA — page is now focused: hero → features → ROI calc → pricing → footer
+- [x] Embedded ROI calculator on landing page (shared `<SavingsCalculator />` component reused from `/pricing`)
+- [x] Embedded compact pricing card on landing page with "See full pricing details & FAQ →" link back to `/pricing`
+- [x] "View Pricing" CTA now scrolls to the inline pricing section (`#pricing`) instead of navigating away
+
 ## Backlog (next)
 xt up)
 - [ ] P2: Client self-service portal

@@ -29,7 +29,6 @@ const PricingPage = () => {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="text-xl font-semibold text-[#0A0A0A]">BookSlot</Link>
           <div className="hidden md:flex items-center gap-8">
-            <Link to="/features" className="text-sm text-[#666666] hover:text-[#0A0A0A] transition-colors">Features</Link>
             <Link to="/pricing" className="text-sm text-[#0A0A0A] font-medium">Pricing</Link>
           </div>
           <div className="flex items-center gap-4">
