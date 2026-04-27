@@ -470,6 +470,14 @@ The AI conversation system will automatically:
 - [x] Embedded compact pricing card on landing page with "See full pricing details & FAQ →" link back to `/pricing`
 - [x] "View Pricing" CTA now scrolls to the inline pricing section (`#pricing`) instead of navigating away
 
+## Phase 5.5: Scroll Animations (Feb 26, 2026)
+- [x] New `useInView` hook (IntersectionObserver, fires once, SSR-safe, respects `prefers-reduced-motion`)
+- [x] New `useCountUp` hook — requestAnimationFrame tween, ease-out-quint, 1500ms — animates only on first view, then slider changes update instantly
+- [x] `.reveal` / `.reveal-in` Tailwind-adjacent utility classes added to `index.css`
+- [x] LandingPage: hero fades in on mount; feature tiles stagger in at 90ms intervals as they enter viewport; inline pricing card reveals on scroll
+- [x] SavingsCalculator: the big "€X/month" number tweens from 0 → target value the first time it scrolls into view — subsequent slider changes update instantly (no jittery re-tween)
+- [x] Bug: earlier failed `search_replace` left `inView` undefined in SavingsCalculator, crashing React tree. Fixed by re-adding `const [sectionRef, inView] = useInView();` and confirmed h1 + 6 feature tiles render via DOM assertions.
+
 ## Backlog (next)
 xt up)
 - [ ] P2: Client self-service portal

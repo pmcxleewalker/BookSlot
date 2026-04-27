@@ -6,8 +6,13 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import SavingsCalculator from '../../components/SavingsCalculator';
+import { useInView } from '../../hooks/useInView';
 
 const LandingPage = () => {
+  const [heroRef, heroIn] = useInView();
+  const [featuresRef, featuresIn] = useInView();
+  const [pricingRef, pricingIn] = useInView();
+
   const features = [
     { icon: Calendar, title: 'Smart Scheduling', desc: 'Drag-and-drop calendar with real-time availability and conflict detection' },
     { icon: Users, title: 'Staff Management', desc: 'Manage working hours, services per staff, and permissions' },
@@ -49,7 +54,7 @@ const LandingPage = () => {
 
       {/* Hero Section */}
       <section className="pt-32 pb-24 px-6 noise-overlay">
-        <div className="max-w-4xl mx-auto text-center">
+        <div ref={heroRef} className={`reveal ${heroIn ? 'reveal-in' : ''} max-w-4xl mx-auto text-center`}>
           <h1 className="heading-marketing text-5xl md:text-6xl lg:text-7xl text-[#0A0A0A] mb-6 leading-tight" data-testid="hero-title">
             Simple booking software that just works
           </h1>
@@ -91,11 +96,12 @@ const LandingPage = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div ref={featuresRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="bg-white p-6 rounded-2xl border border-[#E5E5E5] hover:border-[#CCCCCC] transition-colors"
+                className={`reveal ${featuresIn ? 'reveal-in' : ''} bg-white p-6 rounded-2xl border border-[#E5E5E5] hover:border-[#CCCCCC] transition-colors`}
+                style={{ transitionDelay: `${index * 90}ms` }}
                 data-testid={`feature-${index}`}
               >
                 <div className="w-12 h-12 bg-[#FAFAFA] rounded-lg flex items-center justify-center mb-4">
@@ -114,7 +120,7 @@ const LandingPage = () => {
 
       {/* Inline pricing card */}
       <section id="pricing" className="py-24 px-6 bg-[#FAFAFA] border-t border-[#E5E5E5]">
-        <div className="max-w-2xl mx-auto">
+        <div ref={pricingRef} className={`reveal ${pricingIn ? 'reveal-in' : ''} max-w-2xl mx-auto`}>
           <div className="text-center mb-10">
             <p className="text-[11px] tracking-[0.3em] uppercase font-semibold text-[#B8868B] mb-4">One plan · everything included</p>
             <h2 className="font-['Cormorant_Garamond'] text-4xl md:text-5xl font-light text-[#0A0A0A] mb-3">

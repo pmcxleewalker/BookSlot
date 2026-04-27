@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Sparkles, TrendingUp } from 'lucide-react';
+import { useInView, useCountUp } from '../hooks/useInView';
 
 /**
  * Estimates the monthly value BookSlot adds to a salon based on three inputs.
@@ -26,6 +27,7 @@ const SavingsCalculator = () => {
   const [bookings, setBookings] = useState(150);   // bookings / month
   const [ticket, setTicket] = useState(60);        // average € per booking
   const [noShowPct, setNoShowPct] = useState(10);  // baseline no-show %
+  const [sectionRef, inView] = useInView();
 
   const calc = useMemo(() => {
     const b = Math.max(0, Number(bookings) || 0);
@@ -57,8 +59,10 @@ const SavingsCalculator = () => {
     };
   }, [bookings, ticket, noShowPct]);
 
+  const animatedTotal = useCountUp(calc.total, { active: inView, duration: 1500 });
+
   return (
-    <section className="py-24 px-6 border-t border-[#F0EBE6]" data-testid="savings-calculator">
+    <section ref={sectionRef} className="py-24 px-6 border-t border-[#F0EBE6]" data-testid="savings-calculator">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
           <p className="text-[11px] tracking-[0.3em] uppercase font-semibold text-[#B8868B] mb-4 flex items-center justify-center gap-2">
@@ -164,7 +168,7 @@ const SavingsCalculator = () => {
                     style={{ color: '#F5EFE0', letterSpacing: '0.02em' }}
                     data-testid="calc-total"
                   >
-                    {calc.total.toLocaleString()}
+                    {animatedTotal.toLocaleString()}
                   </span>
                   <span className="text-base ml-2" style={{ color: '#B8AE99' }}>/ month</span>
                 </div>
