@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Check, ArrowRight, Mail, Sparkles, Calendar, Users, BarChart3, Globe } from 'lucide-react';
+import SavingsCalculator from '../../components/SavingsCalculator';
 
 const PricingPage = () => {
   const features = [
@@ -18,7 +19,6 @@ const PricingPage = () => {
     'PWA push notifications (free, no SMS bills)',
     'Premium themes (Champagne · Onyx & Gold)',
     'Optional Stripe deposits — flip on/off any time',
-    'GDPR-compliant · daily encrypted backups',
     'Cancel any time. No long-term contracts.',
   ];
 
@@ -85,11 +85,11 @@ const PricingPage = () => {
                   style={{ background: '#0A0A0A' }}
                   data-testid="get-started-cta"
                 >
-                  Start a 14-day free trial
+                  Get started
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </a>
-              <p className="text-xs text-[#9E948F]">No credit card required to start</p>
+              <p className="text-xs text-[#9E948F]">Cancel any time. No long-term contracts.</p>
             </div>
 
             {/* Headline features */}
@@ -136,6 +136,9 @@ const PricingPage = () => {
         </div>
       </section>
 
+      {/* ROI savings calculator */}
+      <SavingsCalculator />
+
       {/* FAQ */}
       <section className="py-24 px-6 bg-[#FAFAFA] border-t border-[#E5E5E5]">
         <div className="max-w-3xl mx-auto">
@@ -148,10 +151,6 @@ const PricingPage = () => {
               {
                 q: 'Why one price instead of tiers?',
                 a: 'Tiered pricing punishes growing salons. We&rsquo;d rather you focus on your clients than on which feature you can&rsquo;t use yet. Everyone gets everything.'
-              },
-              {
-                q: 'Is there really no card needed for the trial?',
-                a: 'Correct. Email us, we&rsquo;ll set you up. After 14 days you decide whether BookSlot pays for itself — most salons see €99 saved in their first week of automated reminders alone.'
               },
               {
                 q: 'What happens if I want to cancel?',
@@ -167,7 +166,7 @@ const PricingPage = () => {
               },
               {
                 q: 'Is my data safe?',
-                a: 'GDPR-compliant. Encrypted at rest. Daily backups. Never sold, never shared, never used to train external AI models.'
+                a: 'Encrypted at rest. Daily backups. Never sold, never shared, never used to train external AI models.'
               }
             ].map((faq, idx) => (
               <div key={idx} className="card-flat" data-testid={`faq-${idx}`}>
@@ -191,7 +190,7 @@ const PricingPage = () => {
           <a href="mailto:lee.quickwing@gmail.com">
             <Button className="btn-accent px-10 py-4 text-base flex items-center gap-2 mx-auto">
               <Mail className="w-5 h-5" />
-              Start your 14-day trial
+              Email us to get started
             </Button>
           </a>
           <p className="text-sm text-[#666666] mt-6">

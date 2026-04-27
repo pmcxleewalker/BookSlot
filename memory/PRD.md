@@ -449,6 +449,18 @@ The AI conversation system will automatically:
 - [x] FAQ rewritten in BookSlot voice (why one price, no card needed, no per-booking charge, etc.)
 - [x] Custom-quote escape hatch for multi-location/white-label/franchise enquiries via email
 
+## Phase 5.3: Pricing Polish + ROI Calculator (Feb 26, 2026)
+- [x] Removed GDPR mention from "Plus everything else" + FAQ "Is my data safe?" (kept encryption + backup language)
+- [x] Removed 14-day free trial language across the page (CTA → "Get started", footer CTA → "Email us to get started", subtext → "Cancel any time. No long-term contracts.")
+- [x] Removed FAQ "Is there really no card needed for the trial?"
+- [x] **Added ROI Calculator** ("How much could BookSlot save you?") with three sliders (bookings/month, average spend, no-show rate) and a live-updating Onyx & Gold result card showing:
+  - Estimated monthly value €X (huge, Cormorant Garamond)
+  - "That's N× what BookSlot costs you (€99)"
+  - Breakdown: no-shows recovered (50% reduction), rebook lift (12%), admin time saved (~26h/mo × €15)
+  - Annual upside in gold
+- [x] Two-card design echoes the brand's dual theme system (Champagne sliders + Onyx & Gold result)
+- [x] Custom blush-gold gradient slider tracks with rose-ringed thumbs
+
 ## Backlog (next)
 xt up)
 - [ ] P2: Client self-service portal
