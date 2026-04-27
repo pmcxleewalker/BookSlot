@@ -440,6 +440,15 @@ The AI conversation system will automatically:
 - [x] Settings → Payments tab: "Deposits" SectionCard with master toggle + helpful copy explaining each state. Sits above Stripe Connect onboarding so the salon can disable deposits without touching Stripe.
 - [x] Per-service deposit settings preserved (not modified) — flipping back ON restores previous behaviour
 
+## Phase 5.2: Single-Tier Pricing Redesign (Feb 26, 2026)
+- [x] Replaced 3-tier pricing (Starter €99 / Growth €149 / Pro €219) with **single tier €99/month: BookSlot Premium** — every feature included
+- [x] Premium pricing card with champagne-blush gradient background, gold accent stripe, Cormorant Garamond price
+- [x] Headline features section (5 icon-tile cards): branded booking page, drag-and-drop calendar, client management, growth analytics, Bella AI Receptionist
+- [x] "Plus everything else" 2-column checklist: unlimited bookings/clients, 8 staff included, PWA push (free, no SMS bills), premium themes, optional Stripe deposits, GDPR + daily backups, cancel any time
+- [x] CTA: "Start a 14-day free trial · No credit card required to start"
+- [x] FAQ rewritten in BookSlot voice (why one price, no card needed, no per-booking charge, etc.)
+- [x] Custom-quote escape hatch for multi-location/white-label/franchise enquiries via email
+
 ## Backlog (next)
 xt up)
 - [ ] P2: Client self-service portal
