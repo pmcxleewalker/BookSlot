@@ -422,6 +422,24 @@ The AI conversation system will automatically:
 - [x] Clients page: gold Crown badge top-right of card + "Auto VIP" / "VIP Client" label
 - [x] Tested: backend 16/16 PASS (test_iteration19_rebook_clv_blast.py)
 
+## Phase 5.1: VIP Late Notice Channel + Deposits Master Toggle (Feb 26, 2026)
+**VIP-only Late Notice channel for Fill My Day**
+- [x] Blast endpoint accepts `audience: 'all'|'vip_only'|'vip_first'` (default `vip_first`)
+- [x] `vip_first` sends to VIPs immediately, schedules non-VIPs 5 min later via `asyncio.create_task` (configurable via `vip_head_start_seconds`)
+- [x] Computes VIP set via manual `is_vip` flag OR auto LTV ≥ tenant threshold (single bulk aggregation)
+- [x] Persists `audience` on push_notifications immediate doc + creates a separate `kind='fill_my_day_followup'` doc when delayed task fires
+- [x] CalendarPage: "Fill My Day" button on cancelled appts opens an audience-picker dialog (3 options with Recommended pill, gold-themed Send blast CTA)
+- [x] Cancelled appointments now render on the calendar grid as faded/dashed blocks with strike-through name + megaphone icon (so the salon owner can find & blast them)
+- [x] After blasting, button relabels to "Re-blast" so audience can be changed later
+- [x] Tested: backend 16/16 PASS (test_iteration20_audience_blast_deposits.py)
+
+**Deposits Master Toggle**
+- [x] Added `tenant.settings.deposits_enabled: bool` (default true)
+- [x] Endpoints: `GET/PUT /api/tenants/me/payment-settings` 
+- [x] Public booking flow gates `needs_deposit` on `deposits_enabled` AND per-service config — when master is OFF, all bookings skip Stripe checkout regardless of per-service `deposit_required`
+- [x] Settings → Payments tab: "Deposits" SectionCard with master toggle + helpful copy explaining each state. Sits above Stripe Connect onboarding so the salon can disable deposits without touching Stripe.
+- [x] Per-service deposit settings preserved (not modified) — flipping back ON restores previous behaviour
+
 ## Backlog (next)
 xt up)
 - [ ] P2: Client self-service portal

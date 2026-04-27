@@ -439,7 +439,7 @@ const ApptDetail = ({ appt, staff, services, token, onClose, onUpdate, onComplet
 
           <div className="flex gap-2 pt-3 flex-wrap">
             <Button variant="outline" size="sm" className="flex-1 h-10 rounded-full border-[#E5DFD9] text-[#706B68] min-w-[90px]" onClick={onClose}>Close</Button>
-            {appt.status === 'cancelled' && !appt.blasted_at && (
+            {appt.status === 'cancelled' && (
               <Button
                 size="sm"
                 variant="outline"
@@ -449,7 +449,7 @@ const ApptDetail = ({ appt, staff, services, token, onClose, onUpdate, onComplet
                 disabled={blasting}
                 data-testid="blast-availability"
               >
-                <Megaphone className="w-3.5 h-3.5" /> Fill My Day
+                <Megaphone className="w-3.5 h-3.5" /> {appt.blasted_at ? 'Re-blast' : 'Fill My Day'}
               </Button>
             )}
             {appt.status === 'confirmed' && <Button size="sm" variant="outline" className="h-10 rounded-full border-[#8FA68F]/40 text-[#5F7A5F] gap-1 min-w-[100px]" onClick={() => onComplete(appt.appointment_id)} data-testid="complete-appt"><Check className="w-3.5 h-3.5" /> Complete</Button>}

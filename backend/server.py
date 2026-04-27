@@ -3229,7 +3229,8 @@ async def blast_availability(appointment_id: str, body: Optional[Dict[str, Any]]
     audience = (body.get("audience") or "vip_first").lower()
     if audience not in ("all", "vip_only", "vip_first"):
         audience = "vip_first"
-    head_start = int(body.get("vip_head_start_seconds") or 300)
+    head_start_raw = body.get("vip_head_start_seconds")
+    head_start = int(head_start_raw if head_start_raw is not None else 300)
     head_start = max(1, min(3600, head_start))
 
     try:
