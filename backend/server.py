@@ -2668,8 +2668,10 @@ async def create_public_booking(slug: str, booking_data: Dict[str, Any]):
             client = client_dict
     
     # Create appointment with PENDING status (requires approval)
-    # If service requires a deposit, create the appointment as pending_payment and signal the frontend
-    needs_deposit = bool(service.get("deposit_required") and service.get("deposit_amount"))
+    # If service requires a deposit AND the tenant has deposits enabled globally,
+    # create the appointment as pending_payment and signal the frontend.
+    deposits_enabled_globally = (tenant.get("settings") or {}).get("deposits_enabled", True)
+    needs_deposit = bool(deposits_enabled_globally and service.get("deposit_required") and service.get("deposit_amount"))
     initial_status = "pending_payment" if needs_deposit else "pending"
 
     appointment = Appointment(
@@ -3208,10 +3210,13 @@ async def public_rebook(confirmation_code: str, body: Dict[str, Any]):
 # page with the slot pre-filled.
 
 @api_router.post("/appointments/{appointment_id}/blast-availability")
-async def blast_availability(appointment_id: str, user: Dict = Depends(get_current_user)):
-    """Send a 'Fill My Day' push blast for the open slot left by this appointment
-    (typically used after a same-day cancellation). Sends to all push
-    subscribers tied to this tenant."""
+async def blast_availability(appointment_id: str, body: Optional[Dict[str, Any]] = None, user: Dict = Depends(get_current_user)):
+    """Send a 'Fill My Day' push blast for the open slot left by this appointment.
+    Body params (all optional):
+      - audience: 'all' | 'vip_only' | 'vip_first' (default 'vip_first')
+        * vip_first → send to VIPs immediately, schedule non-VIPs 5 minutes later
+      - vip_head_start_seconds: override the 5-min head start (1..3600). Default 300.
+    """
     if not user.get("tenant_id") or user.get("role") not in ["owner", "admin"]:
         raise HTTPException(status_code=403, detail="Only the salon owner can blast availability")
     appt = await db.appointments.find_one({"appointment_id": appointment_id, "tenant_id": user["tenant_id"]}, {"_id": 0})
@@ -3219,6 +3224,13 @@ async def blast_availability(appointment_id: str, user: Dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Appointment not found")
     tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0}) or {}
     service = await db.services.find_one({"service_id": appt.get("service_id")}, {"_id": 0}) or {}
+
+    body = body or {}
+    audience = (body.get("audience") or "vip_first").lower()
+    if audience not in ("all", "vip_only", "vip_first"):
+        audience = "vip_first"
+    head_start = int(body.get("vip_head_start_seconds") or 300)
+    head_start = max(1, min(3600, head_start))
 
     try:
         start = datetime.fromisoformat(appt["start_time"].replace("Z", "+00:00")) if isinstance(appt["start_time"], str) else appt["start_time"]
@@ -3231,62 +3243,196 @@ async def blast_availability(appointment_id: str, user: Dict = Depends(get_curre
     slug = tenant.get("booking_url_slug", "")
     deep_link = f"/book/{slug}?prefill_service={appt.get('service_id', '')}"
 
-    payload = {
-        "title": f"✨ {business}: opening at {time_label}",
-        "body": f"{date_label} — {service.get('name', 'a slot')} just opened up. Tap to grab it.",
+    base_payload = {
         "icon": "/bella-avatar.jpg",
         "tag": f"fillmyday-{appointment_id}",
         "data": {"url": deep_link, "appointment_id": appointment_id, "kind": "fill_my_day"},
     }
+    vip_payload = {
+        **base_payload,
+        "title": f"👑 VIP early access · {business}",
+        "body": f"{date_label} at {time_label} just opened — yours first. Tap to grab it.",
+    }
+    public_payload = {
+        **base_payload,
+        "title": f"✨ {business}: opening at {time_label}",
+        "body": f"{date_label} — {service.get('name', 'a slot')} just opened up. Tap to grab it.",
+    }
 
-    # Find all push subscribers for this tenant.
+    # Find all push subscribers for this tenant + bucket them VIP vs not
     subs = await db.push_subscriptions.find({"tenant_id": user["tenant_id"]}, {"_id": 0}).to_list(2000)
-    sent_count = 0
-    failed_count = 0
-    if WEBPUSH_AVAILABLE:
+    vip_threshold = _vip_threshold_for(tenant)
+
+    # Build a set of VIP client_ids for this tenant (manual is_vip OR auto LTV >= threshold)
+    confirmed = await db.appointments.find({
+        "tenant_id": user["tenant_id"],
+        "status": {"$in": ["confirmed", "completed"]},
+    }, {"_id": 0, "client_id": 1, "client_email": 1, "client_phone": 1, "service_id": 1, "total_price": 1}).to_list(5000)
+    services_map = {s["service_id"]: float(s.get("price") or 0) for s in await db.services.find({"tenant_id": user["tenant_id"]}, {"_id": 0, "service_id": 1, "price": 1}).to_list(500)}
+    ltv_id: Dict[str, float] = {}
+    ltv_email: Dict[str, float] = {}
+    for a in confirmed:
+        price = a.get("total_price")
+        if price is None and a.get("service_id"):
+            price = services_map.get(a["service_id"], 0.0)
+        try:
+            price = float(price or 0)
+        except Exception:
+            price = 0.0
+        if a.get("client_id"):
+            ltv_id[a["client_id"]] = ltv_id.get(a["client_id"], 0.0) + price
+        if a.get("client_email"):
+            ltv_email[a["client_email"].lower()] = ltv_email.get(a["client_email"].lower(), 0.0) + price
+    manual_vips = await db.clients.find({"tenant_id": user["tenant_id"], "is_vip": True}, {"_id": 0, "client_id": 1, "email": 1}).to_list(2000)
+    vip_client_ids = {c.get("client_id") for c in manual_vips if c.get("client_id")}
+    vip_emails = {(c.get("email") or "").lower() for c in manual_vips if c.get("email")}
+    for cid, total in ltv_id.items():
+        if total >= vip_threshold:
+            vip_client_ids.add(cid)
+    for em, total in ltv_email.items():
+        if total >= vip_threshold:
+            vip_emails.add(em)
+
+    def _is_vip_sub(sub: Dict[str, Any]) -> bool:
+        cid = sub.get("client_id")
+        if cid and cid in vip_client_ids:
+            return True
+        em = (sub.get("client_email") or sub.get("user_email") or "").lower()
+        if em and em in vip_emails:
+            return True
+        return False
+
+    vip_subs = [s for s in subs if _is_vip_sub(s)]
+    non_vip_subs = [s for s in subs if not _is_vip_sub(s)]
+
+    async def _send_batch(target_subs: List[Dict[str, Any]], payload: Dict[str, Any]) -> Dict[str, int]:
+        sent = 0
+        failed = 0
+        if not WEBPUSH_AVAILABLE:
+            return {"sent": 0, "failed": 0}
         vapid_private = os.environ.get("VAPID_PRIVATE_KEY", "")
         vapid_email = os.environ.get("VAPID_CLAIM_EMAIL", "mailto:admin@bookslot.io")
-        if vapid_private:
-            for sub in subs:
-                if not sub.get("endpoint"):
-                    continue
-                try:
-                    import json as json_mod
-                    webpush(
-                        subscription_info={"endpoint": sub["endpoint"], "keys": sub.get("keys", {})},
-                        data=json_mod.dumps(payload),
-                        vapid_private_key=vapid_private,
-                        vapid_claims={"sub": vapid_email}
-                    )
-                    sent_count += 1
-                except WebPushException as e:
-                    failed_count += 1
-                    if e.response and e.response.status_code in [404, 410]:
-                        await db.push_subscriptions.delete_one({"endpoint": sub["endpoint"]})
+        if not vapid_private:
+            return {"sent": 0, "failed": 0}
+        import json as json_mod
+        for sub in target_subs:
+            if not sub.get("endpoint"):
+                continue
+            try:
+                webpush(
+                    subscription_info={"endpoint": sub["endpoint"], "keys": sub.get("keys", {})},
+                    data=json_mod.dumps(payload),
+                    vapid_private_key=vapid_private,
+                    vapid_claims={"sub": vapid_email}
+                )
+                sent += 1
+            except WebPushException as e:
+                failed += 1
+                if e.response and e.response.status_code in [404, 410]:
+                    await db.push_subscriptions.delete_one({"endpoint": sub["endpoint"]})
+        return {"sent": sent, "failed": failed}
+
+    # Decide who gets the immediate blast
+    if audience == "all":
+        immediate_subs, immediate_payload = subs, public_payload
+        delayed_subs = []
+    elif audience == "vip_only":
+        immediate_subs, immediate_payload = vip_subs, vip_payload
+        delayed_subs = []
+    else:  # vip_first
+        immediate_subs, immediate_payload = vip_subs, vip_payload
+        delayed_subs = non_vip_subs
+
+    immediate_result = await _send_batch(immediate_subs, immediate_payload)
 
     await db.push_notifications.insert_one({
         "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
         "tenant_id": user["tenant_id"],
         "appointment_id": appointment_id,
         "kind": "fill_my_day",
-        "payload": payload,
-        "sent_count": sent_count,
-        "failed_count": failed_count,
-        "subscribers_total": len(subs),
+        "audience": audience,
+        "payload": immediate_payload,
+        "sent_count": immediate_result["sent"],
+        "failed_count": immediate_result["failed"],
+        "subscribers_total": len(immediate_subs),
+        "scheduled_followup_count": len(delayed_subs),
+        "head_start_seconds": head_start if delayed_subs else 0,
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
 
+    # Schedule the non-VIP follow-up (fire-and-forget asyncio task).
+    # If the backend restarts within the head-start window, the late blast is
+    # lost — acceptable trade-off for a 5-minute window. For longer delays,
+    # promote to a persistent job queue.
+    async def _delayed_blast():
+        try:
+            await asyncio.sleep(head_start)
+            res = await _send_batch(delayed_subs, public_payload)
+            await db.push_notifications.insert_one({
+                "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
+                "tenant_id": user["tenant_id"],
+                "appointment_id": appointment_id,
+                "kind": "fill_my_day_followup",
+                "audience": "non_vip",
+                "payload": public_payload,
+                "sent_count": res["sent"],
+                "failed_count": res["failed"],
+                "subscribers_total": len(delayed_subs),
+                "head_start_seconds": head_start,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+        except Exception as e:
+            logging.exception("Fill-My-Day delayed blast failed: %s", e)
+
+    if delayed_subs:
+        asyncio.create_task(_delayed_blast())
+
     await db.appointments.update_one(
         {"appointment_id": appointment_id, "tenant_id": user["tenant_id"]},
-        {"$set": {"blasted_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"blasted_at": datetime.now(timezone.utc).isoformat(), "blasted_audience": audience}}
     )
 
     return {
+        "audience": audience,
         "subscribers_total": len(subs),
-        "sent_count": sent_count,
-        "failed_count": failed_count,
+        "vip_subscribers": len(vip_subs),
+        "non_vip_subscribers": len(non_vip_subs),
+        "sent_count": immediate_result["sent"],
+        "failed_count": immediate_result["failed"],
+        "scheduled_followup_count": len(delayed_subs),
+        "head_start_seconds": head_start if delayed_subs else 0,
         "deep_link": deep_link,
     }
+
+
+# ================== DEPOSITS MASTER TOGGLE ==================
+# Salon owner can switch deposits ON/OFF globally for the tenant. When OFF, the
+# public booking flow skips the Stripe deposit step entirely (no checkout
+# redirect). Per-service `deposit_required` is preserved but ignored at the
+# tenant gate. Useful for salons that haven't decided whether to use Stripe yet.
+
+@api_router.get("/tenants/me/payment-settings")
+async def get_payment_settings(user: Dict = Depends(get_current_user)):
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    tenant = await db.tenants.find_one({"tenant_id": user["tenant_id"]}, {"_id": 0}) or {}
+    settings = tenant.get("settings") or {}
+    return {
+        "deposits_enabled": bool(settings.get("deposits_enabled", True)),
+        "stripe_onboarding_complete": bool(tenant.get("stripe_onboarding_complete")),
+    }
+
+
+@api_router.put("/tenants/me/payment-settings")
+async def update_payment_settings(body: Dict[str, Any], user: Dict = Depends(get_current_user)):
+    if not user.get("tenant_id"):
+        raise HTTPException(status_code=400, detail="No business found")
+    deposits_enabled = bool(body.get("deposits_enabled", True))
+    await db.tenants.update_one(
+        {"tenant_id": user["tenant_id"]},
+        {"$set": {"settings.deposits_enabled": deposits_enabled, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"deposits_enabled": deposits_enabled}
 
 
 # ================== CLIENT LIFETIME VALUE / VIP TAGGING ==================

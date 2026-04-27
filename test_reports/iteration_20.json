@@ -1,0 +1,58 @@
+{
+  "summary": "Iteration 20 (deposits master toggle + Fill My Day audience targeting) tested end-to-end against the public preview URL https://bookslot-admin.preview.emergentagent.com. Backend: 16/16 new tests in test_iteration20_audience_blast_deposits.py PASS. Iteration 19 regression: 15/16 still PASS — the one failure (rebook-suggestions on DEMO_CODE) is BY DESIGN because the demo appt was set to cancelled and /rebook-suggestions correctly rejects cancelled bookings with HTTP 400 (per the main agent's prep note). Frontend: Deposits toggle WORKS — present at data-testid='toggle-deposits-enabled' under Settings → Payments above the Stripe section, toggling persists via PUT /api/tenants/me/payment-settings and a 'Deposits turned ON/OFF' toast appears. Calendar cancelled appts now render as faded dashed blocks with a megaphone icon, and Edit Booking dialog opens with a 'CANCELLED' status pill plus a 'BLASTED HH:MM' pill (since the appt has been blasted in earlier tests). HOWEVER: in headless playwright I could NOT find the 'Fill My Day' button (data-testid='blast-availability') inside the Edit Booking dialog after clicking the cancelled appt — the dialog body shows Service/Staff/Date/Time/Client/Phone/Email/Notes and only Close + Save Changes buttons. This may be intentional (button hides after blast) or a real miss; main agent should verify on a fresh, never-blasted cancelled appt or scroll-test the dialog. Deposits master gate verified at the API level: when deposits_enabled=false, POST /api/public/booking/{slug}/book on a deposit_required service returns requires_deposit=false and status='pending' (NOT 'pending_payment'). When toggled back ON, the same call returns requires_deposit=true and status='pending_payment'. Audience contract is 100% covered: vip_first / vip_only / all all return the documented payload, vip_first defaults when audience omitted, unknown values fall back to vip_first, head_start_seconds clamps to [1,3600] for non-zero inputs, blasted_audience persists on the appointment, and the asyncio follow-up task runs (verified via 5s sleep + re-blast).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/appointments/{id}/blast-availability",
+        "issue": "server.py:3232 uses `int(body.get('vip_head_start_seconds') or 300)` — passing 0 is falsy and silently replaced with 300 instead of being clamped to 1. Negative values DO clamp correctly. Recommend `body.get('vip_head_start_seconds', 300)` pattern for stricter semantics."
+      },
+      {
+        "endpoint": "POST /api/public/booking/{slug}/book",
+        "issue": "Pre-existing tz mismatch — sending tz-aware ISO datetime (e.g. '...+00:00') in start_time triggers HTTP 500 with `TypeError: can't compare offset-naive and offset-aware datetimes` (working_hours comparison). Only naive ISO strings work. Not new in this iteration but worth fixing."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Calendar Edit Booking dialog (cancelled appt)",
+        "issue": "After clicking a cancelled appt's faded block, the Edit Booking dialog opens with the CANCELLED pill but the 'Fill My Day' button (data-testid='blast-availability') was NOT visible in the dialog body. The appt under test had already been blasted earlier in the same session ('BLASTED 11:03 AM' pill is shown) — the button may be conditionally hidden once blasted. Main agent should confirm whether the button should remain visible (so the owner can re-blast a different audience) or whether this is intentional. If intentional, add a visible affordance like 'Re-blast' or a disabled button so QA can locate it.",
+        "selector": "[data-testid='blast-availability']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration20_audience_blast_deposits.py",
+    "/app/test_reports/pytest/iteration20.xml"
+  ],
+  "action_items": [
+    "(MEDIUM) Verify the 'Fill My Day' button (data-testid='blast-availability') is rendered inside the Edit Booking dialog for cancelled appointments BOTH before and after a blast has been sent. Recommended: keep it visible, optionally relabelled to 'Re-blast' if blasted_at is set, so audience can be changed later.",
+    "(LOW) Fix server.py:3232 head-start fallback: `int(body.get('vip_head_start_seconds') or 300)` treats 0 as missing. Use `body.get('vip_head_start_seconds', 300)` then clamp.",
+    "(LOW, pre-existing) Public booking endpoint crashes 500 on tz-aware start_time due to naive vs aware datetime comparison in working-hours validation. Normalize both sides to UTC before comparing."
+  ],
+  "critical_code_review_comments": [
+    "server.py:3212-3405 — blast endpoint cleanly separates immediate vs delayed audiences. asyncio.create_task fire-and-forget for the follow-up is acceptable for ≤5min head start; document that backend restarts within the window drop the late blast. Consider promoting to a job queue (Celery/APScheduler) for durability.",
+    "server.py:3348 — push_notifications immediate doc records `audience` but the follow-up doc at line 3376 hardcodes `audience: 'non_vip'`. Reasonable, but consider also recording `parent_audience: 'vip_first'` for analytics joins.",
+    "server.py:2673-2675 — deposits_enabled gate is correctly applied at booking time. Per-service deposit_required is preserved (not modified) when the master toggle is off, matching the spec.",
+    "server.py:3414-3435 — payment-settings GET/PUT is minimal & idempotent. PUT accepts ONLY {deposits_enabled} — no validation for unknown keys; consider a Pydantic model for forward-compat.",
+    "Frontend SettingsPage.jsx — toast on toggle is good UX; ensure error path (PUT 4xx/5xx) re-flips the local toggle state to reflect server truth (otherwise user sees an out-of-sync UI on failure).",
+    "CalendarPage.jsx — confirm 'Fill My Day' button stays visible AFTER a blast (or is replaced by a 'Re-blast' affordance). Hiding it entirely makes audience changes impossible."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration20_audience_blast_deposits.py"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 new + 15/16 iteration19 regression — 1 failure is by-design due to demo appt being cancelled)",
+    "frontend": "~75% — Settings deposits toggle fully verified; calendar cancelled rendering verified; Fill My Day audience picker dialog NOT verified because the entry-point button was not visible in the dialog under test"
+  },
+  "test_credentials": "salon@bookslot.io / Demo123! (works on /api/auth/login). Demo slug bella-hair-studio-d5d6d8. Demo cancelled appt appt_151aaf879e3f.",
+  "seed_data_creation": "Tests temporarily flipped deposits_enabled OFF then back ON; if a service had to be marked deposit_required=true for the gate test, it was reverted to deposit_required=false at teardown. Several blast calls were made against appt_151aaf879e3f — blasted_at and blasted_audience are set on it (currently 'vip_only' from the last call). Clear via `db.appointments.update_one({appointment_id:'appt_151aaf879e3f'},{$unset:{blasted_at:'',blasted_audience:''}})` if a fresh state is needed.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend contract for iteration 20 fully covered by /app/backend/tests/test_iteration20_audience_blast_deposits.py — re-run as regression. Two minor pre-existing backend issues documented (head-start 0-falsy bug, public booking 500 on tz-aware start_time). Frontend deposits toggle fully verified. The Fill My Day audience-picker dialog (testids blast-audience-vip_first / vip_only / all + blast-confirm) was NOT exercised end-to-end because the 'blast-availability' button was not visible inside the Edit Booking dialog for the cancelled appt under test (the appt was already blasted earlier in the session — the button may be conditionally rendered). Next agent: clear blasted_at on appt_151aaf879e3f first, OR find another cancelled appt without blasted_at set, then click it on the calendar grid and verify the Fill My Day button + audience picker + send blast flow.",
+  "rca_of_the_issue": "RCA — Fill My Day button not found: Cancelled appt appt_151aaf879e3f already had blasted_at set from prior backend tests in this same session (visible 'BLASTED 11:03 AM' pill in the Edit Booking dialog). The frontend likely conditionally hides the button when an appt has already been blasted. Mitigation: either (a) clear blasted_at before UI testing, or (b) make the button always visible (relabel to 'Re-blast' if already blasted) so owners can change audience. Backend bug RCA — head-start clamping: `or 300` short-circuits on 0, bypassing the max(1,...) clamp; replace with explicit-default `body.get('vip_head_start_seconds', 300)`."
+}

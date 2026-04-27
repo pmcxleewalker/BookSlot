@@ -58,6 +58,7 @@ const SettingsPage = () => {
   // Stripe Connect
   const [stripeStatus, setStripeStatus] = useState(null);
   const [stripeLoading, setStripeLoading] = useState(false);
+  const [depositsEnabled, setDepositsEnabled] = useState(true);
   const [searchParams] = (() => { try { return [new URLSearchParams(window.location.search)]; } catch { return [new URLSearchParams()]; } })();
 
   const fetchStripeStatus = async () => {
@@ -84,7 +85,7 @@ const SettingsPage = () => {
   useEffect(() => {
     if (tenant) {
       setFormData({ name: tenant.name || '', email: tenant.email || '', phone: tenant.phone || '', timezone: tenant.timezone || 'Europe/Dublin', currency: tenant.currency || 'EUR' });    }
-    fetchBranding(); fetchBookingRules(); fetchReminderSettings(); fetchStripeStatus();
+    fetchBranding(); fetchBookingRules(); fetchReminderSettings(); fetchStripeStatus(); fetchVipThreshold(); fetchPaymentSettings();
   }, [tenant]);
 
   // Auto-pop Payments tab + show toast if user just returned from Stripe onboarding
@@ -128,6 +129,25 @@ const SettingsPage = () => {
       const r = await axios.get(`${API}/tenants/me/clv-settings`, { headers: { Authorization: `Bearer ${token}` } });
       setVipThreshold(r.data.vip_threshold_euros ?? 500);
     } catch {}
+  };
+
+  const fetchPaymentSettings = async () => {
+    try {
+      const r = await axios.get(`${API}/tenants/me/payment-settings`, { headers: { Authorization: `Bearer ${token}` } });
+      setDepositsEnabled(r.data.deposits_enabled !== false);
+    } catch {}
+  };
+
+  const handleToggleDeposits = async () => {
+    const next = !depositsEnabled;
+    setDepositsEnabled(next);
+    try {
+      await axios.put(`${API}/tenants/me/payment-settings`, { deposits_enabled: next }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(next ? 'Deposits turned ON' : 'Deposits turned OFF — all bookings are now free at booking time');
+    } catch {
+      setDepositsEnabled(!next);
+      toast.error('Could not update');
+    }
   };
 
   // Save handlers
@@ -364,6 +384,26 @@ const SettingsPage = () => {
         {/* ========== PAYMENTS (Stripe Connect) ========== */}
         {activeTab === 'payments' && (
           <div className="space-y-6" data-testid="settings-payments">
+            <SectionCard title="Deposits" subtitle="Master switch for deposit-required bookings. Turn this off and ALL services skip the deposit step — no Stripe checkout for clients.">
+              <ToggleRow
+                label="Require deposits for bookings"
+                desc={depositsEnabled
+                  ? 'On — services with a deposit will redirect clients to Stripe Checkout.'
+                  : 'Off — all bookings are free at booking time, no Stripe checkout. Per-service deposit settings are kept but ignored until you flip this back on.'}
+                checked={depositsEnabled}
+                onChange={handleToggleDeposits}
+                testId="toggle-deposits-enabled"
+              />
+              {!depositsEnabled && (
+                <div className="mt-3 bg-[#FAF8F6] rounded-2xl p-4 flex items-start gap-3 border border-[#EDE8E3]">
+                  <AlertCircle className="w-4 h-4 text-[#9E948F] mt-0.5 shrink-0" strokeWidth={1.5} />
+                  <p className="text-xs text-[#706B68] leading-relaxed">
+                    Tip: leave this off while you decide on Stripe. You can switch it back on any time — your per-service deposit amounts are saved.
+                  </p>
+                </div>
+              )}
+            </SectionCard>
+
             <SectionCard title="Stripe Payments" subtitle="Connect your Stripe account to take card deposits at booking. Money lands directly in your bank — BookSlot only takes a small platform fee.">
               {!stripeStatus && (
                 <div className="text-sm text-[#9E948F] flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>

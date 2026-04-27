@@ -278,17 +278,29 @@ const ApptDetail = ({ appt, staff, services, token, onClose, onUpdate, onComplet
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [blasting, setBlasting] = useState(false);
+  const [blastOpen, setBlastOpen] = useState(false);
+  const [blastAudience, setBlastAudience] = useState('vip_first');
 
   const handleBlast = async () => {
     if (!appt) return;
     setBlasting(true);
     try {
-      const r = await axios.post(`${API}/appointments/${appt.appointment_id}/blast-availability`, {}, { headers: { Authorization: `Bearer ${token}` } });
-      if (r.data.subscribers_total === 0) {
+      const r = await axios.post(
+        `${API}/appointments/${appt.appointment_id}/blast-availability`,
+        { audience: blastAudience },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const total = r.data.subscribers_total || 0;
+      if (total === 0) {
         toast.info('No clients have opted in to push notifications yet.');
+      } else if (blastAudience === 'vip_only') {
+        toast.success(`👑 Sent to ${r.data.sent_count} VIP${r.data.sent_count === 1 ? '' : 's'}`);
+      } else if (blastAudience === 'vip_first') {
+        toast.success(`👑 ${r.data.sent_count} VIP${r.data.sent_count === 1 ? '' : 's'} now • ${r.data.scheduled_followup_count} other client${r.data.scheduled_followup_count === 1 ? '' : 's'} in ${Math.round((r.data.head_start_seconds || 0) / 60)} min`);
       } else {
-        toast.success(`Sent to ${r.data.sent_count} of ${r.data.subscribers_total} client${r.data.subscribers_total === 1 ? '' : 's'} ✨`);
+        toast.success(`✨ Sent to ${r.data.sent_count} of ${total} client${total === 1 ? '' : 's'}`);
       }
+      setBlastOpen(false);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Failed to blast');
     } finally {
@@ -433,11 +445,11 @@ const ApptDetail = ({ appt, staff, services, token, onClose, onUpdate, onComplet
                 variant="outline"
                 className="h-10 rounded-full gap-1 min-w-[140px]"
                 style={{ borderColor: 'rgba(212,175,55,0.5)', color: '#A8842A' }}
-                onClick={handleBlast}
+                onClick={() => setBlastOpen(true)}
                 disabled={blasting}
                 data-testid="blast-availability"
               >
-                <Megaphone className="w-3.5 h-3.5" /> {blasting ? 'Blasting…' : 'Fill My Day'}
+                <Megaphone className="w-3.5 h-3.5" /> Fill My Day
               </Button>
             )}
             {appt.status === 'confirmed' && <Button size="sm" variant="outline" className="h-10 rounded-full border-[#8FA68F]/40 text-[#5F7A5F] gap-1 min-w-[100px]" onClick={() => onComplete(appt.appointment_id)} data-testid="complete-appt"><Check className="w-3.5 h-3.5" /> Complete</Button>}
@@ -447,6 +459,64 @@ const ApptDetail = ({ appt, staff, services, token, onClose, onUpdate, onComplet
           </div>
         </div>
       </DialogContent>
+
+      {/* Fill My Day audience picker */}
+      <Dialog open={blastOpen} onOpenChange={setBlastOpen}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-['Cormorant_Garamond'] text-2xl font-light flex items-center gap-2">
+              <Megaphone className="w-5 h-5" style={{ color: '#A8842A' }} />
+              Fill My Day
+            </DialogTitle>
+            <DialogDescription className="text-[#9E948F] text-sm">
+              Who should hear about this open slot first?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 mt-2">
+            {[
+              { key: 'vip_first', icon: Crown, title: 'VIPs first, then everyone', desc: 'Your VIPs get a 5-minute head start. Then the slot opens to all opted-in clients.', recommended: true },
+              { key: 'vip_only', icon: Crown, title: 'VIPs only', desc: 'Send only to VIP clients. Slot stays exclusive to your top spenders.' },
+              { key: 'all', icon: Megaphone, title: 'Everyone at once', desc: 'Blast immediately to all opted-in clients. Fastest fill, no VIP perk.' },
+            ].map(opt => {
+              const isSel = blastAudience === opt.key;
+              const Icon = opt.icon;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setBlastAudience(opt.key)}
+                  className="w-full text-left p-4 rounded-2xl border-2 transition-all hover:border-[#D4AF37]/60"
+                  style={{
+                    borderColor: isSel ? '#D4AF37' : '#EDE8E3',
+                    background: isSel ? 'rgba(212,175,55,0.06)' : 'transparent',
+                  }}
+                  data-testid={`blast-audience-${opt.key}`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon className="w-4 h-4" style={{ color: isSel ? '#A8842A' : '#9E948F' }} fill={opt.key !== 'all' && isSel ? '#D4AF37' : 'none'} strokeWidth={1.5} />
+                    <p className="text-sm font-medium text-[#2C2A29]">{opt.title}</p>
+                    {opt.recommended && <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full font-bold" style={{ background: '#D4AF37', color: '#0A0A0A' }}>Recommended</span>}
+                  </div>
+                  <p className="text-xs text-[#706B68] leading-relaxed pl-6">{opt.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex gap-2 pt-3">
+            <Button variant="outline" size="sm" className="flex-1 h-10 rounded-full" onClick={() => setBlastOpen(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              className="flex-1 h-10 rounded-full text-white"
+              style={{ background: '#D4AF37', color: '#0A0A0A' }}
+              onClick={handleBlast}
+              disabled={blasting}
+              data-testid="blast-confirm"
+            >
+              <Megaphone className="w-3.5 h-3.5 mr-1" /> {blasting ? 'Sending…' : 'Send blast'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
@@ -454,7 +524,7 @@ const ApptDetail = ({ appt, staff, services, token, onClose, onUpdate, onComplet
 const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApptClick, onSlotClick, onDropAppt }) => {
   const ws = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: ws, end: endOfWeek(selectedDate, { weekStartsOn: 1 }) });
-  const getAppts = (d) => appointments.filter(a => isSameDay(parseISO(a.start_time), d) && a.status !== 'cancelled');
+  const getAppts = (d) => appointments.filter(a => isSameDay(parseISO(a.start_time), d));
   const getStyle = (a) => { try { const s = parseISO(a.start_time), e = parseISO(a.end_time); return { top: `${(s.getHours() + s.getMinutes() / 60 - 8) * 56}px`, height: `${Math.max(differenceInMinutes(e, s) / 60 * 56, 24)}px` }; } catch { return { top: '0', height: '28px' }; } };
 
   return (
@@ -518,21 +588,30 @@ const WeekGrid = ({ selectedDate, appointments, staffColorMap, onDayClick, onApp
               {da.map(a => {
                 const s = getStyle(a);
                 const c = staffColorMap[a.staff_id] || BLOCK_COLORS[0];
+                const isCancelled = a.status === 'cancelled';
                 return (
                   <div
                     key={a.appointment_id}
                     className="absolute left-1 right-1 rounded-xl px-2 py-1 overflow-hidden cursor-grab active:cursor-grabbing transition-all hover:scale-[1.03] hover:shadow-md hover:z-10 border border-white/50"
-                    style={{ ...s, backgroundColor: c.bg, zIndex: 5 }}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData('application/json', JSON.stringify(a)); e.dataTransfer.effectAllowed = 'move'; }}
+                    style={{
+                      ...s,
+                      backgroundColor: isCancelled ? 'transparent' : c.bg,
+                      borderStyle: isCancelled ? 'dashed' : 'solid',
+                      borderColor: isCancelled ? c.bg : 'rgba(255,255,255,0.5)',
+                      opacity: isCancelled ? 0.55 : 1,
+                      zIndex: 5,
+                    }}
+                    draggable={!isCancelled}
+                    onDragStart={(e) => { if (isCancelled) return; e.dataTransfer.setData('application/json', JSON.stringify(a)); e.dataTransfer.effectAllowed = 'move'; }}
                     onClick={(e) => { e.stopPropagation(); onApptClick(a); }}
                     data-testid={`appt-${a.appointment_id}`}
                   >
-                    <p className="text-[10px] font-semibold truncate flex items-center gap-1" style={{ color: c.text }}>
+                    <p className="text-[10px] font-semibold truncate flex items-center gap-1" style={{ color: c.text, textDecoration: isCancelled ? 'line-through' : 'none' }}>
                       {a.client_is_vip && <Crown className="w-2.5 h-2.5 shrink-0" style={{ color: '#D4AF37' }} fill="#D4AF37" strokeWidth={1.5} />}
                       <span className="truncate">{a.client_name}</span>
+                      {isCancelled && <Megaphone className="w-2.5 h-2.5 shrink-0 ml-auto" style={{ color: '#A8842A' }} strokeWidth={1.5} />}
                     </p>
-                    <p className="text-[9px] truncate" style={{ color: c.text + '99' }}>{a.service_name}</p>
+                    <p className="text-[9px] truncate" style={{ color: c.text + '99' }}>{isCancelled ? 'Cancelled · tap to fill' : a.service_name}</p>
                   </div>
                 );
               })}
