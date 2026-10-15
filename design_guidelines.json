@@ -1,0 +1,92 @@
+{
+  "theme": "light",
+  "archetype": "Swiss & High-Contrast",
+  "typography": {
+    "headings_marketing": "Cormorant Garamond",
+    "headings_dashboard": "Manrope",
+    "body": "Manrope",
+    "mono": "JetBrains Mono"
+  },
+  "colors": {
+    "background_primary": "#FFFFFF",
+    "background_secondary": "#FAFAFA",
+    "text_primary": "#0A0A0A",
+    "text_secondary": "#666666",
+    "accent_brand": "#121212",
+    "accent_interaction": "#E34A33",
+    "ai_widget_brand": "#4F46E5",
+    "borders": "#E5E5E5"
+  },
+  "visual_enhancers": {
+    "shadows": "Diffuse ambient shadows only on hover. Default is flat with 1px border.",
+    "border_radius": "rounded-none or rounded-md (max 6px) to maintain a highly structured, strict Swiss look.",
+    "glassmorphism": "Used only on the sticky nav and AI chat widget: bg-white/70 backdrop-blur-xl border-b border-black/5.",
+    "textures": "Subtle noise overlay on the hero section for the 'elite' tactile feel."
+  },
+  "grids_and_layouts": {
+    "marketing": "Asymmetrical Bento Grid (Tetris Mode) with wide gaps (gap-12) and massive padding (p-16 to p-32).",
+    "dashboard": "High Density Grid with strict column alignment (gap-4). Use border-collapse patterns for tables."
+  },
+  "motion": {
+    "hover": "Slight lift (-translate-y-1) and sharp border darkening.",
+    "transitions": "Use specific properties (transition-transform, transition-opacity) duration 300ms ease-out.",
+    "animations": "Framer Motion for page entrances. Smooth stagger children for the calendar grid."
+  },
+  "accessibility": {
+    "contrast": "Ensure 4.5:1 for normal text, 3:1 for large text. Use dark text (#0A0A0A) on light backgrounds.",
+    "focus": "focus:ring-2 focus:ring-black focus:outline-none focus:ring-offset-2",
+    "prefers_reduced_motion": "Respect prefers-reduced-motion media query for all Framer Motion and CSS animations."
+  },
+  "media": {
+    "images": [
+      {
+        "url": "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Spacious and stylish hair salon interior",
+        "category": "industry_template_salon"
+      },
+      {
+        "url": "https://images.pexels.com/photos/4269276/pexels-photo-4269276.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Contemporary dental office interior",
+        "category": "industry_template_dental"
+      },
+      {
+        "url": "https://images.pexels.com/photos/1774986/pexels-photo-1774986.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Close-up of textured white plaster",
+        "category": "marketing_background_texture"
+      }
+    ],
+    "icons": "lucide-react"
+  },
+  "3d_libraries": {
+    "recommendation": "Framer Motion 3D for simple, performant card transitions on pricing. Avoid heavy 3D canvas libraries to keep the SaaS booking engine blisteringly fast and professional."
+  },
+  "components": {
+    "calendar": {
+      "rules": "Must support drag-and-drop, color-coded appointments, and multi-view. Use CSS Grid for the layout. No full-calendar library overhead if possible, use standard date-fns math + framer-motion.",
+      "ui": "Flat, 1px border, high-contrast text. Current day highlighted with a Vermillion dot or border."
+    },
+    "ai_receptionist_widget": {
+      "rules": "Floating glassmorphic chat interface. Fixed at bottom right. Smooth slide-up animation.",
+      "ui": "bg-white/80 backdrop-blur-2xl border border-black/10 shadow-[0_8px_32px_rgba(0,0,0,0.08)]."
+    },
+    "general": {
+      "shadcn": "Use heavily customized Shadcn components for complex logic (Select, DatePicker, Dialog). Strip rounded borders to match the sharp Swiss design."
+    }
+  },
+  "instructions_to_main_agent": [
+    "DO NOT use Inter for headings.",
+    "Create a strict, high-contrast interface. No soft SaaS blues.",
+    "Use Manrope for all UI text, JetBrains Mono for times/metrics.",
+    "Use 1px borders extensively instead of card shadows.",
+    "Padding should be generous on marketing (py-24) and dense on dashboards (p-4).",
+    "All interactive elements MUST have data-testid attributes."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Use named exports for components, default exports for pages.",
+    "Prioritize existing components from src/components/ui.",
+    "Use sonner for toasts.",
+    "DO NOT apply transition: all universally.",
+    "DO NOT center align the app container in global CSS.",
+    "Never use generic AI emojis for icons; strictly use lucide-react."
+  ]
+}
