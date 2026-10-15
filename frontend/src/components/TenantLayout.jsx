@@ -16,26 +16,30 @@ import {
   X,
   ChevronDown,
   Bot,
-  HelpCircle
+  HelpCircle,
+  ExternalLink
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import HelpPanel from './HelpSystem';
 
 // Streamlined navigation - merged Appointments into Calendar, removed Resources, moved Messages to AI Receptionist, moved Integrations to Settings
+// `perm` hides an item from team members without that permission; `manager` = owner/admin only
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
   { path: '/staff', label: 'Staff', icon: Users },
   { path: '/services', label: 'Services', icon: Briefcase },
-  { path: '/clients', label: 'Clients', icon: UserCircle },
-  { path: '/forms', label: 'Forms', icon: FileText },
-  { path: '/moltbot', label: 'AI Receptionist', icon: Bot },
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
+  { path: '/clients', label: 'Clients', icon: UserCircle, perm: 'can_manage_customers' },
+  { path: '/forms', label: 'Forms', icon: FileText, manager: true },
+  { path: '/moltbot', label: 'AI Receptionist', icon: Bot, manager: true },
+  { path: '/reports', label: 'Reports', icon: BarChart3, perm: 'can_view_reports' },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
 const TenantLayout = ({ children, title }) => {
-  const { user, tenant, logout } = useAuth();
+  const { user, tenant, logout, can, isManager } = useAuth();
+  const visibleNav = navItems.filter((i) => (!i.manager || isManager) && (!i.perm || can(i.perm)));
+  const bookingUrl = tenant?.booking_url_slug ? `${window.location.origin}/book/${tenant.booking_url_slug}` : null;
   const { currentTheme, setTheme, theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -69,7 +73,7 @@ const TenantLayout = ({ children, title }) => {
   const accentColor = theme.colors.accent;
 
   // Get logo URL from theme or tenant branding
-  const logoUrl = theme.logoUrl || tenant?.branding?.logo_url || tenant?.logo_url;
+  const logoUrl = tenant?.logo_url;
 
   return (
     <div className={`min-h-screen ${bgMain}`}>
@@ -109,7 +113,7 @@ const TenantLayout = ({ children, title }) => {
           <Link to="/dashboard" className="flex items-center gap-3">
             {logoUrl ? (
               <>
-                <img src={logoUrl} alt={tenant?.name} className="h-12 w-auto" />
+                <img src={logoUrl} alt={tenant?.name} className="h-12 w-auto max-w-[100px] object-contain" />
                 {isDark && (
                   <span className="text-sm font-medium" style={{ color: accentColor, fontFamily: "'Playfair Display', serif" }}>
                     {tenant?.name}
@@ -132,7 +136,15 @@ const TenantLayout = ({ children, title }) => {
 
         {/* Navigation */}
         <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-9rem)]">
-          {navItems.map((item) => {
+          {bookingUrl && (
+            <a href={bookingUrl} target="_blank" rel="noreferrer"
+              className={`flex items-center gap-3 px-4 py-2.5 mb-2 rounded-md text-sm border ${borderColor} ${textSecondary} hover:opacity-80`}
+              data-testid="nav-booking-page">
+              <ExternalLink className="w-4 h-4" />
+              <span>View booking page</span>
+            </a>
+          )}
+          {visibleNav.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
             return (

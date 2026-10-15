@@ -7,7 +7,7 @@ import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
 import { Shield, ArrowRight } from 'lucide-react';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API } from '../../lib/api';
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState('');

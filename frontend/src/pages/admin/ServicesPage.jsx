@@ -9,9 +9,12 @@ import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
 import { Plus, Edit2, Trash2, Clock, DollarSign, Briefcase } from 'lucide-react';
+import { errorMessage } from '../../lib/api';
+import { formatMoney } from '../../lib/utils';
 
 const ServicesPage = () => {
-  const { token } = useAuth();
+  const { token, can, currency } = useAuth();
+  const canEdit = can('can_edit_services');
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -99,7 +102,7 @@ const ServicesPage = () => {
       setShowDialog(false);
       fetchServices();
     } catch (error) {
-      toast.error('Failed to save service');
+      toast.error(errorMessage(error, 'Failed to save service'));
     }
   };
 
@@ -113,7 +116,7 @@ const ServicesPage = () => {
       toast.success('Service deleted');
       fetchServices();
     } catch (error) {
-      toast.error('Failed to delete service');
+      toast.error(errorMessage(error, 'Failed to delete service'));
     }
   };
 
@@ -122,14 +125,14 @@ const ServicesPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <p className="text-[#666666]">{services.length} services</p>
-        <Button 
+        {canEdit && <Button 
           onClick={() => openDialog()} 
           className="btn-primary flex items-center gap-2"
           data-testid="add-service-btn"
         >
           <Plus className="w-4 h-4" />
           Add Service
-        </Button>
+        </Button>}
       </div>
 
       {/* Services Grid */}
@@ -140,7 +143,7 @@ const ServicesPage = () => {
           <Briefcase className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
           <h3 className="font-semibold text-[#0A0A0A] mb-2">No services yet</h3>
           <p className="text-[#666666] mb-4">Create services that your clients can book</p>
-          <Button onClick={() => openDialog()} className="btn-primary">Add First Service</Button>
+          {canEdit && <Button onClick={() => openDialog()} className="btn-primary">Add First Service</Button>}
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -157,7 +160,7 @@ const ServicesPage = () => {
                     {service.category && <p className="text-xs text-[#666666]">{service.category}</p>}
                   </div>
                 </div>
-                <div className="flex gap-1">
+                {canEdit && <div className="flex gap-1">
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -175,7 +178,7 @@ const ServicesPage = () => {
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
-                </div>
+                </div>}
               </div>
 
               {service.description && (
@@ -190,12 +193,12 @@ const ServicesPage = () => {
                   </div>
                   <div className="flex items-center gap-1 text-sm font-semibold text-[#0A0A0A]">
                     <DollarSign className="w-4 h-4" />
-                    €{service.price}
+                    {formatMoney(service.price, currency)}
                   </div>
                 </div>
                 {service.deposit_required && (
                   <span className="text-xs text-[#666666] bg-[#FAFAFA] px-2 py-1 border border-[#E5E5E5]">
-                    €{service.deposit_amount} deposit
+                    {formatMoney(service.deposit_amount, currency)} deposit
                   </span>
                 )}
               </div>
@@ -263,7 +266,7 @@ const ServicesPage = () => {
             </div>
 
             <div>
-              <Label className="text-sm font-medium">Price (€) *</Label>
+              <Label className="text-sm font-medium">Price ({currency}) *</Label>
               <Input
                 type="number"
                 min={0}
@@ -278,7 +281,7 @@ const ServicesPage = () => {
             <div className="flex items-center justify-between py-3 border-y border-[#E5E5E5]">
               <div>
                 <p className="font-medium text-[#0A0A0A]">Require deposit</p>
-                <p className="text-sm text-[#666666]">Collect a deposit when booking</p>
+                <p className="text-sm text-[#666666]">Shown to clients when they book. Online payments aren't connected yet, so collect it yourself.</p>
               </div>
               <Switch
                 checked={formData.deposit_required}
@@ -289,7 +292,7 @@ const ServicesPage = () => {
 
             {formData.deposit_required && (
               <div>
-                <Label className="text-sm font-medium">Deposit amount (€)</Label>
+                <Label className="text-sm font-medium">Deposit amount ({currency})</Label>
                 <Input
                   type="number"
                   min={0}

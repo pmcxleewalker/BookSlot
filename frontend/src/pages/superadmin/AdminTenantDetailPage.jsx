@@ -12,7 +12,7 @@ import {
   Mail, Phone, MapPin, Globe, Check, X, UserCog, Save
 } from 'lucide-react';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API } from '../../lib/api';
 
 const PLAN_FEATURES = {
   starter: {

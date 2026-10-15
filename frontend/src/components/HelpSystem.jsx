@@ -10,7 +10,7 @@ const helpTopics = [
     content: [
       { q: 'How do I add my first service?', a: 'Go to Services page and click "Add Service". Enter the name, duration, and price.' },
       { q: 'How do I add staff members?', a: 'Navigate to Staff page and click "Add Staff". You can set their working hours and assign services.' },
-      { q: 'How do clients book appointments?', a: 'Share your booking link (found in Settings) with clients. They can select a service, staff, and time slot.' }
+      { q: 'How do clients book appointments?', a: 'Share your booking link (on the Dashboard, or "View booking page" in the menu). Clients pick a service, a team member (or anyone), and a free time.' }
     ]
   },
   {
@@ -19,9 +19,9 @@ const helpTopics = [
     title: 'Calendar & Bookings',
     description: 'Managing your schedule',
     content: [
-      { q: 'How do I reschedule an appointment?', a: 'Drag and drop the appointment to a new time slot on the calendar, or click it to edit.' },
+      { q: 'How do I reschedule an appointment?', a: 'Drag the appointment to a new hour on the calendar, or click it and choose Move. The client is emailed the new time.' },
       { q: 'How do I create a manual booking?', a: 'Click the "New Appointment" button or click on any empty time slot in the calendar.' },
-      { q: 'Can I block off time for breaks?', a: 'Yes! Go to Staff page, edit the staff member, and configure their working hours and breaks.' }
+      { q: 'Can I block off time for breaks?', a: 'Yes. On the Staff page use the clock icon for regular hours and breaks, and the plane icon for holidays and one-off time off.' }
     ]
   },
   {
@@ -41,9 +41,9 @@ const helpTopics = [
     title: 'AI Receptionist (Moltbot)',
     description: 'Your AI booking assistant',
     content: [
-      { q: 'What can the AI receptionist do?', a: 'It can handle booking requests, answer questions about services, and manage rescheduling via chat.' },
+      { q: 'What can the AI receptionist do?', a: 'It answers questions about your services, checks real availability, books appointments and cancels them (with the client\'s confirmation code and email).' },
       { q: 'How do I test the AI?', a: 'Go to AI Receptionist page and use the test chat to try different booking scenarios.' },
-      { q: 'Can clients message the AI?', a: 'Yes! When fully activated, clients can interact via SMS, email, or the chat widget.' }
+      { q: 'Can clients message the AI?', a: 'Yes, through the chat bubble on your booking page (Growth and Pro plans). Switch it on or off under AI Receptionist > Settings.' }
     ]
   },
   {
@@ -64,8 +64,8 @@ const helpTopics = [
     description: 'Configuring your account',
     content: [
       { q: 'How do I customize my booking page?', a: 'Go to Settings > Branding to change colors and upload your logo.' },
-      { q: 'How do I enable SMS reminders?', a: 'In Settings > Notifications, enable the SMS add-on (+€10/month) and configure reminder timing.' },
-      { q: 'Where is my booking link?', a: 'Find your public booking URL in Settings under Booking Settings section.' }
+      { q: 'How do I enable SMS reminders?', a: 'In Settings > Notifications, enable the SMS add-on and switch on SMS reminders. Reminder timing is set on the same page.' },
+      { q: 'Where is my booking link?', a: 'It is at the top of your Dashboard, and you can change it in Settings > General > Booking link.' }
     ]
   }
 ];

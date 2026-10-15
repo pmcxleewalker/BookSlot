@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { Building2, Users, Calendar, DollarSign, TrendingUp, ArrowRight } from 'lucide-react';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API } from '../../lib/api';
 
 const AdminDashboardPage = () => {
   const [stats, setStats] = useState(null);

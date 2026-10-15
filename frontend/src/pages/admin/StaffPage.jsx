@@ -8,11 +8,19 @@ import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Checkbox } from '../../components/ui/checkbox';
 import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Mail, Phone, User, Clock, Briefcase, Check } from 'lucide-react';
+import { Plus, Edit2, Trash2, Mail, Phone, User, Clock, Briefcase, Check, Plane, KeyRound } from 'lucide-react';
+import { errorMessage } from '../../lib/api';
+import { formatMoney } from '../../lib/utils';
 import WorkingHoursEditor from '../../components/WorkingHoursEditor';
 
 const StaffPage = () => {
-  const { token, tenant } = useAuth();
+  const { token, tenant, user, can, isManager, currency } = useAuth();
+  const canManage = can('can_manage_staff');
+  const [showTimeOff, setShowTimeOff] = useState(null); // staff member
+  const [blocks, setBlocks] = useState([]);
+  const [newBlock, setNewBlock] = useState({ title: 'Annual leave', block_type: 'annual_leave', start_date: '', end_date: '', all_day: true, start_time: '12:00', end_time: '13:00' });
+  const [perms, setPerms] = useState({});
+  const [loginPassword, setLoginPassword] = useState('');
   const [staff, setStaff] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,8 +37,17 @@ const StaffPage = () => {
     email: '',
     phone: '',
     title: '',
-    color: '#4F46E5'
+    color: '#4F46E5',
+    password: ''
   });
+
+  const PERMISSIONS = [
+    ['can_view_all_bookings', "See everyone's appointments"],
+    ['can_manage_customers', 'View and edit clients'],
+    ['can_edit_services', 'Edit services and prices'],
+    ['can_manage_staff', 'Manage team members'],
+    ['can_view_reports', 'View reports'],
+  ];
 
   const colors = ['#E34A33', '#4F46E5', '#059669', '#D97706', '#7C3AED', '#0891B2', '#BE185D'];
 
@@ -61,12 +78,16 @@ const StaffPage = () => {
         email: member.email,
         phone: member.phone || '',
         title: member.title || '',
-        color: member.color
+        color: member.color,
+        password: ''
       });
+      setPerms({ role: member.role || 'staff', ...Object.fromEntries(PERMISSIONS.map(([k]) => [k, !!member[k]])) });
     } else {
       setEditingStaff(null);
-      setFormData({ name: '', email: '', phone: '', title: '', color: '#4F46E5' });
+      setFormData({ name: '', email: '', phone: '', title: '', color: '#4F46E5', password: '' });
+      setPerms({ role: 'staff', can_manage_customers: true });
     }
+    setLoginPassword('');
     setShowDialog(true);
   };
 
@@ -77,21 +98,25 @@ const StaffPage = () => {
     }
 
     try {
+      const { password, ...details } = formData;
+      const body = isManager ? { ...details, ...perms } : details;
       if (editingStaff) {
-        await axios.put(`${API}/staff/${editingStaff.staff_id}`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        toast.success('Staff member updated');
+        await axios.put(`${API}/staff/${editingStaff.staff_id}`, body);
+        if (isManager && loginPassword && !editingStaff.has_account) {
+          await axios.post(`${API}/staff/${editingStaff.staff_id}/create-account`, { password: loginPassword });
+        } else if (isManager && loginPassword && editingStaff.has_account) {
+          await axios.put(`${API}/staff/${editingStaff.staff_id}/change-password`, { new_password: loginPassword });
+        }
+        toast.success('Team member updated');
       } else {
-        await axios.post(`${API}/staff`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        toast.success('Staff member added');
+        if (password && password.length < 8) return toast.error('Login password must be at least 8 characters');
+        await axios.post(`${API}/staff`, { ...body, password: password || undefined });
+        toast.success(password ? 'Team member added - they can now sign in with their email' : 'Team member added');
       }
       setShowDialog(false);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to save staff member');
+      toast.error(errorMessage(error, 'Failed to save team member'));
     }
   };
 
@@ -105,7 +130,7 @@ const StaffPage = () => {
       toast.success('Staff member removed');
       fetchData();
     } catch (error) {
-      toast.error('Failed to remove staff member');
+      toast.error(errorMessage(error, 'Failed to remove staff member'));
     }
   };
 
@@ -133,7 +158,7 @@ const StaffPage = () => {
       setShowHoursDialog(false);
       fetchData();
     } catch (error) {
-      toast.error('Failed to update working hours');
+      toast.error(errorMessage(error, 'Failed to update working hours'));
     }
   };
 
@@ -165,19 +190,19 @@ const StaffPage = () => {
       setShowServicesDialog(false);
       fetchData();
     } catch (error) {
-      toast.error('Failed to update services');
+      toast.error(errorMessage(error, 'Failed to update services'));
     }
   };
 
   const getServiceNames = (member) => {
     const memberServices = member.services || [];
-    if (memberServices.length === 0) return 'No services assigned';
+    if (memberServices.length === 0) return 'All services';
     
     const serviceNames = memberServices
       .map(id => services.find(s => s.service_id === id)?.name)
       .filter(Boolean);
     
-    if (serviceNames.length === 0) return 'No services assigned';
+    if (serviceNames.length === 0) return 'All services';
     if (serviceNames.length <= 2) return serviceNames.join(', ');
     return `${serviceNames.slice(0, 2).join(', ')} +${serviceNames.length - 2} more`;
   };
@@ -194,10 +219,38 @@ const StaffPage = () => {
     return enabledDays.map(d => dayLabels[d]).join(', ');
   };
 
-  const getStaffLimit = () => {
-    const limits = { starter: 2, growth: 8, pro: 999 };
-    return limits[tenant?.plan] || 2;
+  const getStaffLimit = () => tenant?.features?.max_staff || 2;
+
+  const openTimeOff = async (member) => {
+    setShowTimeOff(member);
+    const today = new Date().toISOString().slice(0, 10);
+    setNewBlock({ ...newBlock, start_date: today, end_date: today });
+    try {
+      const r = await axios.get(`${API}/staff/${member.staff_id}/time-blocks`, { params: { start_date: today, end_date: '2100-01-01' } });
+      setBlocks(r.data.time_blocks || []);
+    } catch (e) { setBlocks([]); }
   };
+
+  const addBlock = async () => {
+    try {
+      await axios.post(`${API}/staff/${showTimeOff.staff_id}/time-blocks`, {
+        ...newBlock,
+        start_time: newBlock.all_day ? null : newBlock.start_time,
+        end_time: newBlock.all_day ? null : newBlock.end_time,
+      });
+      toast.success('Time off added - those times are no longer bookable');
+      openTimeOff(showTimeOff);
+    } catch (e) { toast.error(errorMessage(e, 'Could not add time off')); }
+  };
+
+  const removeBlock = async (blockId) => {
+    try {
+      await axios.delete(`${API}/time-blocks/${blockId}`);
+      setBlocks((b) => b.filter((x) => x.block_id !== blockId));
+    } catch (e) { toast.error(errorMessage(e)); }
+  };
+
+  const isSelf = (member) => user?.staff_id === member.staff_id;
 
   return (
     <TenantLayout title="Staff">
@@ -208,15 +261,16 @@ const StaffPage = () => {
             {staff.length} of {getStaffLimit()} staff members
           </p>
         </div>
-        <Button 
+        {canManage && <Button 
           onClick={() => openDialog()} 
           className="btn-primary flex items-center gap-2"
           disabled={staff.length >= getStaffLimit()}
+          title={staff.length >= getStaffLimit() ? 'Upgrade your plan to add more team members' : ''}
           data-testid="add-staff-btn"
         >
           <Plus className="w-4 h-4" />
           Add Staff
-        </Button>
+        </Button>}
       </div>
 
       {/* Staff Grid */}
@@ -247,7 +301,10 @@ const StaffPage = () => {
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button 
+                  {(canManage || isSelf(member)) && <Button variant="ghost" size="sm" onClick={() => openTimeOff(member)} className="text-[#666666]" title="Time off" data-testid={`timeoff-staff-${member.staff_id}`}>
+                    <Plane className="w-4 h-4" />
+                  </Button>}
+                  {canManage && <><Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={() => openServicesDialog(member)}
@@ -266,8 +323,9 @@ const StaffPage = () => {
                     data-testid={`hours-staff-${member.staff_id}`}
                   >
                     <Clock className="w-4 h-4" />
-                  </Button>
-                  <Button 
+                  </Button></>}
+                  {!canManage && isSelf(member) && <Button variant="ghost" size="sm" onClick={() => openHoursDialog(member)} className="text-[#666666]" title="Working Hours"><Clock className="w-4 h-4" /></Button>}
+                  {canManage && <><Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={() => openDialog(member)}
@@ -285,7 +343,7 @@ const StaffPage = () => {
                     data-testid={`delete-staff-${member.staff_id}`}
                   >
                     <Trash2 className="w-4 h-4" />
-                  </Button>
+                  </Button></>}
                 </div>
               </div>
 
@@ -307,6 +365,10 @@ const StaffPage = () => {
                 <div className="flex items-center gap-2 text-[#666666]">
                   <Briefcase className="w-4 h-4" />
                   <span className="text-xs">{getServiceNames(member)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[#666666]">
+                  <KeyRound className="w-4 h-4" />
+                  <span className="text-xs">{member.has_account ? (member.role === 'admin' ? 'Can sign in · Admin' : 'Can sign in') : 'No login'}</span>
                 </div>
               </div>
 
@@ -405,6 +467,35 @@ const StaffPage = () => {
               </div>
             </div>
 
+            {isManager && (
+              <div className="pt-4 border-t border-[#E5E5E5] space-y-3">
+                <p className="font-medium text-[#0A0A0A]">Login & permissions</p>
+                {!editingStaff ? (
+                  <div>
+                    <Label>Login password (optional)</Label>
+                    <Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Min. 8 characters - leave empty for no login" data-testid="staff-password-input" />
+                    <p className="text-xs text-[#666666] mt-1">They'll sign in at the normal login page with their email and this password.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <Label>{editingStaff.has_account ? 'Set a new password' : 'Create a login (password)'}</Label>
+                    <Input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Min. 8 characters" />
+                  </div>
+                )}
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={perms.role === 'admin'} onCheckedChange={(v) => setPerms({ ...perms, role: v ? 'admin' : 'staff' })} />
+                  Admin - full access to everything (like the owner)
+                </label>
+                {perms.role !== 'admin' && PERMISSIONS.map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox checked={!!perms[key]} onCheckedChange={(v) => setPerms({ ...perms, [key]: !!v })} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            )}
+
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowDialog(false)}>
                 Cancel
@@ -456,7 +547,7 @@ const StaffPage = () => {
 
           <div className="mt-4">
             <p className="text-sm text-[#666666] mb-4">
-              Select the services this staff member can perform. Only selected services will be available for booking with this staff.
+              Choose what this person offers. Leave everything unticked to let them take every service.
             </p>
 
             {services.length === 0 ? (
@@ -491,7 +582,7 @@ const StaffPage = () => {
                       <div className="flex-1">
                         <p className="font-medium text-[#0A0A0A]">{service.name}</p>
                         <p className="text-xs text-[#666666]">
-                          {service.duration} min • €{service.price}
+                          {service.duration} min • {formatMoney(service.price, currency)}
                         </p>
                       </div>
                     </div>
@@ -530,6 +621,61 @@ const StaffPage = () => {
                 Save Services
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Time off */}
+      <Dialog open={!!showTimeOff} onOpenChange={(o) => !o && setShowTimeOff(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Time off - {showTimeOff?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-2">
+            <p className="text-sm text-[#666666]">Holidays, sick days or blocked hours. Clients can't book these times. Existing appointments are not moved.</p>
+            <div className="p-3 border border-[#E5E5E5] space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Type</Label>
+                  <select className="input-swiss" value={newBlock.block_type} onChange={(e) => setNewBlock({ ...newBlock, block_type: e.target.value, title: e.target.selectedOptions[0].text })}>
+                    <option value="annual_leave">Annual leave</option>
+                    <option value="sick">Sick day</option>
+                    <option value="unavailable">Unavailable</option>
+                    <option value="lunch">Lunch / break</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs">Label</Label>
+                  <Input value={newBlock.title} onChange={(e) => setNewBlock({ ...newBlock, title: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">From</Label>
+                  <Input type="date" value={newBlock.start_date} onChange={(e) => setNewBlock({ ...newBlock, start_date: e.target.value, end_date: newBlock.end_date < e.target.value ? e.target.value : newBlock.end_date })} />
+                </div>
+                <div>
+                  <Label className="text-xs">To</Label>
+                  <Input type="date" value={newBlock.end_date} min={newBlock.start_date} onChange={(e) => setNewBlock({ ...newBlock, end_date: e.target.value })} />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox checked={newBlock.all_day} onCheckedChange={(v) => setNewBlock({ ...newBlock, all_day: !!v })} /> All day
+              </label>
+              {!newBlock.all_day && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Input type="time" value={newBlock.start_time} onChange={(e) => setNewBlock({ ...newBlock, start_time: e.target.value })} />
+                  <Input type="time" value={newBlock.end_time} onChange={(e) => setNewBlock({ ...newBlock, end_time: e.target.value })} />
+                </div>
+              )}
+              <Button className="btn-primary w-full" onClick={addBlock} data-testid="add-timeoff-btn">Add time off</Button>
+            </div>
+            {blocks.length === 0 ? (
+              <p className="text-sm text-center text-[#666666] py-2">No upcoming time off</p>
+            ) : blocks.map((b) => (
+              <div key={b.block_id} className="flex items-center justify-between p-3 bg-[#FAFAFA] border border-[#E5E5E5] text-sm">
+                <div>
+                  <p className="font-medium">{b.title}</p>
+                  <p className="text-[#666666]">{b.start_date}{b.end_date && b.end_date !== b.start_date ? ` → ${b.end_date}` : ''}{b.all_day ? ' · all day' : ` · ${b.start_time}-${b.end_time}`}</p>
+                </div>
+                <Button variant="ghost" size="sm" className="text-red-500" onClick={() => removeBlock(b.block_id)}><Trash2 className="w-4 h-4" /></Button>
+              </div>
+            ))}
           </div>
         </DialogContent>
       </Dialog>

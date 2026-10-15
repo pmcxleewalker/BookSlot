@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { ArrowRight, ArrowLeft, Building2, Users, Briefcase, Check } from 'lucide-react';
 import axios from 'axios';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API, errorMessage } from '../../lib/api';
 
 const industries = [
   { value: 'salon', label: 'Salon / Spa', icon: '💇' },
@@ -58,10 +58,11 @@ const OnboardingPage = () => {
         industry,
         email,
         phone,
-        address
+        address,
+        timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'Europe/Dublin'
       });
 
-      // Seed demo data
+      // Add you as the first bookable team member plus three example services you can edit
       try {
         await axios.post(`${API}/demo/seed`, {}, {
           headers: { Authorization: `Bearer ${token}` }
@@ -77,10 +78,10 @@ const OnboardingPage = () => {
 
       await checkAuth();
 
-      toast.success('Welcome to BookSlot! Your business is ready.');
+      toast.success('Your business is ready! Check your services and opening hours next.');
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create business');
+      toast.error(errorMessage(error, 'Failed to create business'));
     } finally {
       setLoading(false);
     }

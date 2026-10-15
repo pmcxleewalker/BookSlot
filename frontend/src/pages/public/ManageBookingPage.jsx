@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { Calendar, Clock, User, MapPin, AlertTriangle, Check, X } from 'lucide-react';
 import { format } from 'date-fns';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API, errorMessage } from '../../lib/api';
+import { formatMoney, parseLocal, STATUS_LABELS } from '../../lib/utils';
 
 const ManageBookingPage = () => {
   const { confirmationCode } = useParams();
@@ -24,7 +25,7 @@ const ManageBookingPage = () => {
       const response = await axios.get(`${API}/public/booking/manage/${confirmationCode}`);
       setBooking(response.data);
     } catch (error) {
-      toast.error('Booking not found');
+      setBooking(null);
     } finally {
       setLoading(false);
     }
@@ -39,7 +40,7 @@ const ManageBookingPage = () => {
       toast.success('Booking cancelled');
       fetchBooking();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to cancel booking');
+      toast.error(errorMessage(error, 'Failed to cancel booking'));
     } finally {
       setCancelling(false);
       setShowCancelConfirm(false);
@@ -66,16 +67,21 @@ const ManageBookingPage = () => {
     );
   }
 
-  const { appointment, business_name, service_name, staff_name } = booking;
+  const { appointment, business_name, service_name, staff_name, can_cancel, cancel_blocked_reason,
+    business_phone, business_email, business_address, business_slug, currency, logo_url } = booking;
   const isCancelled = appointment.status === 'cancelled';
-  const isPast = new Date(appointment.start_time) < new Date();
+  const isPending = appointment.status === 'pending_approval';
+  const start = parseLocal(appointment.start_time);
+  const end = parseLocal(appointment.end_time);
+  const isPast = start < new Date();
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
       {/* Header */}
       <header className="bg-white border-b border-[#E5E5E5] px-6 py-4">
-        <div className="max-w-2xl mx-auto">
-          <Link to="/" className="text-xl font-semibold text-[#0A0A0A]">BookSlot</Link>
+        <div className="max-w-2xl mx-auto flex items-center gap-3">
+          {logo_url && <img src={logo_url} alt={business_name} className="h-10 w-auto max-w-[100px] object-contain" />}
+          <span className="text-xl font-semibold text-[#0A0A0A]">{business_name}</span>
         </div>
       </header>
 
@@ -90,12 +96,20 @@ const ManageBookingPage = () => {
             <X className="w-5 h-5 text-red-600" />
             <div>
               <p className="font-medium text-red-800">This booking has been cancelled</p>
-              {appointment.cancelled_at && (
-                <p className="text-sm text-red-600">
-                  Cancelled on {format(new Date(appointment.cancelled_at), 'MMMM d, yyyy')}
-                </p>
+              {appointment.cancellation_reason && (
+                <p className="text-sm text-red-600">{appointment.cancellation_reason}</p>
+              )}
+              {business_slug && (
+                <Link to={`/book/${business_slug}`} className="text-sm text-red-700 underline">Book a new appointment</Link>
               )}
             </div>
+          </div>
+        )}
+
+        {isPending && (
+          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 mb-6">
+            <Clock className="w-5 h-5 text-amber-600" />
+            <p className="text-amber-800">This is a booking request - {business_name} will confirm it shortly.</p>
           </div>
         )}
 
@@ -120,7 +134,7 @@ const ManageBookingPage = () => {
               appointment.status === 'confirmed' ? 'badge-confirmed' : 
               'badge-pending'
             }`}>
-              {appointment.status.toUpperCase()}
+              {(STATUS_LABELS[appointment.status] || appointment.status).toUpperCase()}
             </span>
           </div>
 
@@ -131,10 +145,10 @@ const ManageBookingPage = () => {
               </div>
               <div>
                 <p className="font-medium text-[#0A0A0A]">
-                  {format(new Date(appointment.start_time), 'EEEE, MMMM d, yyyy')}
+                  {format(start, 'EEEE d MMMM yyyy')}
                 </p>
                 <p className="text-sm text-[#666666]">
-                  {format(new Date(appointment.start_time), 'h:mm a')} - {format(new Date(appointment.end_time), 'h:mm a')}
+                  {format(start, 'HH:mm')} - {format(end, 'HH:mm')}
                 </p>
               </div>
             </div>
@@ -145,7 +159,7 @@ const ManageBookingPage = () => {
               </div>
               <div>
                 <p className="font-medium text-[#0A0A0A]">{service_name}</p>
-                <p className="text-sm text-[#666666]">€{appointment.total_price}</p>
+                <p className="text-sm text-[#666666]">{formatMoney(appointment.total_price, currency)}</p>
               </div>
             </div>
 
@@ -156,6 +170,7 @@ const ManageBookingPage = () => {
               <div>
                 <p className="font-medium text-[#0A0A0A]">{staff_name}</p>
                 <p className="text-sm text-[#666666]">at {business_name}</p>
+                {business_address && <p className="text-sm text-[#666666] flex items-center gap-1 mt-1"><MapPin className="w-3 h-3" />{business_address}</p>}
               </div>
             </div>
 
@@ -169,7 +184,11 @@ const ManageBookingPage = () => {
         </div>
 
         {/* Actions */}
-        {!isCancelled && !isPast && (
+        {!isCancelled && !isPast && !can_cancel && cancel_blocked_reason && (
+          <p className="text-sm text-[#666666] p-4 bg-white border border-[#E5E5E5]">{cancel_blocked_reason}</p>
+        )}
+
+        {!isCancelled && can_cancel && (
           <div className="space-y-4">
             {!showCancelConfirm ? (
               <Button
@@ -215,7 +234,9 @@ const ManageBookingPage = () => {
         {/* Help */}
         <div className="mt-8 pt-8 border-t border-[#E5E5E5] text-center">
           <p className="text-sm text-[#666666]">
-            Need help? Contact {business_name} directly or email support@bookslot.io
+            Need to change something? Contact {business_name}
+            {business_phone && <> on <a className="underline" href={`tel:${business_phone}`}>{business_phone}</a></>}
+            {business_email && <> or <a className="underline" href={`mailto:${business_email}`}>{business_email}</a></>}.
           </p>
         </div>
       </main>

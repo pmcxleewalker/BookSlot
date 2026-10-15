@@ -6,7 +6,7 @@ import {
   Menu, X, Shield, ChevronDown 
 } from 'lucide-react';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API } from '../lib/api';
 
 const navItems = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },

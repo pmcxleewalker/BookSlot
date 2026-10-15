@@ -21,14 +21,14 @@ const FeaturesPage = () => {
       title: 'AI & Automation',
       features: [
         { icon: Bot, name: 'AI Receptionist', desc: 'Moltbot handles inquiries, checks availability, and books appointments automatically.' },
-        { icon: Bell, name: 'Smart Reminders', desc: 'Automated email and SMS reminders to reduce no-shows by up to 90%.' },
-        { icon: Zap, name: 'Waitlist Automation', desc: 'Automatically fill cancelled slots from your waitlist.' },
+        { icon: Bell, name: 'Smart Reminders', desc: 'Automatic email and SMS reminders before every appointment to cut no-shows.' },
+        { icon: Zap, name: 'Waitlist Automation', desc: 'Coming soon: automatically fill cancelled slots from your waitlist.' },
       ]
     },
     {
       title: 'Business Tools',
       features: [
-        { icon: CreditCard, name: 'Deposits & Payments', desc: 'Collect deposits upfront to protect against no-shows.' },
+        { icon: CreditCard, name: 'Deposits & Payments', desc: 'Coming soon: take deposits online when clients book.' },
         { icon: FileText, name: 'Custom Forms', desc: 'Create intake forms and gather important client information before appointments.' },
         { icon: BarChart3, name: 'Reports & Analytics', desc: 'Track revenue, appointments, and staff performance with visual dashboards.' },
       ]
@@ -36,8 +36,8 @@ const FeaturesPage = () => {
     {
       title: 'Enterprise Ready',
       features: [
-        { icon: Globe, name: 'Multi-location', desc: 'Manage multiple business locations from a single dashboard.' },
-        { icon: Shield, name: 'GDPR Compliance', desc: 'Built-in privacy controls, data export, and right-to-delete support.' },
+        { icon: Globe, name: 'Multi-location', desc: 'Coming soon: manage several locations from one dashboard.' },
+        { icon: Shield, name: 'GDPR Compliance', desc: 'Client data export and delete-on-request built in.' },
         { icon: Puzzle, name: 'API & Webhooks', desc: 'Connect with your existing tools and build custom integrations.' },
       ]
     }

@@ -82,13 +82,13 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Trusted By */}
+      {/* Built for */}
       <section className="py-16 px-6 bg-[#FAFAFA] border-y border-[#E5E5E5]">
         <div className="max-w-7xl mx-auto">
-          <p className="text-center text-sm text-[#666666] mb-8">TRUSTED BY 2,000+ BUSINESSES</p>
-          <div className="flex flex-wrap items-center justify-center gap-12 opacity-50">
-            {['Salon Pro', 'MediCare', 'DentaClinic', 'VetFirst', 'ConsultHub'].map((brand) => (
-              <span key={brand} className="text-xl font-semibold text-[#0A0A0A]">{brand}</span>
+          <p className="text-center text-sm text-[#666666] mb-8">BUILT FOR SERVICE BUSINESSES</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 opacity-60">
+            {['Salons & spas', 'Clinics', 'Dentists', 'Vets', 'Consultants'].map((kind) => (
+              <span key={kind} className="text-xl font-semibold text-[#0A0A0A]">{kind}</span>
             ))}
           </div>
         </div>
@@ -203,7 +203,7 @@ const LandingPage = () => {
             Ready to simplify your bookings?
           </h2>
           <p className="text-lg text-[#666666] mb-10">
-            Join thousands of businesses using BookSlot to manage their appointments.
+            Take bookings around the clock, cut no-shows with reminders and keep your whole team's diary in one place.
           </p>
           <Link to="/signup">
             <Button className="btn-accent px-10 py-4 text-base" data-testid="final-cta">

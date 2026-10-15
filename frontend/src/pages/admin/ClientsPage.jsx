@@ -10,10 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Checkbox } from '../../components/ui/checkbox';
 import { toast } from 'sonner';
 import { Plus, Search, User, Mail, Phone, Calendar, Edit2, Star, AlertCircle, Scissors, Trash2 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { errorMessage } from '../../lib/api';
+import { formatMoney, parseLocal, STATUS_LABELS, STATUS_STYLES } from '../../lib/utils';
+import { format } from 'date-fns';
 
 const ClientsPage = () => {
-  const { token } = useAuth();
+  const { token, currency, isManager } = useAuth();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -88,9 +90,13 @@ const ClientsPage = () => {
     setShowDialog(true);
   };
 
-  const viewClientDetail = (client) => {
+  const viewClientDetail = async (client) => {
     setSelectedClient(client);
     setShowDetailDialog(true);
+    try {
+      const r = await axios.get(`${API}/clients/${client.client_id}`);
+      setSelectedClient(r.data.client);
+    } catch (e) { /* keep summary */ }
   };
 
   const handleSubmit = async () => {
@@ -114,7 +120,7 @@ const ClientsPage = () => {
       setShowDialog(false);
       fetchClients();
     } catch (error) {
-      toast.error('Failed to save client');
+      toast.error(errorMessage(error, 'Failed to save client'));
     }
   };
 
@@ -129,12 +135,12 @@ const ClientsPage = () => {
       setShowDetailDialog(false); // Close dialog after action
       fetchClients();
     } catch (error) {
-      toast.error('Failed to update VIP status');
+      toast.error(errorMessage(error, 'Failed to update VIP status'));
     }
   };
 
   const deleteClient = async (clientId) => {
-    if (!window.confirm('Are you sure you want to delete this client?')) return;
+    if (!window.confirm('Delete this client? Their contact details are removed from past appointments too. This cannot be undone.')) return;
     
     try {
       await axios.delete(`${API}/clients/${clientId}`, {
@@ -143,7 +149,7 @@ const ClientsPage = () => {
       toast.success('Client deleted');
       fetchClients();
     } catch (error) {
-      toast.error('Failed to delete client');
+      toast.error(errorMessage(error, 'Failed to delete client'));
     }
   };
 
@@ -238,7 +244,7 @@ const ClientsPage = () => {
                 )}
                 <div className="flex items-center gap-2 text-[#666666]">
                   <Calendar className="w-4 h-4" />
-                  {client.total_appointments || 0} visits • €{(client.total_spent || 0).toFixed(0)} spent
+                  {client.total_appointments || 0} visits • {formatMoney(client.total_spent || 0, currency)} spent
                 </div>
               </div>
 
@@ -419,7 +425,7 @@ const ClientsPage = () => {
                   <p className="text-xs text-[#666666]">Total Visits</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#E34A33]">€{(selectedClient.total_spent || 0).toFixed(0)}</p>
+                  <p className="text-2xl font-bold text-[#E34A33]">{formatMoney(selectedClient.total_spent || 0, currency)}</p>
                   <p className="text-xs text-[#666666]">Total Spent</p>
                 </div>
               </div>
@@ -454,6 +460,24 @@ const ClientsPage = () => {
                 </div>
               )}
 
+              {/* History */}
+              {selectedClient.service_history?.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-[#666666] mb-2">Appointment history</p>
+                  <div className="max-h-48 overflow-y-auto border border-[#E5E5E5] divide-y divide-[#E5E5E5]">
+                    {selectedClient.service_history.map((h) => (
+                      <div key={h.appointment_id} className="flex items-center justify-between px-3 py-2 text-sm">
+                        <div>
+                          <p className="text-[#0A0A0A]">{h.service_name} <span className="text-[#666666]">with {h.staff}</span></p>
+                          <p className="text-xs text-[#666666]">{format(parseLocal(h.date), 'd MMM yyyy, HH:mm')}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[h.status] || ''}`}>{STATUS_LABELS[h.status] || h.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex gap-3 pt-4 border-t border-[#E5E5E5]">
                 <Button 
@@ -474,7 +498,7 @@ const ClientsPage = () => {
                   <Edit2 className="w-4 h-4 mr-2" />
                   Edit
                 </Button>
-                <Button 
+                {isManager && <Button 
                   variant="outline"
                   className="text-red-500 border-red-200"
                   onClick={() => {
@@ -483,7 +507,7 @@ const ClientsPage = () => {
                   }}
                 >
                   <Trash2 className="w-4 h-4" />
-                </Button>
+                </Button>}
               </div>
             </div>
           )}

@@ -11,10 +11,15 @@ import {
   BarChart3, TrendingUp, DollarSign, Calendar, Users, Clock,
   Download, FileText, Table, RefreshCw, ChevronDown
 } from 'lucide-react';
+import { errorMessage } from '../../lib/api';
+import { formatMoney } from '../../lib/utils';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 
 const ReportsPage = () => {
-  const { token, tenant } = useAuth();
+  const { token, tenant, currency } = useAuth();
+  const money = (v) => formatMoney(v || 0, currency);
+  // Client-entered text (names, notes) must be escaped before writing it into the print window
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [dateRange, setDateRange] = useState('30');
@@ -62,7 +67,7 @@ const ReportsPage = () => {
       setReport(response.data);
     } catch (error) {
       console.error('Failed to load reports:', error);
-      toast.error('Failed to load reports');
+      toast.error(errorMessage(error, 'Failed to load reports'));
     } finally {
       setLoading(false);
     }
@@ -97,10 +102,14 @@ const ReportsPage = () => {
         // Generate PDF from data (using browser print)
         const data = response.data;
         const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+          toast.error('Allow pop-ups for this site to print the report');
+          return;
+        }
         printWindow.document.write(`
           <html>
             <head>
-              <title>${data.title}</title>
+              <title>${esc(data.title)}</title>
               <style>
                 body { font-family: Arial, sans-serif; padding: 40px; }
                 h1 { color: #0A0A0A; border-bottom: 2px solid #E34A33; padding-bottom: 10px; }
@@ -112,20 +121,20 @@ const ReportsPage = () => {
               </style>
             </head>
             <body>
-              <div class="logo">${tenant?.name || 'BookSlot'}</div>
+              <div class="logo">${esc(tenant?.name || 'BookSlot')}</div>
               <p style="color: #666;">Powered by BookSlot</p>
-              <h1>${data.title}</h1>
+              <h1>${esc(data.title)}</h1>
               <div class="summary">
                 <strong>Summary:</strong><br/>
-                ${Object.entries(data.summary || {}).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join('<br/>')}
+                ${Object.entries(data.summary || {}).map(([k, v]) => `${esc(k.replace(/_/g, ' '))}: ${esc(v)}`).join('<br/>')}
               </div>
               <table>
                 <thead>
-                  <tr>${(data.columns || []).map(c => `<th>${c}</th>`).join('')}</tr>
+                  <tr>${(data.columns || []).map(c => `<th>${esc(c)}</th>`).join('')}</tr>
                 </thead>
                 <tbody>
                   ${(data.data || []).map(row => `
-                    <tr>${(data.columns || []).map(c => `<td>${row[c] || ''}</td>`).join('')}</tr>
+                    <tr>${(data.columns || []).map(c => `<td>${esc(row[c])}</td>`).join('')}</tr>
                   `).join('')}
                 </tbody>
               </table>
@@ -140,7 +149,7 @@ const ReportsPage = () => {
         toast.success('PDF ready for printing');
       }
     } catch (error) {
-      toast.error('Failed to export');
+      toast.error(errorMessage(error, 'Failed to export'));
     } finally {
       setExporting(false);
     }
@@ -227,7 +236,7 @@ const ReportsPage = () => {
                   <DollarSign className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">€{(report.summary?.total_revenue || 0).toFixed(0)}</p>
+                  <p className="text-2xl font-bold text-[#0A0A0A]">{money(report.summary?.total_revenue)}</p>
                   <p className="text-xs text-[#666666]">Total Revenue</p>
                 </div>
               </div>
@@ -263,7 +272,7 @@ const ReportsPage = () => {
                   <BarChart3 className="w-5 h-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">€{(report.summary?.average_booking_value || 0).toFixed(0)}</p>
+                  <p className="text-2xl font-bold text-[#0A0A0A]">{money(report.summary?.average_booking_value)}</p>
                   <p className="text-xs text-[#666666]">Avg. Booking Value</p>
                 </div>
               </div>
@@ -308,7 +317,7 @@ const ReportsPage = () => {
                       </div>
                     </div>
                     <div className="ml-4 text-right">
-                      <p className="font-semibold">€{item.revenue.toFixed(0)}</p>
+                      <p className="font-semibold">{money(item.revenue)}</p>
                       <p className="text-xs text-[#666666]">{item.bookings} bookings</p>
                     </div>
                   </div>
@@ -334,7 +343,7 @@ const ReportsPage = () => {
                       </div>
                     </div>
                     <div className="ml-4 text-right">
-                      <p className="font-semibold">€{item.revenue.toFixed(0)}</p>
+                      <p className="font-semibold">{money(item.revenue)}</p>
                       <p className="text-xs text-[#666666]">{item.bookings} bookings</p>
                     </div>
                   </div>
@@ -385,7 +394,7 @@ const ReportsPage = () => {
                       <tr key={idx} className="border-b border-[#E5E5E5] last:border-0">
                         <td className="py-2">{day.date}</td>
                         <td className="py-2 text-right">{day.bookings}</td>
-                        <td className="py-2 text-right font-medium">€{day.revenue.toFixed(0)}</td>
+                        <td className="py-2 text-right font-medium">{money(day.revenue)}</td>
                       </tr>
                     ))}
                   </tbody>

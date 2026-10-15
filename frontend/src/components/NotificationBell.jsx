@@ -3,6 +3,7 @@ import { Bell, Check, CheckCheck, X, Calendar, UserX, Clock, AlertCircle } from 
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import { format, parseISO } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const NotificationBell = () => {
   const { token, tenant } = useAuth();
@@ -11,6 +12,7 @@ const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchNotifications();
@@ -40,7 +42,7 @@ const NotificationBell = () => {
       setNotifications(response.data.notifications || []);
       setUnreadCount(response.data.unread_count || 0);
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      // ignore polling errors (e.g. briefly offline)
     }
   };
 
@@ -150,7 +152,13 @@ const NotificationBell = () => {
                   className={`px-4 py-3 border-b border-[#E5E5E5] last:border-0 hover:bg-[#FAFAFA] transition-colors cursor-pointer ${
                     !notif.read ? 'bg-blue-50/50' : ''
                   }`}
-                  onClick={() => !notif.read && markAsRead(notif.notification_id)}
+                  onClick={() => {
+                    if (!notif.read) markAsRead(notif.notification_id);
+                    if (notif.data?.appointment_id) {
+                      setIsOpen(false);
+                      navigate(`/calendar?appointment=${notif.data.appointment_id}`);
+                    }
+                  }}
                   data-testid={`notification-${notif.notification_id}`}
                 >
                   <div className="flex gap-3">

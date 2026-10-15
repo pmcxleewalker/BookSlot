@@ -41,8 +41,7 @@ export const themes = {
       buttonPrimaryText: '#0A0A0A'
     },
     hasBorder: true,
-    borderStyle: 'elite-gold-waves',
-    logoUrl: 'https://customer-assets.emergentagent.com/job_b51cdde9-aca8-4bc9-8629-803189777585/artifacts/nyi83tyj_image.png'
+    borderStyle: 'elite-gold-waves'
   },
   modern: {
     id: 'modern',

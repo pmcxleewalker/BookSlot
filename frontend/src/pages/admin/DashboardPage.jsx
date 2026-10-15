@@ -10,9 +10,10 @@ import {
 import { Button } from '../../components/ui/button';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { formatMoney, parseLocal, STATUS_LABELS, STATUS_STYLES } from '../../lib/utils';
 
 const DashboardPage = () => {
-  const { tenant, token } = useAuth();
+  const { tenant, token, currency } = useAuth();
   const [stats, setStats] = useState(null);
   const [upcoming, setUpcoming] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,8 +38,10 @@ const DashboardPage = () => {
 
   const copyBookingLink = () => {
     const link = `${window.location.origin}/book/${tenant?.booking_url_slug}`;
-    navigator.clipboard.writeText(link);
-    toast.success('Booking link copied!');
+    navigator.clipboard?.writeText(link).then(
+      () => toast.success('Booking link copied!'),
+      () => toast.error('Could not copy - select the link and copy it manually')
+    );
   };
 
   const statCards = [
@@ -56,7 +59,7 @@ const DashboardPage = () => {
     },
     { 
       label: 'Revenue (Month)', 
-      value: `€${stats?.month_revenue || 0}`, 
+      value: formatMoney(stats?.month_revenue || 0, currency), 
       icon: DollarSign,
       color: 'bg-amber-50 text-amber-600'
     },
@@ -78,7 +81,7 @@ const DashboardPage = () => {
         </div>
         <div className="flex items-center gap-2">
           <code className="px-3 py-2 bg-[#FAFAFA] border border-[#E5E5E5] text-sm font-mono text-[#666666] truncate max-w-[200px] sm:max-w-[300px]">
-            /book/{tenant?.booking_url_slug}
+            {window.location.host}/book/{tenant?.booking_url_slug}
           </code>
           <Button 
             variant="outline" 
@@ -100,6 +103,12 @@ const DashboardPage = () => {
           </a>
         </div>
       </div>
+
+      {stats?.pending_approvals > 0 && (
+        <Link to="/calendar?status=pending_approval" className="block mb-6 p-4 bg-orange-50 border border-orange-200 text-orange-800 hover:bg-orange-100" data-testid="pending-approvals-banner">
+          <strong>{stats.pending_approvals}</strong> booking request{stats.pending_approvals === 1 ? '' : 's'} waiting for your approval →
+        </Link>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -144,9 +153,10 @@ const DashboardPage = () => {
           ) : (
             <div className="space-y-3">
               {upcoming.slice(0, 5).map((appt) => (
-                <div 
-                  key={appt.appointment_id} 
-                  className="flex items-center justify-between py-3 border-b border-[#E5E5E5] last:border-0"
+                <Link
+                  to={`/calendar?appointment=${appt.appointment_id}`}
+                  key={appt.appointment_id}
+                  className="flex items-center justify-between py-3 border-b border-[#E5E5E5] last:border-0 hover:bg-[#FAFAFA]"
                   data-testid={`upcoming-${appt.appointment_id}`}
                 >
                   <div className="flex items-center gap-3">
@@ -156,16 +166,14 @@ const DashboardPage = () => {
                     <div>
                       <p className="font-medium text-[#0A0A0A]">{appt.client_name || 'Walk-in'}</p>
                       <p className="text-sm text-[#666666]">
-                        {format(new Date(appt.start_time), 'MMM d')} at {format(new Date(appt.start_time), 'h:mm a')}
+                        {format(parseLocal(appt.start_time), 'EEE d MMM')} at {appt.start_time.slice(11, 16)} · {appt.service_name}
                       </p>
                     </div>
                   </div>
-                  <span className={`text-xs font-medium px-2 py-1 ${
-                    appt.status === 'confirmed' ? 'badge-confirmed' : 'badge-pending'
-                  }`}>
-                    {appt.status}
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_STYLES[appt.status] || ''}`}>
+                    {STATUS_LABELS[appt.status] || appt.status}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -185,7 +193,7 @@ const DashboardPage = () => {
               <p className="text-sm text-[#666666]">View schedule</p>
             </Link>
             <Link 
-              to="/appointments" 
+              to="/calendar?view=list" 
               className="p-4 border border-[#E5E5E5] hover:border-[#121212] transition-colors group"
               data-testid="quick-appointments"
             >
