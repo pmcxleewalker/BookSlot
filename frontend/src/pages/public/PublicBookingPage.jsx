@@ -193,7 +193,7 @@ const PublicBookingPage = () => {
   );
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: c.background, color: c.text }}>
+    <div className="min-h-screen pb-24" style={{ backgroundColor: c.background, color: c.text }}>
       {/* Header */}
       <header style={{ backgroundColor: c.card, borderColor: c.border }} className="border-b px-4 sm:px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
@@ -322,6 +322,7 @@ const PublicBookingPage = () => {
                   <div className="p-2 sm:p-4 border bg-white text-[#0A0A0A]" style={{ borderColor: c.border }}>
                     <Calendar
                       mode="single"
+                      weekStartsOn={1}
                       selected={selectedDate}
                       onSelect={(d) => d && setSelectedDate(d)}
                       month={month}

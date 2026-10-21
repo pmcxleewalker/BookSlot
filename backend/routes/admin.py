@@ -124,6 +124,11 @@ async def admin_create_tenant(body: Dict[str, Any], admin: Dict = Depends(get_su
         if not str(body.get(field) or "").strip():
             raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
     owner_email = str(body["owner_email"]).strip().lower()
+    try:  # same check the login form uses, so the owner can always sign in
+        from email_validator import EmailNotValidError, validate_email
+        validate_email(owner_email, check_deliverability=False)
+    except EmailNotValidError as e:
+        raise HTTPException(status_code=400, detail=f"Owner email isn't valid: {e}")
     validate_password(body["owner_password"])
     if await db.users.find_one({"email": owner_email}, {"_id": 1}):
         raise HTTPException(status_code=400, detail="That owner email is already registered")

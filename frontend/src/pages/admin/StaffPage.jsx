@@ -287,10 +287,10 @@ const StaffPage = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {staff.map((member) => (
             <div key={member.staff_id} className="card-hover" data-testid={`staff-${member.staff_id}`}>
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col-reverse sm:flex-row items-start justify-between gap-2 mb-4">
+                <div className="flex items-center gap-3 min-w-0">
                   <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-medium"
+                    className="w-12 h-12 shrink-0 rounded-full flex items-center justify-center text-white font-medium"
                     style={{ backgroundColor: member.color }}
                   >
                     {member.name.charAt(0)}
@@ -300,7 +300,7 @@ const StaffPage = () => {
                     {member.title && <p className="text-sm text-[#666666]">{member.title}</p>}
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1 self-end sm:self-auto">
                   {(canManage || isSelf(member)) && <Button variant="ghost" size="sm" onClick={() => openTimeOff(member)} className="text-[#666666]" title="Time off" data-testid={`timeoff-staff-${member.staff_id}`}>
                     <Plane className="w-4 h-4" />
                   </Button>}
@@ -434,7 +434,7 @@ const StaffPage = () => {
               <Input
                 value={formData.phone}
                 onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                placeholder="+1 555 123 4567"
+                placeholder="087 123 4567"
                 data-testid="staff-phone-input"
               />
             </div>

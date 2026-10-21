@@ -589,3 +589,8 @@ body[data-theme-border="elite-gold-waves"]::after {
 .theme-elite tbody tr:hover {
   background-color: #1A1A1A !important;
 }
+
+/* iPhone Safari zooms into inputs smaller than 16px; keep form fields at 16px on phones */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px !important; }
+}

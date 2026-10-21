@@ -226,7 +226,7 @@ const CalendarPage = () => {
     const mine = user?.staff_id && !canSeeAll ? user.staff_id : '';
     setNewAppt({
       ...EMPTY_FORM,
-      staff_id: staffFilter !== 'all' ? staffFilter : mine,
+      staff_id: staffFilter !== 'all' ? staffFilter : (mine || (staff.length === 1 ? staff[0].staff_id : '')),
       date: day ? format(day, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
       time: hour !== undefined ? `${String(hour).padStart(2, '0')}:00` : '',
     });
@@ -368,7 +368,7 @@ const CalendarPage = () => {
 
       {/* Day view (default on phones) */}
       {viewMode === 'day' && (
-        <div className="space-y-3" data-testid="day-view">
+        <div className="space-y-3 pb-24 md:pb-0" data-testid="day-view">
           {loading ? (
             <p className="p-8 text-center text-[#666666]">Loading...</p>
           ) : visibleAppointments.length === 0 ? (
@@ -597,12 +597,12 @@ const CalendarPage = () => {
             {freeSlots && (
               <div>
                 <p className="text-xs text-[#666666] mb-2">{freeSlots.length ? 'Free times (within working hours):' : 'No free time in working hours that day - you can still pick a time manually.'}</p>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
                   {freeSlots.map((s) => {
                     const t = s.start_time.slice(11, 16);
                     return (
                       <button key={t} type="button" onClick={() => setNewAppt({ ...newAppt, time: t })}
-                        className={`px-2 py-1 text-xs font-mono border ${newAppt.time === t ? 'bg-[#0A0A0A] text-white border-[#0A0A0A]' : 'border-[#E5E5E5] hover:border-[#0A0A0A]'}`}>{t}</button>
+                        className={`px-3 py-2 sm:px-2 sm:py-1 text-sm sm:text-xs font-mono border rounded ${newAppt.time === t ? 'bg-[#0A0A0A] text-white border-[#0A0A0A]' : 'border-[#E5E5E5] hover:border-[#0A0A0A]'}`}>{t}</button>
                     );
                   })}
                 </div>

@@ -190,11 +190,11 @@ const AdminTenantsPage = () => {
               <tr className="text-left text-white/40 text-sm bg-white/5">
                 <th className="p-4">Business</th>
                 <th className="p-4">Plan</th>
-                <th className="p-4">Staff</th>
-                <th className="p-4">Clients</th>
-                <th className="p-4">Appointments</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Actions</th>
+                <th className="p-4 hidden md:table-cell">Staff</th>
+                <th className="p-4 hidden md:table-cell">Clients</th>
+                <th className="p-4 hidden md:table-cell">Appointments</th>
+                <th className="p-4 hidden sm:table-cell">Status</th>
+                <th className="p-4 text-right hidden sm:table-cell">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -216,10 +216,10 @@ const AdminTenantsPage = () => {
                         <div className="w-10 h-10 bg-white/10 flex items-center justify-center text-white font-medium">
                           {tenant.name.charAt(0)}
                         </div>
-                        <div>
-                          <p className="font-medium text-white">{tenant.name}</p>
-                          <p className="text-xs text-white/40">{tenant.email}</p>
-                        </div>
+                        <Link to={`/admin/tenants/${tenant.tenant_id}`} className="min-w-0">
+                          <p className="font-medium text-white underline-offset-2 hover:underline">{tenant.name}</p>
+                          <p className="text-xs text-white/40 truncate">{tenant.email}</p>
+                        </Link>
                       </div>
                     </td>
                     <td className="p-4">
@@ -227,10 +227,10 @@ const AdminTenantsPage = () => {
                         {tenant.plan}
                       </span>
                     </td>
-                    <td className="p-4 text-white/60 font-mono">{tenant.staff_count || 0}</td>
-                    <td className="p-4 text-white/60 font-mono">{tenant.client_count || 0}</td>
-                    <td className="p-4 text-white/60 font-mono">{tenant.appointment_count || 0}</td>
-                    <td className="p-4">
+                    <td className="p-4 text-white/60 font-mono hidden md:table-cell">{tenant.staff_count || 0}</td>
+                    <td className="p-4 text-white/60 font-mono hidden md:table-cell">{tenant.client_count || 0}</td>
+                    <td className="p-4 text-white/60 font-mono hidden md:table-cell">{tenant.appointment_count || 0}</td>
+                    <td className="p-4 hidden sm:table-cell">
                       <button
                         onClick={() => handleToggleStatus(tenant.tenant_id, tenant.is_active)}
                         className={`flex items-center gap-2 text-xs ${tenant.is_active ? 'text-emerald-400' : 'text-red-400'}`}
@@ -240,7 +240,7 @@ const AdminTenantsPage = () => {
                         {tenant.is_active ? 'Active' : 'Inactive'}
                       </button>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="p-4 text-right hidden sm:table-cell">
                       <Link 
                         to={`/admin/tenants/${tenant.tenant_id}`}
                         className="inline-flex items-center gap-1 text-sm text-white/60 hover:text-white"
@@ -269,7 +269,7 @@ const AdminTenantsPage = () => {
             {/* Plan Selection */}
             <div>
               <Label className="text-sm font-medium text-white/80">Select Plan *</Label>
-              <div className="grid grid-cols-3 gap-3 mt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
                 {Object.entries(PLAN_FEATURES).map(([key, plan]) => (
                   <button
                     key={key}
@@ -333,7 +333,7 @@ const AdminTenantsPage = () => {
                     <Input
                       value={newTenant.phone}
                       onChange={(e) => setNewTenant({ ...newTenant, phone: e.target.value })}
-                      placeholder="+1 555 123 4567"
+                      placeholder="087 123 4567"
                       className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/30"
                     />
                   </div>

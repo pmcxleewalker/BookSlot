@@ -282,18 +282,18 @@ const ReportsPage = () => {
           {/* Status Breakdown */}
           <div className="card-flat">
             <h3 className="font-semibold text-[#0A0A0A] mb-4">Booking Status</h3>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full" />
-                <span className="text-sm">Completed: {report.summary?.completed || 0}</span>
+                <span className="text-sm whitespace-nowrap">Completed: {report.summary?.completed || 0}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full" />
-                <span className="text-sm">Cancelled: {report.summary?.cancelled || 0}</span>
+                <span className="text-sm whitespace-nowrap">Cancelled: {report.summary?.cancelled || 0}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-gray-500 rounded-full" />
-                <span className="text-sm">No Shows: {report.summary?.no_shows || 0}</span>
+                <span className="text-sm whitespace-nowrap">No-shows: {report.summary?.no_shows || 0}</span>
               </div>
             </div>
           </div>

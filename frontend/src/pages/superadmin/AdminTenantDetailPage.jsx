@@ -219,7 +219,7 @@ const AdminTenantDetailPage = () => {
                     className="mt-1 bg-white/5 border-white/10 text-white"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm text-white/60">Email</Label>
                     <Input
@@ -247,7 +247,7 @@ const AdminTenantDetailPage = () => {
                 </div>
                 <div className="pt-2 border-t border-white/10">
                   <p className="text-sm text-white/80 font-medium mb-2">Text messages &amp; AI receptionist (Twilio)</p>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm text-white/60">SMS number</Label>
                       <Input
@@ -349,7 +349,7 @@ const AdminTenantDetailPage = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {Object.entries(featureLabels).map(([key, label]) => {
                 const enabled = currentPlanFeatures[key];
                 return (

@@ -52,12 +52,12 @@ const BookingChatWidget = ({ slug, businessName, accent = '#4F46E5' }) => {
   return (
     <>
       <button onClick={() => setIsOpen(true)} style={{ backgroundColor: accent }}
-        className={`fixed bottom-6 right-6 w-14 h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 z-50 ${isOpen ? 'scale-0' : 'scale-100'}`}
+        className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-12 h-12 sm:w-14 sm:h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 z-50 ${isOpen ? 'scale-0' : 'scale-100'}`}
         data-testid="ai-widget-button" aria-label="Chat with us">
         <MessageCircle className="w-6 h-6" />
       </button>
 
-      <div className={`fixed bottom-6 right-6 w-[380px] max-w-[calc(100vw-32px)] bg-white shadow-2xl border border-[#E5E5E5] rounded-lg overflow-hidden z-50 transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}`}
+      <div className={`fixed inset-x-2 bottom-2 sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[380px] bg-white shadow-2xl border border-[#E5E5E5] rounded-lg overflow-hidden z-50 transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}`}
         data-testid="ai-widget-window" role="dialog" aria-label="Chat">
         <div className="text-white p-4 flex items-center justify-between" style={{ backgroundColor: accent }}>
           <div className="flex items-center gap-3">
