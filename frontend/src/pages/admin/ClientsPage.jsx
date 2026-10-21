@@ -425,7 +425,7 @@ const ClientsPage = () => {
                   <p className="text-xs text-[#666666]">Total Visits</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#E34A33]">{formatMoney(selectedClient.total_spent || 0, currency)}</p>
+                  <p className="text-2xl font-bold text-[#3730A3]">{formatMoney(selectedClient.total_spent || 0, currency)}</p>
                   <p className="text-xs text-[#666666]">Total Spent</p>
                 </div>
               </div>

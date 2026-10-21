@@ -107,7 +107,7 @@ const SuperAdminLayout = ({ children, title }) => {
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-md transition-colors ${
                   isActive 
-                    ? 'bg-[#E34A33] text-white' 
+                    ? 'bg-[#3730A3] text-white' 
                     : 'text-white/60 hover:text-white hover:bg-white/5'
                 }`}
                 data-testid={`admin-nav-${item.label.toLowerCase()}`}
@@ -127,7 +127,7 @@ const SuperAdminLayout = ({ children, title }) => {
               className="w-full flex items-center gap-3 p-2 hover:bg-white/5 rounded-md transition-colors"
               data-testid="admin-user-menu"
             >
-              <div className="w-8 h-8 bg-[#E34A33] rounded-full flex items-center justify-center text-white text-sm font-medium">
+              <div className="w-8 h-8 bg-[#3730A3] rounded-full flex items-center justify-center text-white text-sm font-medium">
                 {admin?.name?.charAt(0) || 'A'}
               </div>
               <div className="flex-1 text-left">
@@ -141,7 +141,7 @@ const SuperAdminLayout = ({ children, title }) => {
               <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#1a1a1a] border border-white/10 rounded-md overflow-hidden">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 text-[#E34A33]"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 text-[#3730A3]"
                   data-testid="admin-logout"
                 >
                   <LogOut className="w-4 h-4" />

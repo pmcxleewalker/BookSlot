@@ -76,7 +76,7 @@ const SettingsPage = () => {
   const [booking, setBooking] = useState(tenant?.settings || {});
   const [savingBooking, setSavingBooking] = useState(false);
 
-  const [branding, setBranding] = useState({ primary_color: '#E34A33', secondary_color: '#0A0A0A', accent_color: '#4F46E5', show_powered_by: true, theme: 'default', ...(tenant?.branding || {}) });
+  const [branding, setBranding] = useState({ primary_color: '#3730A3', secondary_color: '#0A0A0A', accent_color: '#4F46E5', show_powered_by: true, theme: 'default', ...(tenant?.branding || {}) });
   const [logoUrl, setLogoUrl] = useState(tenant?.logo_url || '');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -282,7 +282,7 @@ const SettingsPage = () => {
       <div className="flex gap-1 mb-6 border-b border-[#E5E5E5] overflow-x-auto">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setActiveTab(id)} data-testid={`tab-${id}`}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${tab === id ? 'border-[#E34A33] text-[#E34A33]' : 'border-transparent text-[#666666] hover:text-[#0A0A0A]'}`}>
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${tab === id ? 'border-[#3730A3] text-[#3730A3]' : 'border-transparent text-[#666666] hover:text-[#0A0A0A]'}`}>
             <Icon className="w-4 h-4" /> {label}
           </button>
         ))}
@@ -412,7 +412,7 @@ const SettingsPage = () => {
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                   {Object.values(themes).map((t) => (
                     <button key={t.id} onClick={() => setBranding({ ...branding, theme: t.id })} data-testid={`theme-${t.id}`}
-                      className={`p-4 border-2 rounded-lg text-left transition-all ${branding.theme === t.id ? 'border-[#E34A33] ring-2 ring-[#E34A33]/20' : 'border-[#E5E5E5] hover:border-[#999]'}`}>
+                      className={`p-4 border-2 rounded-lg text-left transition-all ${branding.theme === t.id ? 'border-[#3730A3] ring-2 ring-[#3730A3]/20' : 'border-[#E5E5E5] hover:border-[#999]'}`}>
                       <div className="flex gap-1 mb-2">
                         {[t.colors.background, t.colors.accent, t.colors.text].map((col) => (
                           <div key={col} className="w-6 h-6 rounded-full border border-[#E5E5E5]" style={{ backgroundColor: col }} />
@@ -502,13 +502,13 @@ const SettingsPage = () => {
                 <div className="p-4 bg-[#FAFAFA] border border-[#E5E5E5]">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <Smartphone className="w-5 h-5 text-[#E34A33]" />
+                      <Smartphone className="w-5 h-5 text-[#3730A3]" />
                       <div>
                         <p className="font-medium text-[#0A0A0A]">SMS add-on</p>
                         <p className="text-sm text-[#666666]">Text message confirmations & reminders</p>
                       </div>
                     </div>
-                    <p className="font-semibold text-[#E34A33]">+{formatMoney(notificationSettings.sms_addon_price, 'EUR')}/mo</p>
+                    <p className="font-semibold text-[#3730A3]">+{formatMoney(notificationSettings.sms_addon_price, 'EUR')}/mo</p>
                   </div>
                   {!notificationSettings.sms_configured && <p className="text-xs text-amber-700 mb-2">SMS sending isn't set up on the platform yet (Twilio).</p>}
                   {notificationSettings.sms_addon_enabled ? (

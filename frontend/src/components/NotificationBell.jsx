@@ -115,7 +115,7 @@ const NotificationBell = () => {
       >
         <Bell className="w-5 h-5 text-[#666666]" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 w-5 h-5 bg-[#E34A33] text-white text-xs font-bold rounded-full flex items-center justify-center transform translate-x-1 -translate-y-1">
+          <span className="absolute top-0 right-0 w-5 h-5 bg-[#3730A3] text-white text-xs font-bold rounded-full flex items-center justify-center transform translate-x-1 -translate-y-1">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -129,7 +129,7 @@ const NotificationBell = () => {
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-xs text-[#E34A33] hover:underline flex items-center gap-1"
+                className="text-xs text-[#3730A3] hover:underline flex items-center gap-1"
                 data-testid="mark-all-read"
               >
                 <CheckCheck className="w-3 h-3" />
@@ -171,7 +171,7 @@ const NotificationBell = () => {
                           {notif.title}
                         </p>
                         {!notif.read && (
-                          <span className="w-2 h-2 bg-[#E34A33] rounded-full flex-shrink-0 mt-1.5" />
+                          <span className="w-2 h-2 bg-[#3730A3] rounded-full flex-shrink-0 mt-1.5" />
                         )}
                       </div>
                       <p className="text-xs text-[#666666] mt-0.5 line-clamp-2">

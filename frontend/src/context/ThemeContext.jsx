@@ -11,7 +11,7 @@ export const themes = {
       backgroundSecondary: '#FAFAFA',
       text: '#0A0A0A',
       textSecondary: '#666666',
-      accent: '#E34A33',
+      accent: '#3730A3',
       border: '#E5E5E5',
       sidebar: '#FFFFFF',
       sidebarText: '#666666',

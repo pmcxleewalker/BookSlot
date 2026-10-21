@@ -173,7 +173,7 @@ const AdminTenantsPage = () => {
           </Select>
           <Button 
             onClick={() => setShowCreateDialog(true)} 
-            className="bg-[#E34A33] hover:bg-[#c73d2a] text-white flex items-center gap-2"
+            className="bg-[#3730A3] hover:bg-[#c73d2a] text-white flex items-center gap-2"
             data-testid="create-tenant-btn"
           >
             <Plus className="w-4 h-4" />
@@ -276,13 +276,13 @@ const AdminTenantsPage = () => {
                     onClick={() => setNewTenant({ ...newTenant, plan: key })}
                     className={`p-4 border text-left transition-all ${
                       newTenant.plan === key 
-                        ? 'border-[#E34A33] bg-[#E34A33]/10' 
+                        ? 'border-[#3730A3] bg-[#3730A3]/10' 
                         : 'border-white/10 hover:border-white/30'
                     }`}
                     data-testid={`select-plan-${key}`}
                   >
                     <p className="font-semibold text-white capitalize">{plan.name}</p>
-                    <p className="text-lg text-[#E34A33] font-mono">€{plan.price}/mo</p>
+                    <p className="text-lg text-[#3730A3] font-mono">€{plan.price}/mo</p>
                     <ul className="mt-2 space-y-1">
                       {plan.features.slice(0, 3).map((f, i) => (
                         <li key={i} className="text-xs text-white/50 flex items-center gap-1">
@@ -399,7 +399,7 @@ const AdminTenantsPage = () => {
                 Cancel
               </Button>
               <Button 
-                className="flex-1 bg-[#E34A33] hover:bg-[#c73d2a] text-white" 
+                className="flex-1 bg-[#3730A3] hover:bg-[#c73d2a] text-white" 
                 onClick={handleCreateTenant}
                 disabled={creating}
                 data-testid="submit-create-tenant"

@@ -413,7 +413,7 @@ const CalendarPage = () => {
                 return (
                   <div key={day.toISOString()} className={`p-3 text-center ${isToday ? 'bg-[#FAFAFA]' : ''}`}>
                     <p className="text-xs text-[#666666] uppercase">{format(day, 'EEE')}</p>
-                    <p className={`text-lg font-semibold ${isToday ? 'text-[#E34A33]' : 'text-[#0A0A0A]'}`}>{format(day, 'd')}</p>
+                    <p className={`text-lg font-semibold ${isToday ? 'text-[#3730A3]' : 'text-[#0A0A0A]'}`}>{format(day, 'd')}</p>
                   </div>
                 );
               })}
@@ -429,7 +429,7 @@ const CalendarPage = () => {
                       onDragOver={(e) => { e.preventDefault(); if (dropTarget !== key) setDropTarget(key); }}
                       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropTarget(null); }}
                       onDrop={(e) => onDrop(e, day, hour)}
-                      className={`min-h-[56px] p-1 space-y-1 border-r border-[#F0F0F0] last:border-r-0 cursor-pointer hover:bg-[#FAFAFA] ${isSameDay(day, new Date()) ? 'bg-[#FAFAFA]/60' : ''} ${dropTarget === key ? 'bg-[#E34A33]/10 ring-2 ring-[#E34A33] ring-inset' : ''}`}
+                      className={`min-h-[56px] p-1 space-y-1 border-r border-[#F0F0F0] last:border-r-0 cursor-pointer hover:bg-[#FAFAFA] ${isSameDay(day, new Date()) ? 'bg-[#FAFAFA]/60' : ''} ${dropTarget === key ? 'bg-[#3730A3]/10 ring-2 ring-[#3730A3] ring-inset' : ''}`}
                       data-testid={`slot-${key}`}>
                       {cellAppts.map((appt) => {
                         const movable = ['confirmed', 'pending', 'pending_approval'].includes(appt.status);

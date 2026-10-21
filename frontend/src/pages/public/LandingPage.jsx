@@ -59,7 +59,7 @@ const Phone = () => (
     <div className="rounded-[2.5rem] bg-[#0A0A0A] p-3 shadow-2xl">
       <div className="rounded-[2rem] bg-[#F4F1EC] overflow-hidden">
         <div className="bg-[#0A0A0A] text-white px-5 pt-6 pb-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#E34A33] flex items-center justify-center text-sm font-semibold">S</div>
+          <div className="w-9 h-9 rounded-full bg-[#3730A3] flex items-center justify-center text-sm font-semibold">S</div>
           <div>
             <p className="text-sm font-semibold leading-tight">Studio Salon</p>
             <p className="text-[11px] text-white/60 leading-tight">replies instantly</p>
@@ -102,7 +102,7 @@ export const MarketingNav = () => (
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
         <Link to="/login"><Button variant="ghost" className="text-sm" data-testid="login-btn">Log in</Button></Link>
-        <a href={DEMO_LINK}><Button className="btn-primary text-sm" data-testid="demo-btn">Book a demo</Button></a>
+        <a href={DEMO_LINK}><Button className="bg-[#3730A3] hover:bg-[#312E81] text-white rounded-md text-sm" data-testid="demo-btn">Book a demo</Button></a>
       </div>
     </div>
   </nav>
@@ -133,7 +133,7 @@ const LandingPage = () => (
       <div className="max-w-7xl mx-auto grid lg:grid-cols-[1.1fr_0.9fr] gap-16 items-center">
         <div>
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded-full mb-8">
-            <Bot className="w-4 h-4 text-[#E34A33]" />
+            <Bot className="w-4 h-4 text-[#3730A3]" />
             <span className="text-sm text-[#666666]">AI receptionist on web, SMS &amp; WhatsApp</span>
           </div>
           <h1 className="heading-marketing text-5xl md:text-6xl lg:text-7xl text-[#0A0A0A] mb-6 leading-[1.05]" data-testid="hero-title">
@@ -145,7 +145,7 @@ const LandingPage = () => (
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <a href={DEMO_LINK}>
-              <Button className="btn-primary px-8 py-4 text-base flex items-center gap-2 w-full sm:w-auto justify-center" data-testid="cta-primary">
+              <Button className="bg-[#3730A3] hover:bg-[#312E81] text-white rounded-md px-8 py-4 text-base flex items-center gap-2 w-full sm:w-auto justify-center" data-testid="cta-primary">
                 Book a demo <ArrowRight className="w-4 h-4" />
               </Button>
             </a>
@@ -169,15 +169,15 @@ const LandingPage = () => (
     <section className="py-24 px-6 bg-[#FAFAFA] border-y border-[#E5E5E5]">
       <div className="max-w-7xl mx-auto">
         <div className="max-w-2xl mb-14">
-          <p className="text-sm font-medium tracking-widest text-[#E34A33] mb-3">SOUND FAMILIAR?</p>
+          <p className="text-sm font-medium tracking-widest text-[#3730A3] mb-3">SOUND FAMILIAR?</p>
           <h2 className="heading-marketing text-4xl md:text-5xl text-[#0A0A0A]">Running the diary shouldn't be a second job.</h2>
         </div>
         <div className="grid md:grid-cols-2 gap-6">
           {PAINS.map(({ icon: Icon, pain, fix }) => (
             <div key={pain} className="bg-white border border-[#E5E5E5] p-8">
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-full bg-[#FDECEA] flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-[#E34A33]" />
+                <div className="w-10 h-10 rounded-full bg-[#EEF0FF] flex items-center justify-center">
+                  <Icon className="w-5 h-5 text-[#3730A3]" />
                 </div>
                 <h3 className="text-lg font-semibold text-[#0A0A0A]">{pain}</h3>
               </div>
@@ -195,14 +195,14 @@ const LandingPage = () => (
     <section id="how" className="py-24 px-6 scroll-mt-16">
       <div className="max-w-7xl mx-auto">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <p className="text-sm font-medium tracking-widest text-[#E34A33] mb-3">HOW IT WORKS</p>
+          <p className="text-sm font-medium tracking-widest text-[#3730A3] mb-3">HOW IT WORKS</p>
           <h2 className="heading-marketing text-4xl md:text-5xl text-[#0A0A0A] mb-4">Bookings on autopilot, in three steps</h2>
           <p className="text-lg text-[#666666]">You stay in charge of your diary. BookSlot does the admin.</p>
         </div>
         <div className="grid md:grid-cols-3 gap-px bg-[#E5E5E5] border border-[#E5E5E5]">
           {STEPS.map((s) => (
             <div key={s.n} className="bg-white p-10">
-              <p className="font-mono text-sm text-[#E34A33] mb-6">{s.n}</p>
+              <p className="font-mono text-sm text-[#3730A3] mb-6">{s.n}</p>
               <h3 className="text-xl font-semibold text-[#0A0A0A] mb-3">{s.title}</h3>
               <p className="text-[#666666]">{s.desc}</p>
             </div>
@@ -216,7 +216,7 @@ const LandingPage = () => (
       <div className="max-w-7xl mx-auto bg-[#0A0A0A] text-white p-10 md:p-16 grid lg:grid-cols-2 gap-12 items-center">
         <div>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-11 h-11 bg-[#E34A33] rounded-full flex items-center justify-center"><MessageCircle className="w-5 h-5" /></div>
+            <div className="w-11 h-11 bg-[#3730A3] rounded-full flex items-center justify-center"><MessageCircle className="w-5 h-5" /></div>
             <span className="text-sm font-medium tracking-widest text-white/70">AI RECEPTIONIST</span>
           </div>
           <h2 className="heading-marketing text-3xl md:text-5xl mb-5">A receptionist that never takes a day off.</h2>
@@ -235,7 +235,7 @@ const LandingPage = () => (
             'Hands over to you for anything it can\'t help with',
           ].map((t) => (
             <li key={t} className="flex gap-3 items-start border-b border-white/10 pb-4">
-              <CheckCircle2 className="w-5 h-5 text-[#E34A33] shrink-0 mt-0.5" /><span className="text-white/90">{t}</span>
+              <CheckCircle2 className="w-5 h-5 text-[#3730A3] shrink-0 mt-0.5" /><span className="text-white/90">{t}</span>
             </li>
           ))}
         </ul>
@@ -246,7 +246,7 @@ const LandingPage = () => (
     <section className="py-24 px-6">
       <div className="max-w-7xl mx-auto">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <p className="text-sm font-medium tracking-widest text-[#E34A33] mb-3">EVERYTHING IN ONE PLACE</p>
+          <p className="text-sm font-medium tracking-widest text-[#3730A3] mb-3">EVERYTHING IN ONE PLACE</p>
           <h2 className="heading-marketing text-4xl md:text-5xl text-[#0A0A0A] mb-4">Built for the way you actually work</h2>
           <p className="text-lg text-[#666666]">Powerful underneath, simple on the surface.</p>
         </div>
@@ -276,7 +276,7 @@ const LandingPage = () => (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           {INDUSTRIES.map(({ icon: Icon, name }) => (
             <div key={name} className="bg-white border border-[#E5E5E5] p-6 flex flex-col items-center text-center gap-3">
-              <Icon className="w-7 h-7 text-[#E34A33]" />
+              <Icon className="w-7 h-7 text-[#3730A3]" />
               <span className="font-semibold text-[#0A0A0A]">{name}</span>
             </div>
           ))}
@@ -310,7 +310,7 @@ const LandingPage = () => (
           your day would look.
         </p>
         <a href={DEMO_LINK}>
-          <Button className="btn-accent px-10 py-4 text-base inline-flex items-center gap-2" data-testid="final-cta">
+          <Button className="bg-[#3730A3] hover:bg-[#312E81] text-white rounded-md px-10 py-4 text-base inline-flex items-center gap-2" data-testid="final-cta">
             Book a demo <ArrowRight className="w-4 h-4" />
           </Button>
         </a>

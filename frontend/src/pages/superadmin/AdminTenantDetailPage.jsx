@@ -196,7 +196,7 @@ const AdminTenantDetailPage = () => {
                       Cancel
                     </Button>
                     <Button 
-                      className="bg-[#E34A33] hover:bg-[#c73d2a] text-white flex items-center gap-2"
+                      className="bg-[#3730A3] hover:bg-[#c73d2a] text-white flex items-center gap-2"
                       onClick={handleSave}
                       disabled={saving}
                       data-testid="save-tenant-btn"

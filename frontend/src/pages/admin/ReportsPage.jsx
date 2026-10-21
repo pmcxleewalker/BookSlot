@@ -112,12 +112,12 @@ const ReportsPage = () => {
               <title>${esc(data.title)}</title>
               <style>
                 body { font-family: Arial, sans-serif; padding: 40px; }
-                h1 { color: #0A0A0A; border-bottom: 2px solid #E34A33; padding-bottom: 10px; }
+                h1 { color: #0A0A0A; border-bottom: 2px solid #3730A3; padding-bottom: 10px; }
                 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
                 th, td { border: 1px solid #E5E5E5; padding: 8px; text-align: left; }
                 th { background: #FAFAFA; }
                 .summary { background: #FAFAFA; padding: 20px; margin: 20px 0; }
-                .logo { color: #E34A33; font-size: 24px; font-weight: bold; }
+                .logo { color: #3730A3; font-size: 24px; font-weight: bold; }
               </style>
             </head>
             <body>
@@ -309,7 +309,7 @@ const ReportsPage = () => {
                       <p className="text-sm font-medium">{item.name}</p>
                       <div className="w-full bg-[#E5E5E5] h-2 rounded mt-1">
                         <div 
-                          className="bg-[#E34A33] h-2 rounded"
+                          className="bg-[#3730A3] h-2 rounded"
                           style={{ 
                             width: `${Math.min(100, (item.revenue / (report.by_service[0]?.revenue || 1)) * 100)}%` 
                           }}
@@ -365,7 +365,7 @@ const ReportsPage = () => {
                 return (
                   <div key={hour} className="flex-1 flex flex-col items-center">
                     <div 
-                      className="w-full bg-[#E34A33] rounded-t transition-all"
+                      className="w-full bg-[#3730A3] rounded-t transition-all"
                       style={{ height: `${height}%`, minHeight: bookings > 0 ? '4px' : '0' }}
                       title={`${hour}:00 - ${bookings} bookings`}
                     />

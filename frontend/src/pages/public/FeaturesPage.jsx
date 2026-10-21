@@ -121,7 +121,7 @@ const FeaturesPage = () => {
                 ))}
               </ul>
               <a href={DEMO_LINK}>
-                <Button className="btn-primary flex items-center gap-2">
+                <Button className="bg-[#3730A3] hover:bg-[#312E81] text-white rounded-md flex items-center gap-2">
                   See it in a demo
                   <ArrowRight className="w-4 h-4" />
                 </Button>

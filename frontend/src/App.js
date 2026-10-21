@@ -180,7 +180,7 @@ const NoAccess = () => (
     <div className="text-center max-w-sm">
       <h1 className="text-xl font-semibold text-[#0A0A0A] mb-2">No access</h1>
       <p className="text-[#666666] mb-4">You don't have permission to view this page. Ask the business owner if you need access.</p>
-      <a href="/calendar" className="text-[#E34A33] hover:underline">Go to calendar</a>
+      <a href="/calendar" className="text-[#3730A3] hover:underline">Go to calendar</a>
     </div>
   </div>
 );

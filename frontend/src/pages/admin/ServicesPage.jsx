@@ -27,11 +27,11 @@ const ServicesPage = () => {
     price: 0,
     deposit_required: false,
     deposit_amount: 0,
-    color: '#E34A33',
+    color: '#3730A3',
     category: ''
   });
 
-  const colors = ['#E34A33', '#4F46E5', '#059669', '#D97706', '#7C3AED', '#0891B2', '#BE185D', '#121212'];
+  const colors = ['#3730A3', '#E34A33', '#059669', '#D97706', '#7C3AED', '#0891B2', '#BE185D', '#121212'];
 
   useEffect(() => {
     fetchServices();
@@ -74,7 +74,7 @@ const ServicesPage = () => {
         price: 0,
         deposit_required: false,
         deposit_amount: 0,
-        color: '#E34A33',
+        color: '#3730A3',
         category: ''
       });
     }

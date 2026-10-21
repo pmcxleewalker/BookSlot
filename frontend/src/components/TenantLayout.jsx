@@ -197,7 +197,7 @@ const TenantLayout = ({ children, title }) => {
                 <button
                   onClick={handleLogout}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors`}
-                  style={{ color: isDark ? accentColor : '#E34A33' }}
+                  style={{ color: isDark ? accentColor : '#3730A3' }}
                   data-testid="logout-button"
                 >
                   <LogOut className="w-4 h-4" />

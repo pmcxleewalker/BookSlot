@@ -49,7 +49,7 @@ const StaffPage = () => {
     ['can_view_reports', 'View reports'],
   ];
 
-  const colors = ['#E34A33', '#4F46E5', '#059669', '#D97706', '#7C3AED', '#0891B2', '#BE185D'];
+  const colors = ['#3730A3', '#E34A33', '#059669', '#D97706', '#7C3AED', '#0891B2', '#BE185D'];
 
   useEffect(() => {
     fetchData();
@@ -563,7 +563,7 @@ const StaffPage = () => {
                     key={service.service_id}
                     className={`p-3 border rounded cursor-pointer transition-colors ${
                       selectedServices.includes(service.service_id)
-                        ? 'border-[#E34A33] bg-[#E34A33]/5'
+                        ? 'border-[#3730A3] bg-[#3730A3]/5'
                         : 'border-[#E5E5E5] hover:border-[#0A0A0A]'
                     }`}
                     onClick={() => toggleService(service.service_id)}
@@ -572,7 +572,7 @@ const StaffPage = () => {
                     <div className="flex items-center gap-3">
                       <div className={`w-5 h-5 rounded border flex items-center justify-center ${
                         selectedServices.includes(service.service_id)
-                          ? 'bg-[#E34A33] border-[#E34A33]'
+                          ? 'bg-[#3730A3] border-[#3730A3]'
                           : 'border-[#E5E5E5]'
                       }`}>
                         {selectedServices.includes(service.service_id) && (

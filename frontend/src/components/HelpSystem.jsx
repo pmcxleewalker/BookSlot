@@ -100,7 +100,7 @@ const HelpPanel = ({ isOpen, onClose }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E5E5]">
           <div className="flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-[#E34A33]" />
+            <HelpCircle className="w-5 h-5 text-[#3730A3]" />
             <h2 className="font-semibold text-[#0A0A0A]">Help Center</h2>
           </div>
           <button
@@ -121,7 +121,7 @@ const HelpPanel = ({ isOpen, onClose }) => {
               placeholder="Search help topics..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[#E5E5E5] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#E34A33]/20 focus:border-[#E34A33]"
+              className="w-full pl-10 pr-4 py-2 border border-[#E5E5E5] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/20 focus:border-[#3730A3]"
               data-testid="help-search"
             />
           </div>
@@ -141,7 +141,7 @@ const HelpPanel = ({ isOpen, onClose }) => {
               </button>
               
               <div className="flex items-center gap-3 mb-4">
-                {React.createElement(selectedTopic.icon, { className: 'w-6 h-6 text-[#E34A33]' })}
+                {React.createElement(selectedTopic.icon, { className: 'w-6 h-6 text-[#3730A3]' })}
                 <h3 className="font-semibold text-lg text-[#0A0A0A]">{selectedTopic.title}</h3>
               </div>
 
@@ -176,17 +176,17 @@ const HelpPanel = ({ isOpen, onClose }) => {
                   <button
                     key={topic.id}
                     onClick={() => setSelectedTopic(topic)}
-                    className="w-full flex items-center gap-3 p-3 border border-[#E5E5E5] rounded-lg hover:border-[#E34A33] hover:bg-[#FAFAFA] transition-colors text-left group"
+                    className="w-full flex items-center gap-3 p-3 border border-[#E5E5E5] rounded-lg hover:border-[#3730A3] hover:bg-[#FAFAFA] transition-colors text-left group"
                     data-testid={`help-topic-${topic.id}`}
                   >
                     <div className="w-10 h-10 bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg flex items-center justify-center group-hover:bg-white">
-                      <Icon className="w-5 h-5 text-[#666666] group-hover:text-[#E34A33]" />
+                      <Icon className="w-5 h-5 text-[#666666] group-hover:text-[#3730A3]" />
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-[#0A0A0A]">{topic.title}</p>
                       <p className="text-xs text-[#666666]">{topic.description}</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-[#666666] group-hover:text-[#E34A33]" />
+                    <ChevronRight className="w-4 h-4 text-[#666666] group-hover:text-[#3730A3]" />
                   </button>
                 );
               })}

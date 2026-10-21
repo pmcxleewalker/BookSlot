@@ -51,7 +51,7 @@ const AdminLoginPage = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
-            <BrandMark size={64} className="ring-1 ring-white/15 rounded-[25%]" />
+            <BrandMark size={64} />
           </div>
           <h1 className="text-2xl font-semibold text-white mb-2">Super Admin</h1>
           <p className="text-white/60">BookSlot Platform Administration</p>

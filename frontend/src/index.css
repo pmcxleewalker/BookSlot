@@ -10,7 +10,7 @@
   --text-primary: #0A0A0A;
   --text-secondary: #666666;
   --accent-brand: #121212;
-  --accent-interaction: #E34A33;
+  --accent-interaction: #3730A3;
   --ai-widget-brand: #4F46E5;
   --borders: #E5E5E5;
   
@@ -19,7 +19,7 @@
   --theme-background-secondary: #FAFAFA;
   --theme-text: #0A0A0A;
   --theme-text-secondary: #666666;
-  --theme-accent: #E34A33;
+  --theme-accent: #3730A3;
   --theme-border: #E5E5E5;
   --theme-sidebar: #FFFFFF;
   --theme-sidebar-text: #666666;
@@ -96,7 +96,7 @@
   }
 
   .btn-accent {
-    @apply bg-[#E34A33] text-white px-6 py-3 font-medium transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg border border-[#E34A33];
+    @apply bg-[#3730A3] text-white px-6 py-3 font-medium transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg border border-[#3730A3];
   }
 
   /* Card styles - flat with borders */
@@ -123,7 +123,7 @@
   }
 
   .calendar-today {
-    @apply border-[#E34A33] border-2;
+    @apply border-[#3730A3] border-2;
   }
 
   /* Focus states */
@@ -491,13 +491,13 @@ body[data-theme-border="elite-gold-waves"]::after {
 }
 
 /* Elite gold accent color for interactive elements */
-.theme-elite .text-\[\#E34A33\],
+.theme-elite .text-\[\#3730A3\],
 .theme-elite [class*="text-red"],
 .theme-elite [class*="accent"] {
   color: #D4AF37 !important;
 }
 
-.theme-elite .bg-\[\#E34A33\],
+.theme-elite .bg-\[\#3730A3\],
 .theme-elite .btn-primary,
 .theme-elite .btn-accent {
   background-color: #D4AF37 !important;
@@ -511,7 +511,7 @@ body[data-theme-border="elite-gold-waves"]::after {
   border-color: #B8860B !important;
 }
 
-.theme-elite .border-\[\#E34A33\] {
+.theme-elite .border-\[\#3730A3\] {
   border-color: #D4AF37 !important;
 }
 

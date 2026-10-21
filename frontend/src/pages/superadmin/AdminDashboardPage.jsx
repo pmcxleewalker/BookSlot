@@ -137,7 +137,7 @@ const AdminDashboardPage = () => {
                 </div>
                 <div className="flex items-center justify-between py-2 pt-3">
                   <span className="text-white font-semibold">Total MRR</span>
-                  <span className="text-[#E34A33] font-mono text-xl font-semibold">€{stats?.revenue?.mrr || 0}</span>
+                  <span className="text-[#3730A3] font-mono text-xl font-semibold">€{stats?.revenue?.mrr || 0}</span>
                 </div>
               </div>
             </div>
@@ -166,7 +166,7 @@ const AdminDashboardPage = () => {
                   {recentTenants.map((tenant) => (
                     <tr key={tenant.tenant_id} className="border-t border-white/5">
                       <td className="py-3">
-                        <Link to={`/admin/tenants/${tenant.tenant_id}`} className="text-white hover:text-[#E34A33]">
+                        <Link to={`/admin/tenants/${tenant.tenant_id}`} className="text-white hover:text-[#3730A3]">
                           {tenant.name}
                         </Link>
                         <p className="text-xs text-white/40">{tenant.email}</p>
