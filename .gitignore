@@ -29,3 +29,4 @@ backend/uploads/
 .DS_Store
 .idea/
 .vscode/
+.netlify
