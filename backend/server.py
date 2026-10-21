@@ -36,6 +36,8 @@ async def lifespan(app: FastAPI):
     try:
         from core.demo import ensure_demo_tenant
         await ensure_demo_tenant()
+        from core.prospects import apply_prospect_setups
+        await apply_prospect_setups()
     except Exception as e:  # noqa: BLE001
         logger.warning("Demo salon not created: %s", e)
     task = asyncio.create_task(reminder_loop()) if config.ENABLE_REMINDERS else None

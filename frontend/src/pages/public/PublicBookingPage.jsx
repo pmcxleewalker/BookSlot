@@ -178,7 +178,8 @@ const PublicBookingPage = () => {
   const c = theme.colors;
   const accent = c.accent;
   const onAccent = isDark ? c.background : '#FFFFFF';
-  const headingStyle = { color: isDark ? accent : c.text, fontFamily: isDark ? "'Playfair Display', serif" : 'inherit' };
+  const serif = isDark || ['champagne', 'rose'].includes(themeId);
+  const headingStyle = { color: isDark ? accent : c.text, fontFamily: serif ? "'Playfair Display', Georgia, serif" : 'inherit' };
   const cardStyle = { backgroundColor: c.card, borderColor: c.border, color: c.text };
   const inputStyle = { backgroundColor: isDark ? c.backgroundSecondary : '#FFFFFF', borderColor: c.border, color: c.text };
   const today = page.today ? parseLocal(`${page.today}T00:00:00`) : new Date();
@@ -277,7 +278,7 @@ const PublicBookingPage = () => {
                           <Clock className="w-3 h-3" /> {service.duration} min
                         </p>
                       </div>
-                      <p className="font-semibold whitespace-nowrap" style={{ color: accent }}>{formatMoney(service.price, currency)}</p>
+                      <p className="font-semibold whitespace-nowrap" style={{ color: accent }}>{Number(service.price) > 0 ? formatMoney(service.price, currency) : 'Free'}</p>
                     </button>
                   ))}
                 </div>
@@ -402,7 +403,7 @@ const PublicBookingPage = () => {
                   <p className="text-sm" style={{ color: c.textSecondary }}>
                     {format(parseLocal(selectedSlot.start_time), 'EEEE d MMMM yyyy')} at {selectedSlot.start_time.slice(11, 16)}
                   </p>
-                  <p className="font-semibold mt-2" style={{ color: accent }}>{formatMoney(selectedService?.price, currency)}</p>
+                  <p className="font-semibold mt-2" style={{ color: accent }}>{Number(selectedService?.price) > 0 ? formatMoney(selectedService?.price, currency) : 'Free'}</p>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
                   <div>

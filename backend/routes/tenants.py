@@ -18,7 +18,7 @@ router = APIRouter()
 
 INDUSTRIES = {"salon", "clinic", "dentist", "doctor", "vet", "consultant", "other"}
 CURRENCIES = {"EUR", "GBP", "USD", "AUD", "CAD", "NZD", "CHF", "SEK", "NOK", "DKK", "PLN", "ZAR", "INR", "SGD"}
-THEMES = {"default", "elite", "modern", "nature", "ocean", "rose"}
+THEMES = {"default", "elite", "modern", "nature", "ocean", "rose", "champagne"}
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 DEFAULT_BRANDING = {"primary_color": "#E34A33", "secondary_color": "#0A0A0A", "accent_color": "#4F46E5",

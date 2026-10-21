@@ -122,6 +122,26 @@ export const themes = {
       buttonPrimaryText: '#FFFFFF'
     },
     hasBorder: false
+  },
+  champagne: {
+    id: 'champagne',
+    name: 'Champagne',
+    description: 'Warm neutrals, soft and elegant',
+    colors: {
+      background: '#FBF8F4',
+      backgroundSecondary: '#F4EDE5',
+      text: '#3E2F25',
+      textSecondary: '#8A7364',
+      accent: '#9A7B66',
+      border: '#E8DDD2',
+      sidebar: '#FBF8F4',
+      sidebarText: '#8A7364',
+      sidebarActive: '#5E4636',
+      card: '#FFFFFF',
+      buttonPrimary: '#9A7B66',
+      buttonPrimaryText: '#FFFFFF'
+    },
+    hasBorder: false
   }
 };
 

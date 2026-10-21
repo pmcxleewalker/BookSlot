@@ -159,7 +159,7 @@ const ManageBookingPage = () => {
               </div>
               <div>
                 <p className="font-medium text-[#0A0A0A]">{service_name}</p>
-                <p className="text-sm text-[#666666]">{formatMoney(appointment.total_price, currency)}</p>
+                <p className="text-sm text-[#666666]">{Number(appointment.total_price) > 0 ? formatMoney(appointment.total_price, currency) : 'Free'}</p>
               </div>
             </div>
 

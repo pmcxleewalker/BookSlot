@@ -1,8 +1,11 @@
-"""File storage: local disk by default, S3-compatible storage when S3_BUCKET is set."""
+"""File storage. S3-compatible storage when S3_BUCKET is set; otherwise the database (survives redeploys on
+hosts like Render whose disk is wiped on every deploy). Set STORAGE=local to use the UPLOAD_DIR folder instead."""
 import asyncio
 import logging
 from pathlib import Path
 from typing import Tuple
+
+import os
 
 from . import config
 
@@ -44,16 +47,33 @@ def _get_sync(key: str) -> bytes:
     return _safe_local_path(key).read_bytes()
 
 
+def _use_db() -> bool:
+    return not config.S3_BUCKET and os.environ.get("STORAGE", "db").lower() != "local"
+
+
 async def put_object(key: str, data: bytes, content_type: str) -> None:
+    if _use_db():
+        from bson.binary import Binary
+        from .db import db
+        await db.file_blobs.update_one({"_id": key}, {"$set": {"data": Binary(data), "content_type": content_type}}, upsert=True)
+        return
     await asyncio.to_thread(_put_sync, key, data, content_type)
 
 
 async def get_object(key: str) -> bytes:
+    if _use_db():
+        from .db import db
+        doc = await db.file_blobs.find_one({"_id": key})
+        if doc:
+            return bytes(doc["data"])
+        # fall back to disk for files uploaded before this change
     return await asyncio.to_thread(_get_sync, key)
 
 
 def backend_name() -> str:
-    return f"s3://{config.S3_BUCKET}" if config.S3_BUCKET else f"local:{config.UPLOAD_DIR}"
+    if config.S3_BUCKET:
+        return f"s3://{config.S3_BUCKET}"
+    return "database" if _use_db() else f"local:{config.UPLOAD_DIR}"
 
 
 # Magic-byte sniffing so a renamed file can't masquerade as an image
