@@ -211,6 +211,13 @@ const TenantLayout = ({ children, title }) => {
 
       {/* Main Content */}
       <main className={`lg:ml-64 min-h-screen pt-16 lg:pt-0 ${bgMain}`}>
+        {(() => { try { return !!localStorage.getItem('admin_token'); } catch (e) { return false; } })() && (
+          <div className="bg-amber-100 text-amber-900 text-sm px-6 py-2 flex items-center justify-between" data-testid="admin-viewing-bar">
+            <span>You're viewing this business as its owner (platform admin).</span>
+            <a href="/admin/tenants" onClick={() => { try { localStorage.removeItem('token'); } catch (e) { /* ignore */ } }}
+              className="underline font-medium">Back to admin</a>
+          </div>
+        )}
         {/* Page Header */}
         <div className={`${bgCard} border-b ${borderColor} px-6 py-4 flex items-center justify-between`}>
           <h1 

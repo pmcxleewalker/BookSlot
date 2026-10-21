@@ -133,12 +133,12 @@ const AdminTenantDetailPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // Store the user token and redirect
+      // Same tab: Safari blocks new tabs opened after a network request.
+      // The admin login is kept, so /admin still works afterwards.
       localStorage.setItem('token', response.data.token);
-      toast.success('Now viewing as tenant owner');
-      window.open('/dashboard', '_blank');
+      window.location.assign('/dashboard');
     } catch (error) {
-      toast.error('Failed to impersonate user');
+      toast.error(error.response?.data?.detail || 'Could not open the owner view');
     }
   };
 
