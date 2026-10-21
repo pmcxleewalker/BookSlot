@@ -2,7 +2,7 @@
 # Set REACT_APP_BACKEND_URL (your Render API address) in Site configuration > Environment variables.
 [build]
   base = "frontend"
-  command = "npm run build"
+  command = "CI=false npm run build"
   publish = "build"
 
 [build.environment]
