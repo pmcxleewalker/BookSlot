@@ -19,17 +19,17 @@ const PLAN_FEATURES = {
   starter: {
     name: "Starter",
     price: 29,
-    features: ["1 location", "Up to 2 staff", "Online booking", "Reminders", "Deposits", "Calendar sync"]
+    features: ["Up to 2 staff", "Online booking", "Calendar", "Email reminders", "Reports"]
   },
   growth: {
     name: "Growth", 
     price: 79,
-    features: ["1 location", "Up to 8 staff", "Waitlist", "Packages", "AI Assistant", "SMS automations", "Advanced reports"]
+    features: ["Up to 8 staff", "Everything in Starter", "AI receptionist (chat, SMS, WhatsApp)"]
   },
   pro: {
     name: "Pro",
     price: 149,
-    features: ["Multi-location", "Unlimited staff", "Advanced permissions", "Resource booking", "Custom forms", "White-label", "API & Webhooks"]
+    features: ["Unlimited staff", "Everything in Growth", "Intake forms", "Remove branding", "API & webhooks"]
   }
 };
 

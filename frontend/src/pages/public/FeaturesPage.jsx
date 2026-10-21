@@ -12,7 +12,7 @@ const FeaturesPage = () => {
     {
       title: 'Scheduling & Booking',
       features: [
-        { icon: Calendar, name: 'Drag-and-drop Calendar', desc: 'Visual calendar with day, week, and month views. Easily move appointments.' },
+        { icon: Calendar, name: 'Drag-and-drop Calendar', desc: 'Day, week and list views. Drag to move appointments, with clash checks.' },
         { icon: Clock, name: 'Online Booking', desc: 'Beautiful booking page your clients can access 24/7 from any device.' },
         { icon: Users, name: 'Staff Scheduling', desc: 'Manage individual schedules, working hours, and time off for each team member.' },
       ]

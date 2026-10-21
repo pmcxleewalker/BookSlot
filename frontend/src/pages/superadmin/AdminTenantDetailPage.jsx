@@ -14,32 +14,35 @@ import {
 
 import { API } from '../../lib/api';
 
+// What each plan really includes today (keep in sync with backend/core/plans.py)
 const PLAN_FEATURES = {
   starter: {
     name: "Starter", price: 29, max_staff: 2,
-    features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: false, ai_assistant: false, resource_booking: false, custom_forms: false, api_webhooks: false }
+    features: { online_booking: true, calendar: true, clients: true, email_reminders: true, reports: true, ai_assistant: false, custom_forms: false, white_label: false, api_webhooks: false }
   },
   growth: {
     name: "Growth", price: 79, max_staff: 8,
-    features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: true, ai_assistant: true, resource_booking: false, custom_forms: false, api_webhooks: false }
+    features: { online_booking: true, calendar: true, clients: true, email_reminders: true, reports: true, ai_assistant: true, custom_forms: false, white_label: false, api_webhooks: false }
   },
   pro: {
     name: "Pro", price: 149, max_staff: 999,
-    features: { online_booking: true, reminders: true, deposits: true, calendar_sync: true, waitlist: true, ai_assistant: true, resource_booking: true, custom_forms: true, api_webhooks: true }
+    features: { online_booking: true, calendar: true, clients: true, email_reminders: true, reports: true, ai_assistant: true, custom_forms: true, white_label: true, api_webhooks: true }
   }
 };
 
 const featureLabels = {
-  online_booking: "Online Booking",
-  reminders: "Email/SMS Reminders",
-  deposits: "Deposit Collection",
-  calendar_sync: "Calendar Sync",
-  waitlist: "Waitlist Management",
-  ai_assistant: "AI Assistant (Moltbot)",
-  resource_booking: "Resource Booking",
-  custom_forms: "Custom Forms",
-  api_webhooks: "API & Webhooks"
+  online_booking: "Online booking page",
+  calendar: "Calendar & manual bookings",
+  clients: "Client list & history",
+  email_reminders: "Email confirmations & reminders",
+  reports: "Reports & exports",
+  ai_assistant: "AI receptionist (web chat, SMS, WhatsApp)",
+  custom_forms: "Intake forms",
+  white_label: "Remove BookSlot branding",
+  api_webhooks: "API & webhooks"
 };
+
+const COMING_SOON = ["Online deposits", "Google Calendar sync", "Waitlist", "Packages", "Multi-location", "Resource booking"];
 
 const AdminTenantDetailPage = () => {
   const { tenantId } = useParams();
@@ -296,15 +299,13 @@ const AdminTenantDetailPage = () => {
                     {tenant.address}
                   </div>
                 )}
-                {(tenant?.sms_number || tenant?.whatsapp_number) && (
-                  <div className="flex items-center gap-3 text-white/60">
-                    <Phone className="w-4 h-4" />
-                    <span className="text-white/40">Texts:</span>
-                    {tenant.sms_number && <span>SMS {tenant.sms_number}</span>}
-                    {tenant.whatsapp_number && <span>WhatsApp {tenant.whatsapp_number}</span>}
-                    {tenant.sms_addon_enabled && <span className="text-green-400 text-xs">reminders on</span>}
-                  </div>
-                )}
+                <div className="flex items-center gap-3 text-white/60 flex-wrap">
+                  <Phone className="w-4 h-4" />
+                  <span className="text-white/40">SMS / WhatsApp numbers:</span>
+                  {tenant?.sms_number && <span>SMS {tenant.sms_number}</span>}
+                  {tenant?.whatsapp_number && <span>WhatsApp {tenant.whatsapp_number}</span>}
+                  {!tenant?.sms_number && !tenant?.whatsapp_number && <span className="text-white/40">not set yet (click Edit)</span>}
+                </div>
                 <div className="flex items-center gap-3 text-white/60">
                   <Globe className="w-4 h-4" />
                   <span className="text-white/40">Booking URL:</span>
@@ -366,6 +367,13 @@ const AdminTenantDetailPage = () => {
                 );
               })}
             </div>
+
+            <div className={`mt-3 flex items-center gap-2 p-3 border ${tenant?.sms_addon_enabled ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-white/5'}`}>
+              {tenant?.sms_addon_enabled ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-white/30" />}
+              <span className={tenant?.sms_addon_enabled ? 'text-white' : 'text-white/40'}>Text (SMS) confirmations & reminders — add-on, switch on under Edit</span>
+            </div>
+
+            <p className="mt-4 text-xs text-white/40">Coming soon (not in any plan yet): {COMING_SOON.join(' · ')}</p>
 
             <div className="mt-4 p-3 bg-white/5 border border-white/10">
               <p className="text-sm text-white/60">
