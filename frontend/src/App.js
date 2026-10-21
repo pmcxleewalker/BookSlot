@@ -6,7 +6,6 @@ import { Toaster } from 'sonner';
 // Pages - Public
 import LandingPage from './pages/public/LandingPage';
 import FeaturesPage from './pages/public/FeaturesPage';
-import PricingPage from './pages/public/PricingPage';
 import LoginPage from './pages/public/LoginPage';
 import SignupPage from './pages/public/SignupPage';
 import ForgotPasswordPage from './pages/public/ForgotPasswordPage';
@@ -205,7 +204,7 @@ const AppRouter = () => (
     {/* Public */}
     <Route path="/" element={<LandingPage />} />
     <Route path="/features" element={<FeaturesPage />} />
-    <Route path="/pricing" element={<PricingPage />} />
+    <Route path="/pricing" element={<Navigate to="/" replace />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/signup" element={<SignupPage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} />

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
+import { MarketingNav, MarketingFooter, DEMO_LINK } from './LandingPage';
 import { 
   Calendar, Users, Clock, Bot, Shield, Zap, 
   Bell, CreditCard, FileText, BarChart3, 
@@ -22,21 +23,21 @@ const FeaturesPage = () => {
       features: [
         { icon: Bot, name: 'AI Receptionist', desc: 'Moltbot handles inquiries, checks availability, and books appointments automatically.' },
         { icon: Bell, name: 'Smart Reminders', desc: 'Automatic email and SMS reminders before every appointment to cut no-shows.' },
-        { icon: Zap, name: 'Waitlist Automation', desc: 'Coming soon: automatically fill cancelled slots from your waitlist.' },
+        { icon: Zap, name: 'Text & WhatsApp Booking', desc: 'Clients text or WhatsApp your number to book, move or cancel. The AI handles it using your real availability.' },
       ]
     },
     {
       title: 'Business Tools',
       features: [
-        { icon: CreditCard, name: 'Deposits & Payments', desc: 'Coming soon: take deposits online when clients book.' },
+        { icon: CreditCard, name: 'Client Records', desc: 'Every client\'s visit history, spend, notes and contact details, built up automatically.' },
         { icon: FileText, name: 'Custom Forms', desc: 'Create intake forms and gather important client information before appointments.' },
         { icon: BarChart3, name: 'Reports & Analytics', desc: 'Track revenue, appointments, and staff performance with visual dashboards.' },
       ]
     },
     {
-      title: 'Enterprise Ready',
+      title: 'Control & Security',
       features: [
-        { icon: Globe, name: 'Multi-location', desc: 'Coming soon: manage several locations from one dashboard.' },
+        { icon: Globe, name: 'Booking Rules', desc: 'Set minimum notice, how far ahead clients can book, cancellation cut-offs and approvals.' },
         { icon: Shield, name: 'GDPR Compliance', desc: 'Client data export and delete-on-request built in.' },
         { icon: Puzzle, name: 'API & Webhooks', desc: 'Connect with your existing tools and build custom integrations.' },
       ]
@@ -45,20 +46,7 @@ const FeaturesPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="glass fixed top-0 left-0 right-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="text-xl font-semibold text-[#0A0A0A]">BookSlot</Link>
-          <div className="hidden md:flex items-center gap-8">
-            <Link to="/features" className="text-sm text-[#0A0A0A] font-medium">Features</Link>
-            <Link to="/pricing" className="text-sm text-[#666666] hover:text-[#0A0A0A] transition-colors">Pricing</Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link to="/login"><Button variant="ghost" className="text-sm">Log in</Button></Link>
-            <Link to="/signup"><Button className="btn-primary text-sm">Start Free</Button></Link>
-          </div>
-        </div>
-      </nav>
+      <MarketingNav />
 
       {/* Hero */}
       <section className="pt-32 pb-16 px-6 noise-overlay">
@@ -124,7 +112,7 @@ const FeaturesPage = () => {
                   'Checks staff availability in real-time',
                   'Books, reschedules, and cancels appointments',
                   'Sends confirmations and reminders',
-                  'Works via website chat or messaging apps'
+                  'Works on your website chat, by SMS and on WhatsApp'
                 ].map((item, idx) => (
                   <li key={idx} className="flex items-center gap-3">
                     <div className="w-1.5 h-1.5 bg-[#4F46E5] rounded-full" />
@@ -132,12 +120,12 @@ const FeaturesPage = () => {
                   </li>
                 ))}
               </ul>
-              <Link to="/signup">
+              <a href={DEMO_LINK}>
                 <Button className="btn-primary flex items-center gap-2">
-                  Try Moltbot Free
+                  See it in a demo
                   <ArrowRight className="w-4 h-4" />
                 </Button>
-              </Link>
+              </a>
             </div>
             <div className="bg-[#FAFAFA] border border-[#E5E5E5] p-8">
               <div className="bg-white border border-[#E5E5E5] p-4 mb-4 rounded-lg">
@@ -145,7 +133,7 @@ const FeaturesPage = () => {
                 <p className="text-[#0A0A0A]">"Hi, do you have any openings for a haircut tomorrow afternoon?"</p>
               </div>
               <div className="bg-[#4F46E5] text-white p-4 rounded-lg ml-8">
-                <p className="text-sm text-white/70">Moltbot:</p>
+                <p className="text-sm text-white/70">Assistant:</p>
                 <p>"Yes! I have 2:00 PM and 3:30 PM available with Sarah. Would either of those work for you?"</p>
               </div>
             </div>
@@ -160,23 +148,17 @@ const FeaturesPage = () => {
             Ready to get started?
           </h2>
           <p className="text-lg text-white/70 mb-10">
-            14-day free trial. No credit card required.
+            We'll set up a demo with your own services so you can see exactly how it would work for you.
           </p>
-          <Link to="/signup">
+          <a href={DEMO_LINK}>
             <Button className="bg-white text-[#0A0A0A] hover:bg-white/90 px-10 py-4 text-base">
-              Start Free Trial
+              Book a demo
             </Button>
-          </Link>
+          </a>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-6 border-t border-[#E5E5E5]">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-xl font-semibold text-[#0A0A0A]">BookSlot</div>
-          <p className="text-sm text-[#666666]">© 2026 BookSlot. All rights reserved.</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 };

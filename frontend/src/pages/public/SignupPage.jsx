@@ -62,10 +62,10 @@ const SignupPage = () => {
           </Link>
 
           <h1 className="text-3xl font-semibold text-[#0A0A0A] mb-2" data-testid="signup-title">
-            Start your free trial
+            Create your BookSlot account
           </h1>
           <p className="text-[#666666] mb-8">
-            14 days free. No credit card required.
+            Set up your business and booking page in a few minutes.
           </p>
 
           <GoogleSignInButton onCredential={handleGoogle} text="signup_with" />

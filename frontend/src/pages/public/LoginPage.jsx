@@ -121,7 +121,7 @@ const LoginPage = () => {
           <p className="mt-8 text-center text-sm text-[#666666]">
             Don't have an account?{' '}
             <Link to="/signup" className="text-[#0A0A0A] font-medium hover:underline" data-testid="signup-link">
-              Sign up free
+              Create an account
             </Link>
           </p>
         </div>
