@@ -1,4 +1,5 @@
 import React from 'react';
+import BrandLogo from '../../components/BrandLogo';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, Calendar, Users, Bot, Shield, Bell, Smartphone, MessageCircle, PhoneOff, Moon, UserX,
@@ -93,7 +94,7 @@ const Phone = () => (
 export const MarketingNav = () => (
   <nav className="glass fixed top-0 left-0 right-0 z-50">
     <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-      <Link to="/" className="text-xl font-semibold text-[#0A0A0A]" data-testid="logo">BookSlot</Link>
+      <Link to="/" aria-label="BookSlot home" data-testid="logo"><BrandLogo size={32} /></Link>
       <div className="hidden md:flex items-center gap-8">
         <a href="/#how" className="text-sm text-[#666666] hover:text-[#0A0A0A] transition-colors">How it works</a>
         <Link to="/features" className="text-sm text-[#666666] hover:text-[#0A0A0A] transition-colors" data-testid="nav-features">Features</Link>
@@ -110,7 +111,7 @@ export const MarketingNav = () => (
 export const MarketingFooter = () => (
   <footer className="py-12 px-6 border-t border-[#E5E5E5]">
     <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-      <div className="text-xl font-semibold text-[#0A0A0A]">BookSlot</div>
+      <BrandLogo size={28} textClassName="text-lg" />
       <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-[#666666]">
         <a href="/#how" className="hover:text-[#0A0A0A]">How it works</a>
         <Link to="/features" className="hover:text-[#0A0A0A]">Features</Link>

@@ -1,3 +1,4 @@
+import { BrandMark } from '../../components/BrandLogo';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -208,7 +209,7 @@ const PublicBookingPage = () => {
           </div>
           {business.branding?.show_powered_by !== false && (
             <a href="/" className="hidden sm:inline text-xs px-3 py-1 border whitespace-nowrap" style={{ color: c.textSecondary, borderColor: c.border }}>
-              Powered by BookSlot
+              <span className="inline-flex items-center gap-1.5"><BrandMark size={14} />Powered by BookSlot</span>
             </a>
           )}
         </div>

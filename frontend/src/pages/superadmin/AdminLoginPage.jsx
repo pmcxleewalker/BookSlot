@@ -1,3 +1,4 @@
+import { BrandMark } from '../../components/BrandLogo';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -49,8 +50,8 @@ const AdminLoginPage = () => {
     <div className="min-h-screen bg-[#121212] flex items-center justify-center px-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#E34A33] flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-white" />
+          <div className="flex justify-center mb-6">
+            <BrandMark size={64} className="ring-1 ring-white/15 rounded-[25%]" />
           </div>
           <h1 className="text-2xl font-semibold text-white mb-2">Super Admin</h1>
           <p className="text-white/60">BookSlot Platform Administration</p>

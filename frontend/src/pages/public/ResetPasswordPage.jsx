@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import BrandLogo from '../../components/BrandLogo';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -37,7 +38,7 @@ const ResetPasswordPage = () => {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-6">
       <div className="max-w-md w-full">
-        <Link to="/" className="text-2xl font-semibold text-[#0A0A0A] mb-10 block">BookSlot</Link>
+        <Link to="/" className="mb-10 inline-block" aria-label="BookSlot home"><BrandLogo size={36} textClassName="text-2xl" /></Link>
         <h1 className="text-3xl font-semibold text-[#0A0A0A] mb-2">Choose a new password</h1>
         {!token ? (
           <p className="text-[#666666] mt-4">

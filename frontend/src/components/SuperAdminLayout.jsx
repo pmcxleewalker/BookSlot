@@ -1,3 +1,4 @@
+import BrandLogo from './BrandLogo';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -71,9 +72,9 @@ const SuperAdminLayout = ({ children, title }) => {
         <button onClick={() => setSidebarOpen(true)} className="p-2 text-white">
           <Menu className="w-6 h-6" />
         </button>
-        <span className="font-semibold text-white flex items-center gap-2">
-          <Shield className="w-5 h-5 text-[#E34A33]" />
-          Admin
+        <span className="flex items-center gap-2">
+          <BrandLogo size={26} light textClassName="text-base" />
+          <span className="text-xs text-white/50">Admin</span>
         </span>
         <div className="w-10" />
       </header>
@@ -86,9 +87,9 @@ const SuperAdminLayout = ({ children, title }) => {
       {/* Sidebar */}
       <aside className={`fixed top-0 left-0 h-full w-64 bg-[#121212] border-r border-white/10 z-50 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-white/10">
-          <Link to="/admin/dashboard" className="font-semibold text-white flex items-center gap-2">
-            <Shield className="w-5 h-5 text-[#E34A33]" />
-            Super Admin
+          <Link to="/admin/dashboard" className="flex items-center gap-2">
+            <BrandLogo size={28} light textClassName="text-lg" />
+            <span className="text-xs text-white/50 mt-0.5">Admin</span>
           </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-white/60 hover:text-white">
             <X className="w-5 h-5" />

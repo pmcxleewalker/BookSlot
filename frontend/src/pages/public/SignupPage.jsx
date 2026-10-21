@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import BrandLogo from '../../components/BrandLogo';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../App';
 import { Button } from '../../components/ui/button';
@@ -57,8 +58,8 @@ const SignupPage = () => {
       {/* Left Panel - Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-24">
         <div className="max-w-md w-full mx-auto">
-          <Link to="/" className="text-2xl font-semibold text-[#0A0A0A] mb-12 block">
-            BookSlot
+          <Link to="/" className="mb-12 inline-block" aria-label="BookSlot home">
+            <BrandLogo size={36} textClassName="text-2xl" />
           </Link>
 
           <h1 className="text-3xl font-semibold text-[#0A0A0A] mb-2" data-testid="signup-title">
