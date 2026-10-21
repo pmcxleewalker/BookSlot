@@ -73,6 +73,22 @@ const DashboardPage = () => {
 
   return (
     <TenantLayout title="Dashboard">
+      {(tenant?.messaging?.whatsapp || tenant?.messaging?.sms) && (
+        <div className="card-flat mb-6" data-testid="messaging-links">
+          <h2 className="font-semibold text-[#0A0A0A] mb-1">Clients can book by message</h2>
+          <p className="text-sm text-[#666666] mb-3">Share these links (Instagram bio, Google profile, window poster). Messages reach your AI receptionist and only ever see your diary.</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {[['WhatsApp', tenant.messaging.whatsapp], ['Text (SMS)', tenant.messaging.sms]].filter(([, l]) => l).map(([label, link]) => (
+              <button key={label} type="button" className="flex-1 text-left px-3 py-2 border border-[#E5E5E5] rounded hover:border-[#0A0A0A]"
+                onClick={() => { try { navigator.clipboard.writeText(link); toast.success(`${label} link copied`); } catch (e) { /* ignore */ } }}>
+                <span className="block text-sm font-medium text-[#0A0A0A]">{label} link</span>
+                <span className="block text-xs text-[#666666] truncate">{link}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="card-flat mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>

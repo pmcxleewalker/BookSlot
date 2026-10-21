@@ -79,6 +79,8 @@ def public_tenant(tenant: Dict[str, Any]) -> Dict[str, Any]:
     t["branding"] = {**DEFAULT_BRANDING, **(tenant.get("branding") or {})}
     t["has_api_key"] = bool(tenant.get("api_key_hash"))
     t["features"] = plan_features(tenant)
+    from core.notify import messaging_links
+    t["messaging"] = messaging_links(tenant)
     return t
 
 

@@ -5,8 +5,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
-from core import booking
+from core import config, booking
 from core.db import db
+from core.notify import messaging_links
 from core.plans import plan_features
 from core.scheduling import fmt, local_now, parse_date, to_local_naive
 from core.security import rate_limit
@@ -66,7 +67,8 @@ async def public_booking_page(slug: str):
             "description": tenant.get("description"), "website": tenant.get("website"),
             "timezone": tenant.get("timezone"), "currency": tenant.get("currency", "EUR"),
             "slug": tenant["booking_url_slug"], "branding": branding,
-            "ai_chat_enabled": bool(features.get("ai_assistant")) and bool(tenant.get("ai_chat_enabled", True)),
+            "messaging": messaging_links(tenant),
+            "ai_chat_enabled": bool(config.AI_ENABLED) and bool(features.get("ai_assistant")) and bool(tenant.get("ai_chat_enabled", True)),
         },
         "settings": {k: settings[k] for k in ("online_booking_enabled", "require_email", "require_phone",
                                                "allow_client_cancellation", "min_notice_minutes", "max_advance_days")},

@@ -33,6 +33,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:  # noqa: BLE001
         logger.exception("Migration failed (continuing): %s", e)
     await admin.bootstrap_super_admin()
+    try:
+        from core.demo import ensure_demo_tenant
+        await ensure_demo_tenant()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Demo salon not created: %s", e)
     task = asyncio.create_task(reminder_loop()) if config.ENABLE_REMINDERS else None
     logger.info("BookSlot API started (env=%s, email=%s, sms=%s, ai=%s)", config.ENVIRONMENT,
                 bool(config.RESEND_API_KEY), bool(config.TWILIO_ACCOUNT_SID), config.AI_ENABLED)

@@ -68,3 +68,12 @@
 - /admin → business → Edit: set the SMS number, WhatsApp number and switch the SMS add-on on.
 - Phones: the calendar opens in a new Day view (today's appointments as a simple list, swipe days with the arrows),
   with a big + button for quick bookings while on a call. Phone number comes first in the new-booking form.
+
+## Messaging for every business, demo salon, branding
+- One shared BookSlot WhatsApp number (and SMS number) can serve every business. Each business gets its own
+  WhatsApp/text link (shown on its dashboard and booking page) that pre-fills its code, e.g. "#studio-salon".
+  The client is then tied to that business: the AI only sees that business's services, diary and bookings.
+  Messages with no code get one polite "which business?" reply. A business can still have its own number.
+- Chat button and messaging links only appear once an AI key is configured.
+- Public demo salon (Lumière Hair Studio) at /book/demo, created automatically; "Try the live demo" on the site.
+- New logo and indigo brand; "Built by QF Digital" in the footer.

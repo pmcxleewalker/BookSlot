@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Calendar } from '../../components/ui/calendar';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Clock, Check, MapPin, Phone, Users, Hourglass } from 'lucide-react';
+import { MessageCircle, ArrowLeft, ArrowRight, Clock, Check, MapPin, Phone, Users, Hourglass } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { themes } from '../../context/ThemeContext';
 import { API, errorMessage } from '../../lib/api';
@@ -205,6 +205,22 @@ const PublicBookingPage = () => {
                 {business.address && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{business.address}</span>}
                 {business.phone && <a href={`tel:${business.phone}`} className="flex items-center gap-1"><Phone className="w-3 h-3" />{business.phone}</a>}
               </div>
+              {(business.messaging?.whatsapp || business.messaging?.sms) && (
+                <div className="flex flex-wrap gap-2 mt-2.5">
+                  {business.messaging.whatsapp && (
+                    <a href={business.messaging.whatsapp} target="_blank" rel="noopener noreferrer" data-testid="whatsapp-link"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-[#25D366] text-white">
+                      <MessageCircle className="w-3.5 h-3.5" />Book on WhatsApp
+                    </a>
+                  )}
+                  {business.messaging.sms && (
+                    <a href={business.messaging.sms} data-testid="sms-link"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border" style={{ borderColor: c.border, color: c.text }}>
+                      <Phone className="w-3.5 h-3.5" />Book by text
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           {business.branding?.show_powered_by !== false && (

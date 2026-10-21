@@ -274,16 +274,30 @@ async def send_sms(tenant: Dict[str, Any], to_phone: str, message: str) -> Optio
     return await _twilio_send(tenant, "sms", to, sender_number(tenant), message[:480])
 
 
-async def send_chat_reply(tenant: Dict[str, Any], channel: str, to: str, message: str) -> Optional[str]:
-    """Reply from the AI receptionist on the channel the client wrote in on (sms or whatsapp)."""
+async def send_chat_reply(tenant: Dict[str, Any], channel: str, to: str, message: str,
+                          via: Optional[str] = None) -> Optional[str]:
+    """Reply from the AI receptionist on the channel and number the client wrote to (sms or whatsapp).
+    `via` is the number the client messaged (the business's own number or the shared BookSlot number)."""
     if channel == "whatsapp":
-        if not tenant.get("whatsapp_number"):
+        sender = via or tenant.get("whatsapp_number") or config.TWILIO_WHATSAPP_NUMBER
+        if not sender:
             return None
-        return await _twilio_send(tenant, "whatsapp", f"whatsapp:{to_e164(to, tenant)}",
-                                  f"whatsapp:{tenant['whatsapp_number']}", message)
-    if not tenant.get("sms_number"):
+        return await _twilio_send(tenant, "whatsapp", f"whatsapp:{to_e164(to, tenant)}", f"whatsapp:{sender}", message)
+    sender = via or tenant.get("sms_number") or config.TWILIO_PHONE_NUMBER
+    if not sender:
         return None
-    return await _twilio_send(tenant, "sms", to_e164(to, tenant) or to, tenant["sms_number"], message)
+    return await _twilio_send(tenant, "sms", to_e164(to, tenant) or to, sender, message)
+
+
+async def send_plain_text(channel: str, to: str, sender: str, message: str) -> None:
+    """A message not tied to any business (e.g. 'which salon?' on the shared number)."""
+    if not twilio_client:
+        return
+    pre = "whatsapp:" if channel == "whatsapp" else ""
+    try:
+        await asyncio.to_thread(twilio_client.messages.create, body=message[:1600], from_=pre + sender, to=pre + to)
+    except Exception as e:  # noqa: BLE001
+        logger.error("%s send failed: %s", channel, e)
 
 
 async def send_booking_message(trigger: str, appointment: Dict[str, Any], tenant: Dict[str, Any],
@@ -303,3 +317,23 @@ async def send_booking_message(trigger: str, appointment: Dict[str, Any], tenant
                 await send_sms(tenant, appointment["client_phone"], render(tpl.get("content"), ctx))
     except Exception as e:  # noqa: BLE001 - notifications must never break a booking
         logger.exception("Failed to send %s message: %s", trigger, e)
+
+
+def messaging_links(tenant: Dict[str, Any]) -> Dict[str, Optional[str]]:
+    """Links clients tap to message this business's AI receptionist. On the shared BookSlot numbers the
+    pre-filled text carries the business code (#booking-link) so the message reaches the right business."""
+    from urllib.parse import quote
+    from .plans import plan_features
+    if not (config.AI_ENABLED and plan_features(tenant).get("ai_assistant") and tenant.get("ai_chat_enabled", True)):
+        return {"whatsapp": None, "sms": None}
+    slug, name = tenant.get("booking_url_slug", ""), tenant.get("name", "")
+    out: Dict[str, Optional[str]] = {"whatsapp": None, "sms": None}
+    own_wa, shared_wa = tenant.get("whatsapp_number"), to_e164(config.TWILIO_WHATSAPP_NUMBER)
+    if own_wa or shared_wa:
+        msg = f"Hi {name}" if own_wa else f"Hi {name} #{slug}"
+        out["whatsapp"] = f"https://wa.me/{(own_wa or shared_wa).lstrip('+')}?text={quote(msg)}"
+    own_sms, shared_sms = tenant.get("sms_number"), to_e164(config.TWILIO_PHONE_NUMBER)
+    if own_sms or shared_sms:
+        msg = f"Hi {name}" if own_sms else f"Hi {name} #{slug}"
+        out["sms"] = f"sms:{own_sms or shared_sms}?&body={quote(msg)}"
+    return out

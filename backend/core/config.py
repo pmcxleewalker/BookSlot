@@ -74,6 +74,9 @@ PLATFORM_NAME = os.environ.get("PLATFORM_NAME", "BookSlot")
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
 TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER", "")
+# Shared BookSlot WhatsApp sender for every business (e.g. +3531234567). Clients reach the right business via
+# its link, which pre-fills "#<booking-link>". A business can still have its own number (set in /admin).
+TWILIO_WHATSAPP_NUMBER = os.environ.get("TWILIO_WHATSAPP_NUMBER", "")
 SMS_ADDON_PRICE = int(os.environ.get("SMS_ADDON_PRICE", "10"))
 
 # ---------- AI receptionist ----------

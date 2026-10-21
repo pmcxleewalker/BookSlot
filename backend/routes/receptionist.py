@@ -9,7 +9,9 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 
 from core import ai, booking, config
 from core.db import db
-from core.notify import same_phone, send_chat_reply, to_e164
+import re
+from datetime import datetime, timezone
+from core.notify import same_phone, send_chat_reply, send_plain_text, to_e164
 from core.deps import Actor, get_actor, get_manager
 from core.plans import plan_features
 from core.scheduling import DAYS, fmt, local_now, parse_date, to_local_naive
@@ -452,13 +454,60 @@ async def api_chat(body: Dict[str, Any] = Body(...), tenant: Dict = Depends(api_
     return await process_message(tenant, f"api:{client_id}", str(body.get("channel") or "api")[:20], message)
 
 
-async def _reply_to_text(tenant: Dict[str, Any], channel: str, from_number: str, text: str) -> None:
+async def _reply_to_text(tenant: Dict[str, Any], channel: str, from_number: str, text: str,
+                         via: Optional[str] = None) -> None:
     try:
         result = await process_message(tenant, f"{channel}:{from_number}", channel, text, client_phone=from_number)
         if result.get("response"):
-            await send_chat_reply(tenant, channel, from_number, result["response"])
+            await send_chat_reply(tenant, channel, from_number, result["response"], via=via)
     except Exception:  # noqa: BLE001
         logger.exception("Failed to answer %s message", channel)
+
+
+CODE_RE = re.compile(r"#([a-z0-9][a-z0-9-]{1,59})", re.I)
+BINDING_DAYS = 60
+
+
+def shared_number(channel: str) -> str:
+    return to_e164(config.TWILIO_WHATSAPP_NUMBER if channel == "whatsapp" else config.TWILIO_PHONE_NUMBER) or ""
+
+
+async def resolve_shared(channel: str, from_number: str, text: str):
+    """Which business is this client talking to on the shared number? Returns (tenant, cleaned_text).
+    Isolation: a client is bound to one business at a time; everything the AI sees and does is scoped to it."""
+    key = f"{channel}:{from_number}"
+    m = CODE_RE.search(text)
+    if m:
+        tenant = await db.tenants.find_one({"booking_url_slug": m.group(1).lower(), "is_active": True}, {"_id": 0})
+        if tenant:
+            await db.channel_bindings.update_one({"_id": key}, {"$set": {
+                "tenant_id": tenant["tenant_id"], "updated_at": now_iso()}}, upsert=True)
+            cleaned = CODE_RE.sub("", text).strip(" ,.-") or "Hi"
+            return tenant, cleaned
+    binding = await db.channel_bindings.find_one({"_id": key})
+    if binding:
+        try:
+            age = datetime.now(timezone.utc) - datetime.fromisoformat(binding["updated_at"].replace("Z", "+00:00"))
+        except (KeyError, ValueError):
+            age = None
+        if age is not None and age.days <= BINDING_DAYS:
+            tenant = await db.tenants.find_one({"tenant_id": binding["tenant_id"], "is_active": True}, {"_id": 0})
+            if tenant:
+                await db.channel_bindings.update_one({"_id": key}, {"$set": {"updated_at": now_iso()}})
+                return tenant, text
+    return None, text
+
+
+async def _ask_which_business(channel: str, from_number: str, sender: str) -> None:
+    key = f"ask:{channel}:{from_number}"
+    recent = await db.channel_bindings.find_one({"_id": key})
+    if recent and recent.get("updated_at", "") > (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat():
+        return  # don't spam
+    await db.channel_bindings.update_one({"_id": key}, {"$set": {"updated_at": now_iso()}}, upsert=True)
+    await send_plain_text(channel, from_number, sender,
+                          "Hi! This is the BookSlot booking line, used by several businesses. Which one would you like "
+                          "to book with? Please tap the WhatsApp or text link on their booking page, or include their "
+                          "code, e.g. #their-booking-link.")
 
 
 @router.post("/moltbot/webhook/incoming-sms")
@@ -491,10 +540,15 @@ async def incoming_message(request: Request):
             await db.inbound_messages.insert_one({"_id": sid, "created_at": now_iso()})
         except Exception:  # duplicate delivery from Twilio retry
             return empty
+    from core.webhooks import spawn
     field = "whatsapp_number" if channel == "whatsapp" else "sms_number"
     tenant = await db.tenants.find_one({field: to_number, "is_active": True}, {"_id": 0})
-    if not tenant or not plan_features(tenant).get("ai_assistant"):
+    if not tenant and to_number == shared_number(channel):
+        tenant, text = await resolve_shared(channel, from_number, text)
+        if not tenant:
+            spawn(_ask_which_business(channel, from_number, to_number))
+            return empty
+    if not tenant or not plan_features(tenant).get("ai_assistant") or not tenant.get("ai_chat_enabled", True):
         return empty
-    from core.webhooks import spawn
-    spawn(_reply_to_text(tenant, channel, from_number, text[:2000]))
+    spawn(_reply_to_text(tenant, channel, from_number, text[:2000], via=to_number))
     return empty

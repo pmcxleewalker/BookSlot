@@ -10,6 +10,8 @@ import { Button } from '../../components/ui/button';
 // Where "Book a demo" goes. Change to a form or calendar link later if you like.
 export const CONTACT_EMAIL = 'qfdigitalmedia@gmail.com';
 export const DEMO_LINK = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('BookSlot demo')}`;
+export const LIVE_DEMO = '/book/demo';
+export const QF_DIGITAL = 'https://qf-digital.netlify.app';
 
 const PAINS = [
   { icon: PhoneOff, pain: 'The phone rings mid-appointment', fix: 'Clients book themselves online, by text or on WhatsApp. You keep working and the diary fills itself.' },
@@ -116,10 +118,14 @@ export const MarketingFooter = () => (
         <a href="/#how" className="hover:text-[#0A0A0A]">How it works</a>
         <Link to="/features" className="hover:text-[#0A0A0A]">Features</Link>
         <a href="/#faq" className="hover:text-[#0A0A0A]">FAQ</a>
+        <a href={LIVE_DEMO} className="hover:text-[#0A0A0A]">Live demo</a>
         <a href={DEMO_LINK} className="hover:text-[#0A0A0A]">Contact</a>
         <Link to="/login" className="hover:text-[#0A0A0A]">Log in</Link>
       </div>
-      <p className="text-sm text-[#666666]">© {new Date().getFullYear()} BookSlot</p>
+      <p className="text-sm text-[#666666] text-center md:text-right">
+        © {new Date().getFullYear()} BookSlot · Built by{' '}
+        <a href={QF_DIGITAL} target="_blank" rel="noopener noreferrer" className="font-medium text-[#0A0A0A] hover:underline">QF Digital</a>
+      </p>
     </div>
   </footer>
 );
@@ -149,9 +155,9 @@ const LandingPage = () => (
                 Book a demo <ArrowRight className="w-4 h-4" />
               </Button>
             </a>
-            <a href="#how">
+            <a href={LIVE_DEMO}>
               <Button variant="outline" className="btn-secondary px-8 py-4 text-base w-full sm:w-auto" data-testid="cta-secondary">
-                See how it works
+                Try the live demo
               </Button>
             </a>
           </div>
@@ -314,7 +320,9 @@ const LandingPage = () => (
             Book a demo <ArrowRight className="w-4 h-4" />
           </Button>
         </a>
-        <p className="text-sm text-white/50 mt-6">Or email us at {CONTACT_EMAIL}</p>
+        <p className="text-sm text-white/50 mt-6">
+          Or <a href={LIVE_DEMO} className="underline text-white/80">try a booking at our demo salon</a> · email {CONTACT_EMAIL}
+        </p>
       </div>
     </section>
 
