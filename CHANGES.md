@@ -66,3 +66,5 @@
 - Text reminders are sent from the salon's own number (so clients can reply to it), and local numbers like 087 123 4567
   are converted to +353 87 123 4567 (previously these reminders would have failed).
 - /admin → business → Edit: set the SMS number, WhatsApp number and switch the SMS add-on on.
+- Phones: the calendar opens in a new Day view (today's appointments as a simple list, swipe days with the arrows),
+  with a big + button for quick bookings while on a call. Phone number comes first in the new-booking form.

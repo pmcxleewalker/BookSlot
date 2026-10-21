@@ -23,7 +23,11 @@ const CalendarPage = () => {
   const { can, user, currency } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState(searchParams.get('view') === 'list' || searchParams.get('status') ? 'list' : 'calendar');
+  const [viewMode, setViewMode] = useState(() => {
+    if (searchParams.get('view') === 'list' || searchParams.get('status')) return 'list';
+    if (searchParams.get('view') === 'day' || (typeof window !== 'undefined' && window.innerWidth < 768)) return 'day';
+    return 'calendar';
+  });
   const [appointments, setAppointments] = useState([]);
   const [staff, setStaff] = useState([]);
   const [services, setServices] = useState([]);
@@ -55,6 +59,9 @@ const CalendarPage = () => {
       if (viewMode === 'calendar') {
         params.start_date = format(weekStart, 'yyyy-MM-dd');
         params.end_date = format(addDays(weekStart, 6), 'yyyy-MM-dd');
+      } else if (viewMode === 'day') {
+        params.start_date = format(currentDate, 'yyyy-MM-dd');
+        params.end_date = format(currentDate, 'yyyy-MM-dd');
       } else if (statusFilter === 'upcoming') {
         params.start_date = format(new Date(), 'yyyy-MM-dd');
       } else if (statusFilter !== 'all') {
@@ -73,7 +80,7 @@ const CalendarPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [viewMode, statusFilter, format(weekStart, 'yyyy-MM-dd')]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [viewMode, statusFilter, format(weekStart, 'yyyy-MM-dd'), viewMode === 'day' ? format(currentDate, 'yyyy-MM-dd') : '']); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -253,6 +260,10 @@ const CalendarPage = () => {
       <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-6">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex border border-[#E5E5E5] rounded-md overflow-hidden">
+            <button onClick={() => setViewMode('day')} data-testid="view-day"
+              className={`px-3 py-1.5 flex items-center gap-1.5 text-sm ${viewMode === 'day' ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#666666] hover:bg-[#FAFAFA]'}`}>
+              <Clock className="w-4 h-4" /> Day
+            </button>
             <button onClick={() => setViewMode('calendar')} data-testid="view-calendar"
               className={`px-3 py-1.5 flex items-center gap-1.5 text-sm ${viewMode === 'calendar' ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#666666] hover:bg-[#FAFAFA]'}`}>
               <CalendarIcon className="w-4 h-4" /> Week
@@ -272,6 +283,14 @@ const CalendarPage = () => {
               </span>
             </div>
           )}
+          {viewMode === 'day' && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCurrentDate(addDays(currentDate, -1))} data-testid="prev-day"><ChevronLeft className="w-4 h-4" /></Button>
+              <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())} data-testid="today-day-btn">Today</Button>
+              <Button variant="outline" size="sm" onClick={() => setCurrentDate(addDays(currentDate, 1))} data-testid="next-day"><ChevronRight className="w-4 h-4" /></Button>
+              <span className="ml-1 font-semibold text-[#0A0A0A]" data-testid="current-day">{format(currentDate, 'EEE d MMM')}</span>
+            </div>
+          )}
           {canSeeAll && staff.length > 1 && (
             <select value={staffFilter} onChange={(e) => setStaffFilter(e.target.value)} className="input-swiss !py-1.5 !w-auto text-sm" data-testid="staff-filter">
               <option value="all">All team members</option>
@@ -285,7 +304,7 @@ const CalendarPage = () => {
             </label>
           )}
         </div>
-        <Button onClick={() => openNew()} className="btn-primary flex items-center gap-2" data-testid="new-appointment-btn">
+        <Button onClick={() => openNew(viewMode === 'day' ? currentDate : undefined)} className="btn-primary hidden md:flex items-center gap-2" data-testid="new-appointment-btn">
           <Plus className="w-4 h-4" /> New appointment
         </Button>
       </div>
@@ -346,6 +365,42 @@ const CalendarPage = () => {
           </div>
         </>
       )}
+
+      {/* Day view (default on phones) */}
+      {viewMode === 'day' && (
+        <div className="space-y-3" data-testid="day-view">
+          {loading ? (
+            <p className="p-8 text-center text-[#666666]">Loading...</p>
+          ) : visibleAppointments.length === 0 ? (
+            <div className="card-flat p-8 text-center">
+              <p className="text-[#666666] mb-4">No appointments on {format(currentDate, 'EEEE d MMMM')}</p>
+              <Button onClick={() => openNew(currentDate)} className="btn-primary"><Plus className="w-4 h-4 mr-1" />Add a booking</Button>
+            </div>
+          ) : [...visibleAppointments].sort((a, b) => a.start_time.localeCompare(b.start_time)).map((appt) => (
+            <button key={appt.appointment_id} onClick={() => setSelected(appt)} data-testid={`day-appt-${appt.appointment_id}`}
+              className={`w-full text-left card-flat !p-4 flex gap-4 items-start border-l-4 ${appt.status === 'cancelled' ? 'opacity-50' : ''}`}
+              style={{ borderLeftColor: staffColor(appt.staff_id) }}>
+              <div className="w-14 shrink-0">
+                <p className="font-semibold text-[#0A0A0A]">{appt.start_time.slice(11, 16)}</p>
+                <p className="text-xs text-[#666666]">{appt.end_time.slice(11, 16)}</p>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-[#0A0A0A] truncate">{appt.client_name || 'Walk-in'}</p>
+                <p className="text-sm text-[#666666] truncate">{appt.service_name}{staff.length > 1 ? ` · ${appt.staff_name}` : ''}</p>
+                {appt.client_phone && <p className="text-sm text-[#666666]">{appt.client_phone}</p>}
+              </div>
+              <span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${STATUS_STYLES[appt.status] || ''}`}>{STATUS_LABELS[appt.status] || appt.status}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Quick "new booking" button on phones */}
+      <button onClick={() => openNew(viewMode === 'day' ? currentDate : undefined)} aria-label="New appointment"
+        className="md:hidden fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-[#0A0A0A] text-white shadow-lg flex items-center justify-center"
+        data-testid="new-appointment-fab">
+        <Plus className="w-7 h-7" />
+      </button>
 
       {/* Week view */}
       {viewMode === 'calendar' && (
@@ -575,9 +630,9 @@ const CalendarPage = () => {
                     <Input value={newAppt.client_name} onChange={(e) => setNewAppt({ ...newAppt, client_name: e.target.value })} placeholder="Client name" className="pl-9" data-testid="client-name-input" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input type="email" value={newAppt.client_email} onChange={(e) => setNewAppt({ ...newAppt, client_email: e.target.value })} placeholder="Email (for confirmation)" data-testid="client-email-input" />
-                  <Input type="tel" value={newAppt.client_phone} onChange={(e) => setNewAppt({ ...newAppt, client_phone: e.target.value })} placeholder="Phone" data-testid="client-phone-input" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input type="tel" inputMode="tel" value={newAppt.client_phone} onChange={(e) => setNewAppt({ ...newAppt, client_phone: e.target.value })} placeholder="Mobile (for text reminders)" data-testid="client-phone-input" />
+                  <Input type="email" inputMode="email" value={newAppt.client_email} onChange={(e) => setNewAppt({ ...newAppt, client_email: e.target.value })} placeholder="Email (optional)" data-testid="client-email-input" />
                 </div>
               </>
             )}
