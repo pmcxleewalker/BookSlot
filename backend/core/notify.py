@@ -164,22 +164,46 @@ async def _template(tenant_id: str, msg_type: str, trigger: str) -> Optional[Dic
 
 
 # ---------- Sending ----------
+# Same accent colours as the booking-page themes, so emails match each business's page
+THEME_ACCENTS = {"default": "#3730A3", "elite": "#D4AF37", "modern": "#E94560", "nature": "#6B8E23",
+                 "ocean": "#0077B6", "rose": "#C77D8E", "champagne": "#9A7B66"}
+
+
+def _brand_color(tenant: Optional[Dict[str, Any]]) -> str:
+    branding = (tenant or {}).get("branding") or {}
+    color = THEME_ACCENTS.get(branding.get("theme") or "default") or "#3730A3"
+    return color if re.fullmatch(r"#[0-9A-Fa-f]{6}", color) else "#3730A3"
+
+
 def _email_html(body_text: str, tenant: Optional[Dict[str, Any]]) -> str:
-    business = html.escape((tenant or {}).get("name") or config.PLATFORM_NAME)
-    color = ((tenant or {}).get("branding") or {}).get("primary_color") or "#E34A33"
-    if not isinstance(color, str) or not color.startswith("#") or len(color) > 9:
-        color = "#E34A33"
+    t = tenant or {}
+    business = html.escape(t.get("name") or config.PLATFORM_NAME)
+    color = _brand_color(t)
     safe = html.escape(body_text).replace("\n", "<br>")
     # turn bare links into clickable links
     safe = re.sub(r"(https?://[^\s<]+)", r'<a href="\1" style="color:%s">\1</a>' % color, safe)
-    return f"""<!DOCTYPE html><html><body style="margin:0;background:#f6f6f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#222;">
+    logo = t.get("logo_url") or ""
+    logo_html = (f'<img src="{html.escape(logo)}" alt="{business}" width="56" height="56" '
+                 f'style="display:block;width:56px;height:56px;object-fit:contain;border-radius:50%;margin:0 0 12px;">'
+                 if logo.startswith("https://") else "")
+    contact = " · ".join(html.escape(x) for x in (t.get("address"), t.get("phone")) if x)
+    return f"""<!DOCTYPE html><html><body style="margin:0;background:#f6f4f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#222;">
 <div style="max-width:560px;margin:0 auto;padding:24px;">
-<div style="background:#fff;border-top:4px solid {color};padding:28px;">
-<h2 style="margin:0 0 20px;font-size:20px;color:#0A0A0A;">{business}</h2>
+<div style="background:#fff;border-top:4px solid {color};padding:28px;border-radius:4px;">
+{logo_html}<h2 style="margin:0 0 20px;font-size:20px;color:#1a1a1a;">{business}</h2>
 <div style="font-size:15px;line-height:1.6;">{safe}</div>
+{f'<p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #eee;font-size:13px;color:#777;">{contact}</p>' if contact else ''}
 </div>
-<p style="font-size:12px;color:#888;text-align:center;margin-top:16px;">Sent by {html.escape(config.PLATFORM_NAME)} on behalf of {business}</p>
+<p style="font-size:12px;color:#999;text-align:center;margin-top:16px;">Sent by {html.escape(config.PLATFORM_NAME)} on behalf of {business}</p>
 </div></body></html>"""
+
+
+def sender_for(tenant: Optional[Dict[str, Any]]) -> str:
+    """'Sharon F Hair <bookings@yourdomain>' - the business's name on the platform's verified address."""
+    m = re.search(r"<([^>]+)>", config.SENDER_EMAIL or "")
+    address = (m.group(1) if m else (config.SENDER_EMAIL or "")).strip()
+    name = re.sub(r'["<>\r\n]', "", (tenant or {}).get("name") or config.PLATFORM_NAME).strip()[:60]
+    return f'"{name}" <{address}>' if address and name else (config.SENDER_EMAIL or address)
 
 
 async def send_email(tenant_id: Optional[str], to_email: str, subject: str, body: str, template_type: str = "generic",
@@ -195,7 +219,7 @@ async def send_email(tenant_id: Optional[str], to_email: str, subject: str, body
         await db.notification_logs.update_one({"log_id": log["log_id"]},
                                               {"$set": {"status": "skipped", "error": "Email provider not configured"}})
         return log["log_id"]
-    params = {"from": config.SENDER_EMAIL, "to": [to_email], "subject": subject, "html": _email_html(body, tenant),
+    params = {"from": sender_for(tenant), "to": [to_email], "subject": subject, "html": _email_html(body, tenant),
               "text": body}
     if tenant and tenant.get("email"):
         params["reply_to"] = tenant["email"]
