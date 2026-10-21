@@ -8,4 +8,4 @@ RUN useradd -m appuser && mkdir -p /app/uploads && chown -R appuser /app
 USER appuser
 EXPOSE 8001
 # One worker: reminders and booking locks run inside the process
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8001} --proxy-headers --forwarded-allow-ips '*'"]
