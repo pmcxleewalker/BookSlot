@@ -38,7 +38,7 @@ def email_configured() -> bool:
 
 
 def sms_configured() -> bool:
-    return bool(twilio_client and config.TWILIO_PHONE_NUMBER)
+    return bool(twilio_client)
 
 
 # ---------- In-app notifications (bell icon) ----------
@@ -211,28 +211,79 @@ async def send_email(tenant_id: Optional[str], to_email: str, subject: str, body
     return log["log_id"]
 
 
-async def send_sms(tenant: Dict[str, Any], to_phone: str, message: str) -> Optional[str]:
-    if not tenant.get("sms_addon_enabled"):
+TZ_DIAL_CODES = {"Europe/Dublin": "353", "Europe/London": "44", "Europe/Belfast": "44", "Europe/Paris": "33",
+                 "Europe/Madrid": "34", "Europe/Berlin": "49", "Europe/Amsterdam": "31", "Europe/Lisbon": "351",
+                 "Europe/Rome": "39", "America/New_York": "1", "America/Chicago": "1", "America/Los_Angeles": "1",
+                 "Australia/Sydney": "61", "Australia/Melbourne": "61"}
+
+
+def to_e164(phone: Optional[str], tenant: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    """'087 123 4567' -> '+353871234567' (country from the business's timezone). None if it can't be a number."""
+    if not phone:
         return None
+    raw = str(phone).strip().replace("whatsapp:", "")
+    digits = re.sub(r"\D", "", raw)
+    if raw.startswith("+"):
+        out = "+" + digits
+    elif digits.startswith("00"):
+        out = "+" + digits[2:]
+    else:
+        code = TZ_DIAL_CODES.get((tenant or {}).get("timezone") or "", "353")
+        out = "+" + code + (digits[1:] if digits.startswith("0") else digits)
+    return out if 8 <= len(out) - 1 <= 15 else None
+
+
+def same_phone(a: Optional[str], b: Optional[str], tenant: Optional[Dict[str, Any]] = None) -> bool:
+    x, y = to_e164(a, tenant), to_e164(b, tenant)
+    return bool(x and y and x == y)
+
+
+def sender_number(tenant: Dict[str, Any]) -> Optional[str]:
+    """The business's own Twilio number if it has one (clients can then text back to the AI), else the platform's."""
+    return tenant.get("sms_number") or config.TWILIO_PHONE_NUMBER or None
+
+
+async def _twilio_send(tenant: Dict[str, Any], kind: str, to: str, from_: Optional[str], message: str) -> str:
     log = {
-        "log_id": new_id("nlog"), "tenant_id": tenant["tenant_id"], "type": "sms", "to": to_phone,
-        "message": message[:320], "status": "pending", "created_at": now_iso(),
+        "log_id": new_id("nlog"), "tenant_id": tenant["tenant_id"], "type": kind, "to": to,
+        "message": message[:1600], "status": "pending", "created_at": now_iso(),
     }
     await db.notification_logs.insert_one({**log})
-    if not sms_configured():
+    if not (twilio_client and from_):
         await db.notification_logs.update_one({"log_id": log["log_id"]},
                                               {"$set": {"status": "skipped", "error": "SMS provider not configured"}})
         return log["log_id"]
     try:
-        sms = await asyncio.to_thread(twilio_client.messages.create, body=message[:320],
-                                      from_=config.TWILIO_PHONE_NUMBER, to=to_phone)
+        msg = await asyncio.to_thread(twilio_client.messages.create, body=message[:1600], from_=from_, to=to)
         await db.notification_logs.update_one({"log_id": log["log_id"]}, {"$set": {
-            "status": "sent", "sent_at": now_iso(), "external_id": sms.sid}})
+            "status": "sent", "sent_at": now_iso(), "external_id": msg.sid}})
     except Exception as e:  # noqa: BLE001
-        logger.error("SMS send failed: %s", e)
+        logger.error("%s send failed: %s", kind, e)
         await db.notification_logs.update_one({"log_id": log["log_id"]},
                                               {"$set": {"status": "failed", "error": str(e)[:300]}})
     return log["log_id"]
+
+
+async def send_sms(tenant: Dict[str, Any], to_phone: str, message: str) -> Optional[str]:
+    if not tenant.get("sms_addon_enabled"):
+        return None
+    to = to_e164(to_phone, tenant)
+    if not to:
+        logger.info("SMS not sent: invalid phone %r", to_phone)
+        return None
+    return await _twilio_send(tenant, "sms", to, sender_number(tenant), message[:480])
+
+
+async def send_chat_reply(tenant: Dict[str, Any], channel: str, to: str, message: str) -> Optional[str]:
+    """Reply from the AI receptionist on the channel the client wrote in on (sms or whatsapp)."""
+    if channel == "whatsapp":
+        if not tenant.get("whatsapp_number"):
+            return None
+        return await _twilio_send(tenant, "whatsapp", f"whatsapp:{to_e164(to, tenant)}",
+                                  f"whatsapp:{tenant['whatsapp_number']}", message)
+    if not tenant.get("sms_number"):
+        return None
+    return await _twilio_send(tenant, "sms", to_e164(to, tenant) or to, tenant["sms_number"], message)
 
 
 async def send_booking_message(trigger: str, appointment: Dict[str, Any], tenant: Dict[str, Any],

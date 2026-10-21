@@ -58,7 +58,10 @@ const AdminTenantDetailPage = () => {
     phone: '',
     address: '',
     plan: '',
-    is_active: true
+    is_active: true,
+    sms_number: '',
+    whatsapp_number: '',
+    sms_addon_enabled: false
   });
 
   useEffect(() => {
@@ -82,7 +85,10 @@ const AdminTenantDetailPage = () => {
         phone: data.tenant.phone || '',
         address: data.tenant.address || '',
         plan: data.tenant.plan,
-        is_active: data.tenant.is_active
+        is_active: data.tenant.is_active,
+        sms_number: data.tenant.sms_number || '',
+        whatsapp_number: data.tenant.whatsapp_number || '',
+        sms_addon_enabled: !!data.tenant.sms_addon_enabled
       });
     } catch (error) {
       toast.error('Failed to load tenant details');
@@ -111,7 +117,7 @@ const AdminTenantDetailPage = () => {
         toast.success('Tenant updated successfully');
       }
     } catch (error) {
-      toast.error('Failed to update tenant');
+      toast.error(error.response?.data?.detail || 'Failed to update tenant');
     } finally {
       setSaving(false);
     }
@@ -236,6 +242,41 @@ const AdminTenantDetailPage = () => {
                     className="mt-1 bg-white/5 border-white/10 text-white"
                   />
                 </div>
+                <div className="pt-2 border-t border-white/10">
+                  <p className="text-sm text-white/80 font-medium mb-2">Text messages &amp; AI receptionist (Twilio)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm text-white/60">SMS number</Label>
+                      <Input
+                        value={formData.sms_number}
+                        placeholder="+353 ..."
+                        onChange={(e) => setFormData({ ...formData, sms_number: e.target.value })}
+                        className="mt-1 bg-white/5 border-white/10 text-white"
+                        data-testid="sms-number"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm text-white/60">WhatsApp number</Label>
+                      <Input
+                        value={formData.whatsapp_number}
+                        placeholder="+353 ..."
+                        onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
+                        className="mt-1 bg-white/5 border-white/10 text-white"
+                        data-testid="whatsapp-number"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 mt-3 text-sm text-white/70">
+                    <input
+                      type="checkbox"
+                      checked={formData.sms_addon_enabled}
+                      onChange={(e) => setFormData({ ...formData, sms_addon_enabled: e.target.checked })}
+                      data-testid="sms-addon"
+                    />
+                    SMS add-on on (text confirmations &amp; reminders)
+                  </label>
+                  <p className="text-xs text-white/40 mt-1">Clients who text or WhatsApp these numbers get the AI receptionist (Growth plan or higher).</p>
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -253,6 +294,15 @@ const AdminTenantDetailPage = () => {
                   <div className="flex items-center gap-3 text-white/60">
                     <MapPin className="w-4 h-4" />
                     {tenant.address}
+                  </div>
+                )}
+                {(tenant?.sms_number || tenant?.whatsapp_number) && (
+                  <div className="flex items-center gap-3 text-white/60">
+                    <Phone className="w-4 h-4" />
+                    <span className="text-white/40">Texts:</span>
+                    {tenant.sms_number && <span>SMS {tenant.sms_number}</span>}
+                    {tenant.whatsapp_number && <span>WhatsApp {tenant.whatsapp_number}</span>}
+                    {tenant.sms_addon_enabled && <span className="text-green-400 text-xs">reminders on</span>}
                   </div>
                 )}
                 <div className="flex items-center gap-3 text-white/60">

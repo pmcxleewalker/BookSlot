@@ -12,6 +12,7 @@ from core.deps import get_super_admin
 from core.plans import PLAN_FEATURES, plan_features
 from core.security import (clear_auth_cookie, create_jwt_token, hash_password, now_iso, now_utc, new_id,
                            random_token, rate_limit, set_auth_cookie, sha256, validate_password, verify_password)
+from core.notify import to_e164
 from routes.tenants import INDUSTRIES, create_tenant_record, public_tenant, validate_tenant_fields
 
 router = APIRouter()
@@ -143,7 +144,7 @@ async def admin_create_tenant(body: Dict[str, Any], admin: Dict = Depends(get_su
 
 
 ADMIN_TENANT_FIELDS = ["name", "email", "phone", "address", "timezone", "currency", "industry", "plan", "is_active",
-                       "sms_number", "sms_addon_enabled", "feature_overrides", "booking_url_slug", "notes"]
+                       "sms_number", "whatsapp_number", "sms_addon_enabled", "feature_overrides", "booking_url_slug", "notes"]
 
 
 @router.put("/admin/tenants/{tenant_id}")
@@ -160,6 +161,14 @@ async def admin_update_tenant(tenant_id: str, updates: Dict[str, Any], admin: Di
     if "is_active" in data:
         data["is_active"] = bool(data["is_active"])
     data = validate_tenant_fields(data)
+    for key in ("sms_number", "whatsapp_number"):
+        if key in data:
+            raw = str(data[key] or "").strip()
+            data[key] = to_e164(raw) if raw else None
+            if raw and (not raw.replace(" ", "").startswith("+") or not data[key]):
+                raise HTTPException(status_code=400, detail="Enter Twilio numbers in international format, e.g. +353 1 234 5678")
+            if data[key] and await db.tenants.find_one({key: data[key], "tenant_id": {"$ne": tenant_id}}, {"_id": 1}):
+                raise HTTPException(status_code=400, detail="That number is already used by another business")
     if "booking_url_slug" in data and await db.tenants.find_one(
             {"booking_url_slug": data["booking_url_slug"], "tenant_id": {"$ne": tenant_id}}, {"_id": 1}):
         raise HTTPException(status_code=400, detail="That booking link is taken")

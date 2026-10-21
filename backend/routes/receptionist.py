@@ -9,6 +9,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 
 from core import ai, booking, config
 from core.db import db
+from core.notify import same_phone, send_chat_reply, to_e164
 from core.deps import Actor, get_actor, get_manager
 from core.plans import plan_features
 from core.scheduling import DAYS, fmt, local_now, parse_date, to_local_naive
@@ -159,7 +160,7 @@ Team (id | name | services they offer, 'all' = every service):
 {staff}
 
 {extra}
-
+{channel_note}
 HOW TO WORK
 - Reply in plain, warm, concise language (1-4 short sentences). Never use markdown.
 - NEVER guess availability. Before suggesting any time, use the check_availability action.
@@ -180,10 +181,21 @@ Action params:
 - book: {{"service_id": "...", "staff_id": "... or any", "start_time": "YYYY-MM-DDTHH:MM:00",
           "client_name": "...", "client_email": "...", "client_phone": "... or empty", "notes": "..."}}
 - lookup_booking / cancel_booking: {{"confirmation_code": "appt_...", "client_email": "..."}}
+- my_bookings (text message / WhatsApp only): {{}} -> the customer's upcoming bookings for the number they are texting from
 When you run an action you'll receive a RESULT message; then reply to the customer based on it."""
 
 
-async def build_prompt(tenant: Dict[str, Any]) -> str:
+TEXT_CHANNEL_NOTE = """
+THIS CONVERSATION IS BY {channel_name}. The customer is messaging from {phone}.
+- Use {phone} as client_phone when booking. Don't ask for their phone number. An email address is optional here:
+  ask for it once, but book without it if they'd rather not give one.
+- To check, move or cancel their appointments, use my_bookings (no code needed), then cancel_booking with the
+  confirmation_code from that result (client_email can be empty). To move one: book the new time, then cancel the old one.
+- Keep replies short, like a text message from a receptionist.
+"""
+
+
+async def build_prompt(tenant: Dict[str, Any], channel: str = "web", client_phone: Optional[str] = None) -> str:
     services = await db.services.find({"tenant_id": tenant["tenant_id"], "is_active": True}, {"_id": 0}).to_list(100)
     staff = await db.staff.find({"tenant_id": tenant["tenant_id"], "is_active": True}, {"_id": 0}).to_list(100)
     names = {s["service_id"]: s["name"] for s in services}
@@ -201,6 +213,8 @@ async def build_prompt(tenant: Dict[str, Any]) -> str:
                         + (", ".join(names.get(x, x) for x in s.get("services", [])) or "all") for s in staff) or "(none yet)",
         extra=("Extra instructions from the business:\n" + tenant["ai_instructions"][:2000]) if tenant.get("ai_instructions") else "",
         phone_rule=" and phone number" if settings.get("require_phone") else "",
+        channel_note=TEXT_CHANNEL_NOTE.format(channel_name="WHATSAPP" if channel == "whatsapp" else "TEXT MESSAGE (SMS)",
+                                              phone=client_phone) if channel in ("sms", "whatsapp") and client_phone else "",
     )
 
 
@@ -239,7 +253,23 @@ async def run_action(tenant: Dict[str, Any], action: str, params: Dict[str, Any]
                         break
                 result["next_days_with_space"] = nxt
             return result
+        if action == "my_bookings":
+            phone = conv.get("context", {}).get("phone")
+            if not phone:
+                return {"success": False, "error": "Only available by text message / WhatsApp"}
+            now = local_now(tenant.get("timezone")).strftime("%Y-%m-%dT%H:%M:%S")
+            appts = await db.appointments.find({"tenant_id": tenant["tenant_id"], "start_time": {"$gte": now},
+                                                "status": {"$in": ["confirmed", "pending_approval"]}},
+                                               {"_id": 0}).sort("start_time", 1).to_list(500)
+            mine = [a for a in appts if same_phone(a.get("client_phone"), phone, tenant)][:5]
+            names = {s["service_id"]: s["name"] for s in await db.services.find(
+                {"tenant_id": tenant["tenant_id"]}, {"_id": 0, "service_id": 1, "name": 1}).to_list(200)}
+            return {"success": True, "bookings": [{"confirmation_code": a["appointment_id"], "status": a["status"],
+                                                   "start_time": a["start_time"], "service": names.get(a["service_id"])}
+                                                  for a in mine]}
         if action == "book":
+            if conv.get("context", {}).get("phone"):
+                params = {**params, "client_phone": params.get("client_phone") or conv["context"]["phone"]}
             res = await _book(tenant, params, "ai_receptionist")
             appt = res["appointment"]
             conv["context"]["last_booking"] = appt["appointment_id"]
@@ -250,7 +280,10 @@ async def run_action(tenant: Dict[str, Any], action: str, params: Dict[str, Any]
             appt = await db.appointments.find_one({"tenant_id": tenant["tenant_id"],
                                                    "appointment_id": str(params.get("confirmation_code", "")).strip()}, {"_id": 0})
             email = booking.normalize_email(params.get("client_email"))
-            if not appt or not email or (appt.get("client_email") or "") != email:
+            phone = conv.get("context", {}).get("phone")
+            owns = bool(appt) and ((email and (appt.get("client_email") or "") == email)
+                                   or (phone and same_phone(appt.get("client_phone"), phone, tenant)))
+            if not owns:
                 return {"success": False, "error": "No booking found with that code and email"}
             service = await db.services.find_one({"service_id": appt["service_id"]}, {"_id": 0, "name": 1}) or {}
             info = {"confirmation_code": appt["appointment_id"], "status": appt["status"],
@@ -270,7 +303,8 @@ async def run_action(tenant: Dict[str, Any], action: str, params: Dict[str, Any]
         return {"success": False, "error": f"Invalid input: {e}"}
 
 
-async def process_message(tenant: Dict[str, Any], session_key: str, channel: str, message: str) -> Dict[str, Any]:
+async def process_message(tenant: Dict[str, Any], session_key: str, channel: str, message: str,
+                          client_phone: Optional[str] = None) -> Dict[str, Any]:
     if not config.AI_ENABLED:
         return {"response": "Our online assistant isn't available right now. "
                             f"Please book online or contact {tenant.get('name')} directly.",
@@ -282,8 +316,11 @@ async def process_message(tenant: Dict[str, Any], session_key: str, channel: str
                 "channel": channel, "messages": [], "context": {}, "status": "active",
                 "created_at": now_iso(), "updated_at": now_iso()}
         await db.moltbot_conversations.insert_one({**conv})
+    conv.setdefault("context", {})
+    if channel in ("sms", "whatsapp") and client_phone:
+        conv["context"]["phone"] = client_phone
     conv["messages"].append({"role": "user", "content": message[:2000], "timestamp": now_iso()})
-    prompt = await build_prompt(tenant)
+    prompt = await build_prompt(tenant, channel, conv["context"].get("phone"))
     reply_text = ""
     actions_taken = []
     try:
@@ -415,10 +452,23 @@ async def api_chat(body: Dict[str, Any] = Body(...), tenant: Dict = Depends(api_
     return await process_message(tenant, f"api:{client_id}", str(body.get("channel") or "api")[:20], message)
 
 
+async def _reply_to_text(tenant: Dict[str, Any], channel: str, from_number: str, text: str) -> None:
+    try:
+        result = await process_message(tenant, f"{channel}:{from_number}", channel, text, client_phone=from_number)
+        if result.get("response"):
+            await send_chat_reply(tenant, channel, from_number, result["response"])
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to answer %s message", channel)
+
+
 @router.post("/moltbot/webhook/incoming-sms")
-async def incoming_sms(request: Request):
-    """Twilio inbound SMS -> AI receptionist. Point your Twilio number's webhook here and set the
-    tenant's 'sms_number' to that Twilio number (super admin -> tenant)."""
+@router.post("/moltbot/webhook/incoming-whatsapp")
+async def incoming_message(request: Request):
+    """Twilio inbound SMS or WhatsApp -> AI receptionist.
+    In Twilio, set the number's "A message comes in" webhook (SMS and/or WhatsApp sender) to
+    <BACKEND_PUBLIC_URL>/api/moltbot/webhook/incoming-sms, and in /admin set the business's SMS number and/or
+    WhatsApp number to that Twilio number. We answer Twilio straight away and send the AI's reply separately,
+    so slow AI replies never time out."""
     form = await request.form()
     if not config.TWILIO_AUTH_TOKEN:
         raise HTTPException(status_code=503, detail="SMS is not configured")
@@ -429,12 +479,22 @@ async def incoming_sms(request: Request):
     url = (config.BACKEND_PUBLIC_URL + request.url.path) if config.BACKEND_PUBLIC_URL else str(request.url)
     if not RequestValidator(config.TWILIO_AUTH_TOKEN).validate(url, dict(form), request.headers.get("X-Twilio-Signature", "")):
         raise HTTPException(status_code=403, detail="Invalid Twilio signature")
-    to_number, from_number, text = form.get("To", ""), form.get("From", ""), form.get("Body", "")
-    tenant = await db.tenants.find_one({"sms_number": to_number, "is_active": True}, {"_id": 0}) if to_number else None
-    reply = ""
-    if tenant and plan_features(tenant).get("ai_assistant") and text:
-        result = await process_message(tenant, f"sms:{from_number}", "sms", str(text))
-        reply = result["response"]
-    from xml.sax.saxutils import escape
-    xml = '<?xml version="1.0" encoding="UTF-8"?><Response>' + (f"<Message>{escape(reply)}</Message>" if reply else "") + "</Response>"
-    return Response(content=xml, media_type="application/xml")
+    empty = Response(content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>', media_type="application/xml")
+    to_raw, from_raw, text = str(form.get("To", "")), str(form.get("From", "")), str(form.get("Body", "")).strip()
+    channel = "whatsapp" if to_raw.startswith("whatsapp:") else "sms"
+    to_number, from_number = to_e164(to_raw), to_e164(from_raw)
+    if not (to_number and from_number and text):
+        return empty
+    sid = str(form.get("MessageSid") or "")
+    if sid:
+        try:
+            await db.inbound_messages.insert_one({"_id": sid, "created_at": now_iso()})
+        except Exception:  # duplicate delivery from Twilio retry
+            return empty
+    field = "whatsapp_number" if channel == "whatsapp" else "sms_number"
+    tenant = await db.tenants.find_one({field: to_number, "is_active": True}, {"_id": 0})
+    if not tenant or not plan_features(tenant).get("ai_assistant"):
+        return empty
+    from core.webhooks import spawn
+    spawn(_reply_to_text(tenant, channel, from_number, text[:2000]))
+    return empty

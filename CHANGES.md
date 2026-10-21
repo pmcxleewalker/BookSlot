@@ -57,3 +57,12 @@
 ## Not included (still to build if you want them)
 - Card payments / subscriptions billing (plans are set manually in /admin).
 - Google Calendar sync, waitlist, packages, multi-location.
+
+## Text messages & WhatsApp (branch `ai-messaging`)
+- Clients can text or WhatsApp the salon's Twilio number and the AI receptionist answers, checks real availability
+  and books. By text it uses the sender's number, so no email is needed, and clients can see, move or cancel their own
+  bookings from the same number (other numbers can't).
+- Replies are sent separately from Twilio's webhook, so slow AI answers no longer time out; Twilio retries are ignored.
+- Text reminders are sent from the salon's own number (so clients can reply to it), and local numbers like 087 123 4567
+  are converted to +353 87 123 4567 (previously these reminders would have failed).
+- /admin → business → Edit: set the SMS number, WhatsApp number and switch the SMS add-on on.
