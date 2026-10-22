@@ -33,6 +33,9 @@ DB_NAME = os.environ.get("DB_NAME", "bookslot")
 # ---------- URLs ----------
 # Public URL of the React frontend (used in emails, CORS default, links)
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+# The site moved to bookslot1.com; links in emails/messages use it even if Render still has the old address
+if FRONTEND_URL in ("https://bookslot-qf.netlify.app", "http://bookslot-qf.netlify.app"):
+    FRONTEND_URL = "https://bookslot1.com"
 # The site moved to its own domain; links in emails/messages use it even if Render still has the old address
 if FRONTEND_URL in ("https://bookslot-qf.netlify.app", "http://bookslot-qf.netlify.app"):
     FRONTEND_URL = "https://bookslot1.com"
