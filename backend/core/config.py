@@ -76,6 +76,9 @@ SUPER_ADMIN_NAME = os.environ.get("SUPER_ADMIN_NAME", "Platform Admin")
 # ---------- Email (Resend) ----------
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "BookSlot <onboarding@resend.dev>")
+# Until a domain is verified Resend's test sender only reaches the account owner; use the verified BookSlot domain
+if not SENDER_EMAIL or "resend.dev" in SENDER_EMAIL:
+    SENDER_EMAIL = "BookSlot <bookings@bookslot1.com>"
 PLATFORM_NAME = os.environ.get("PLATFORM_NAME", "BookSlot")
 
 # ---------- SMS (Twilio) ----------
