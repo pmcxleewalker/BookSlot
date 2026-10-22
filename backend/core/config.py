@@ -36,7 +36,9 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/
 # Public URL of this API (used to build absolute file URLs). Optional.
 BACKEND_PUBLIC_URL = os.environ.get("BACKEND_PUBLIC_URL", "").rstrip("/")
 
-CORS_ORIGINS = _list("CORS_ORIGINS") or [FRONTEND_URL]
+# The BookSlot site's own addresses are always allowed, so moving to a new domain can't lock the site out
+SITE_ORIGINS = _list("SITE_ORIGINS") or ["https://bookslot1.com", "https://www.bookslot1.com", "https://bookslot-qf.netlify.app"]
+CORS_ORIGINS = list(dict.fromkeys((_list("CORS_ORIGINS") or [FRONTEND_URL]) + SITE_ORIGINS))
 
 # ---------- Auth ----------
 _INSECURE_SECRETS = {"", "bookslot-secret-key-change-in-production", "change-me", "changeme"}
