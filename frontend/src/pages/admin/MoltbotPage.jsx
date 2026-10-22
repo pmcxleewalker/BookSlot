@@ -214,6 +214,8 @@ const MoltbotPage = () => {
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-[#0A0A0A] flex items-center gap-2">
                         {conv.channel === 'sms' ? <Smartphone className="w-4 h-4" /> : conv.channel === 'email' ? <Mail className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
+                        {conv.channel === 'whatsapp' ? 'WhatsApp' : conv.channel === 'sms' ? 'Text' : conv.channel === 'email' ? 'Email' : 'Website chat'}
+                        <span className="text-[#999] font-normal">·</span>
                         {conv.context?.booked ? 'Booked an appointment' : `${conv.messages?.length || 0} messages`}
                       </p>
                       <p className="text-sm text-[#666666] truncate">{last?.content}</p>

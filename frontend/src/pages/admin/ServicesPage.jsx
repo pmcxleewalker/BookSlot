@@ -8,7 +8,7 @@ import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Clock, DollarSign, Briefcase } from 'lucide-react';
+import { Plus, Edit2, Trash2, Clock, Banknote, Briefcase } from 'lucide-react';
 import { errorMessage } from '../../lib/api';
 import { formatMoney } from '../../lib/utils';
 
@@ -192,7 +192,7 @@ const ServicesPage = () => {
                     {service.duration} min
                   </div>
                   <div className="flex items-center gap-1 text-sm font-semibold text-[#0A0A0A]">
-                    <DollarSign className="w-4 h-4" />
+                    <Banknote className="w-4 h-4" />
                     {formatMoney(service.price, currency)}
                   </div>
                 </div>

@@ -4,7 +4,7 @@ import { useAuth, API } from '../../App';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { 
-  Calendar, Clock, Users, DollarSign, TrendingUp, 
+  Calendar, Clock, Users, Banknote, TrendingUp, 
   ArrowRight, Copy, ExternalLink, Plus
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -60,7 +60,7 @@ const DashboardPage = () => {
     { 
       label: 'Revenue (Month)', 
       value: formatMoney(stats?.month_revenue || 0, currency), 
-      icon: DollarSign,
+      icon: Banknote,
       color: 'bg-amber-50 text-amber-600'
     },
     { 
@@ -82,7 +82,7 @@ const DashboardPage = () => {
               <button key={label} type="button" className="flex-1 text-left px-3 py-2 border border-[#E5E5E5] rounded hover:border-[#0A0A0A]"
                 onClick={() => { try { navigator.clipboard.writeText(link); toast.success(`${label} link copied`); } catch (e) { /* ignore */ } }}>
                 <span className="block text-sm font-medium text-[#0A0A0A]">{label} link</span>
-                <span className="block text-xs text-[#666666] truncate">{link}</span>
+                <span className="block text-xs text-[#666666] truncate">{decodeURIComponent(link.split('?')[0]).replace(/^https?:\/\//, '')} · tap to copy</span>
               </button>
             ))}
           </div>

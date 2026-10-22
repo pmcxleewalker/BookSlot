@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import SuperAdminLayout from '../../components/SuperAdminLayout';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { Building2, Users, Calendar, DollarSign, TrendingUp, ArrowRight } from 'lucide-react';
+import { Building2, Users, Calendar, Banknote, TrendingUp, ArrowRight } from 'lucide-react';
 
 import { API } from '../../lib/api';
 
@@ -42,7 +42,7 @@ const AdminDashboardPage = () => {
     { 
       label: 'Monthly Revenue', 
       value: `€${stats?.revenue?.mrr || 0}`, 
-      icon: DollarSign,
+      icon: Banknote,
       color: 'bg-amber-500/20 text-amber-400',
       sub: 'MRR'
     },

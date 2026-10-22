@@ -8,7 +8,7 @@ import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
 import { 
-  BarChart3, TrendingUp, DollarSign, Calendar, Users, Clock,
+  BarChart3, TrendingUp, Banknote, Calendar, Users, Clock,
   Download, FileText, Table, RefreshCw, ChevronDown
 } from 'lucide-react';
 import { errorMessage } from '../../lib/api';
@@ -233,7 +233,7 @@ const ReportsPage = () => {
             <div className="card-flat">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-green-100 rounded flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-green-600" />
+                  <Banknote className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-[#0A0A0A]">{money(report.summary?.total_revenue)}</p>
