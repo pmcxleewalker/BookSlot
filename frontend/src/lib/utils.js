@@ -39,6 +39,7 @@ export function toLocalISO(date) {
 export const STATUS_STYLES = {
   pending: 'bg-amber-100 text-amber-700',
   pending_approval: 'bg-orange-100 text-orange-700',
+  pending_payment: 'bg-yellow-100 text-yellow-800',
   confirmed: 'bg-blue-100 text-blue-700',
   completed: 'bg-green-100 text-green-700',
   cancelled: 'bg-red-100 text-red-700',
@@ -48,6 +49,7 @@ export const STATUS_STYLES = {
 export const STATUS_LABELS = {
   pending: 'Pending',
   pending_approval: 'Needs approval',
+  pending_payment: 'Awaiting deposit',
   confirmed: 'Confirmed',
   completed: 'Completed',
   cancelled: 'Cancelled',

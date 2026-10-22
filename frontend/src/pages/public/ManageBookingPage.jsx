@@ -16,9 +16,20 @@ const ManageBookingPage = () => {
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
+  const params = new URLSearchParams(window.location.search);
+  const justPaid = params.get('paid') === '1';
+  const paymentCancelled = params.get('payment') === 'cancelled';
+
   useEffect(() => {
     fetchBooking();
   }, [confirmationCode]);
+
+  // Back from Stripe: the confirmation arrives a few seconds later, so check again until it does
+  useEffect(() => {
+    if (!justPaid || booking?.appointment?.status !== 'pending_payment') return undefined;
+    const t = setTimeout(fetchBooking, 2500);
+    return () => clearTimeout(t);
+  }, [booking]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchBooking = async () => {
     try {
@@ -138,6 +149,26 @@ const ManageBookingPage = () => {
             </span>
           </div>
 
+          {appointment.status === 'pending_payment' && (
+            <div className="mb-5 p-4 border border-amber-200 bg-amber-50 text-sm text-amber-900" data-testid="awaiting-deposit">
+              {justPaid ? 'Payment received, confirming your booking...' : (
+                <>
+                  <p className="font-medium mb-1">{paymentCancelled ? 'Payment not completed' : 'Deposit not paid yet'}</p>
+                  <p className="mb-3">Your time is held for a few minutes. Pay the deposit to confirm your booking.</p>
+                  {appointment.payment_url && (
+                    <a href={appointment.payment_url} className="inline-block px-4 py-2 bg-[#0A0A0A] text-white font-medium" data-testid="pay-deposit-link">
+                      Pay {formatMoney(appointment.deposit_due, currency)} deposit
+                    </a>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          {appointment.deposit_paid && (
+            <p className="mb-5 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 p-3" data-testid="deposit-paid">
+              Deposit paid: {formatMoney(appointment.deposit_amount, currency)}{appointment.deposit_refunded ? ' (refunded)' : ''}
+            </p>
+          )}
           <div className="space-y-4">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center">
@@ -206,6 +237,7 @@ const ManageBookingPage = () => {
                   <div>
                     <p className="font-medium text-red-800">Are you sure you want to cancel?</p>
                     <p className="text-sm text-red-600">This action cannot be undone.</p>
+                    {booking.refund_note && <p className="text-sm text-red-700 mt-1" data-testid="refund-note">{booking.refund_note}</p>}
                   </div>
                 </div>
                 <div className="flex gap-3">

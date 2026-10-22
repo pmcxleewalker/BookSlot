@@ -139,6 +139,11 @@ const PublicBookingPage = () => {
         notes,
         form_responses: answers,
       });
+      if (response.data.payment_url) {
+        // deposit: the slot is held while they pay on Stripe's secure page
+        window.location.assign(response.data.payment_url);
+        return;
+      }
       setConfirmation(response.data);
       setStep(5);
     } catch (error) {
@@ -404,6 +409,11 @@ const PublicBookingPage = () => {
                     {format(parseLocal(selectedSlot.start_time), 'EEEE d MMMM yyyy')} at {selectedSlot.start_time.slice(11, 16)}
                   </p>
                   <p className="font-semibold mt-2" style={{ color: accent }}>{Number(selectedService?.price) > 0 ? formatMoney(selectedService?.price, currency) : 'Free'}</p>
+                  {business.deposits_online && selectedService?.deposit_required && Number(selectedService?.deposit_amount) > 0 && (
+                    <p className="text-sm mt-1" style={{ color: c.textSecondary }} data-testid="deposit-due">
+                      Deposit due now: <span className="font-semibold" style={{ color: c.text }}>{formatMoney(selectedService.deposit_amount, currency)}</span> (taken off the price on the day)
+                    </p>
+                  )}
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
                   <div>
@@ -442,7 +452,8 @@ const PublicBookingPage = () => {
                   </div>
                   <Button type="submit" disabled={submitting} className="w-full flex items-center justify-center gap-2"
                     style={{ backgroundColor: accent, color: onAccent }} data-testid="confirm-booking">
-                    {submitting ? 'Booking...' : 'Confirm booking'}
+                    {submitting ? 'Booking...' : (business.deposits_online && selectedService?.deposit_required && Number(selectedService?.deposit_amount) > 0
+                      ? `Pay ${formatMoney(selectedService.deposit_amount, currency)} deposit` : 'Confirm booking')}
                     {!submitting && <Check className="w-4 h-4" />}
                   </Button>
                   <p className="text-xs text-center" style={{ color: c.textSecondary }}>

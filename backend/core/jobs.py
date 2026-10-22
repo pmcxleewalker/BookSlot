@@ -49,6 +49,10 @@ async def reminder_loop() -> None:
     await asyncio.sleep(10)
     while True:
         try:
+            from .payments import release_expired_holds
+            released = await release_expired_holds()
+            if released:
+                logger.info("Released %s unpaid deposit holds", released)
             n = await send_due_reminders()
             if n:
                 logger.info("Sent %s appointment reminders", n)

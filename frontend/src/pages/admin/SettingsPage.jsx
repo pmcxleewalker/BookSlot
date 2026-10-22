@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import {
   Building2, Globe, Clock, Shield, Bell, MessageSquare, Mail, Smartphone, Check, Palette, Upload, Puzzle, Plus,
   Trash2, Copy, Bot, Webhook, Image, Sparkles, KeyRound, AlertTriangle, Link as LinkIcon, Lock, Send, Eye, EyeOff,
+  CreditCard, CheckCircle2, ExternalLink,
 } from 'lucide-react';
 import { API, errorMessage } from '../../lib/api';
 import { formatMoney } from '../../lib/utils';
@@ -63,7 +64,50 @@ const ToggleRow = ({ title, description, checked, onChange, testId, disabled }) 
 const SettingsPage = () => {
   const { tenant, user, updateTenant, refreshTenant, isManager, setSession } = useAuth();
   const { setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('tab') || 'general'; } catch (e) { return 'general'; }
+  });
+  const [pay, setPay] = useState(null); // payments status
+  const [payBusy, setPayBusy] = useState(false);
+
+  const loadPayments = async () => {
+    try { setPay((await axios.get(`${API}/payments/status`)).data); } catch (e) { /* ignore */ }
+  };
+  useEffect(() => {
+    if (!isManager) return;
+    loadPayments();
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('stripe');
+    if (result) {
+      const msg = {
+        connected: ['success', 'Stripe connected. You can now take deposits online.'],
+        cancelled: ['info', 'Stripe connection cancelled.'],
+        expired: ['error', 'That link expired. Please try connecting again.'],
+        failed: ['error', 'Stripe could not be connected. Please try again.'],
+        in_use: ['error', 'That Stripe account is already connected to another business.'],
+      }[result];
+      if (msg) toast[msg[0]](msg[1]);
+      window.history.replaceState({}, '', '/settings?tab=payments');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const connectStripe = async () => {
+    setPayBusy(true);
+    try {
+      const r = await axios.post(`${API}/payments/stripe/connect`);
+      window.location.assign(r.data.url);
+    } catch (e) { toast.error(errorMessage(e, 'Could not start Stripe connection')); setPayBusy(false); }
+  };
+  const disconnectStripe = async () => {
+    if (!window.confirm('Disconnect Stripe? Online deposits will stop. Deposits already paid stay in your Stripe account.')) return;
+    setPayBusy(true);
+    try { setPay((await axios.post(`${API}/payments/stripe/disconnect`)).data); toast.success('Stripe disconnected'); }
+    catch (e) { toast.error(errorMessage(e, 'Could not disconnect')); } finally { setPayBusy(false); }
+  };
+  const savePaySettings = async (changes) => {
+    try { setPay((await axios.put(`${API}/payments/settings`, changes)).data); toast.success('Saved'); }
+    catch (e) { toast.error(errorMessage(e, 'Could not save')); }
+  };
   const [saving, setSaving] = useState(false);
   const features = tenant?.features || {};
 
@@ -271,6 +315,7 @@ const SettingsPage = () => {
     { id: 'booking', label: 'Online booking', icon: Clock, manager: true },
     { id: 'branding', label: 'Branding', icon: Palette, manager: true },
     { id: 'notifications', label: 'Notifications', icon: Bell, manager: true },
+    { id: 'payments', label: 'Payments', icon: CreditCard, manager: true },
     { id: 'integrations', label: 'Integrations', icon: Puzzle, manager: true },
     { id: 'account', label: 'My account', icon: Lock },
   ].filter((t) => !t.manager || isManager);
@@ -528,6 +573,48 @@ const SettingsPage = () => {
         )}
 
         {/* ---------------- Integrations ---------------- */}
+        {tab === 'payments' && (
+          <>
+            <Card icon={CreditCard} title="Online deposits" subtitle="Clients pay a deposit when they book, straight into your own Stripe account">
+              {!pay ? <p className="text-sm text-[#666666]">Loading...</p> : !pay.platform_ready ? (
+                <p className="text-sm text-[#666666]" data-testid="payments-unavailable">Online payments aren't switched on for BookSlot yet. Your BookSlot provider can enable them.</p>
+              ) : !pay.connected ? (
+                <div data-testid="stripe-not-connected">
+                  <ol className="text-sm text-[#666666] space-y-1.5 mb-5 list-decimal pl-5">
+                    <li>Tap <span className="font-medium text-[#0A0A0A]">Connect Stripe</span>.</li>
+                    <li>Log in to your existing Stripe account, or create one (about 5 minutes).</li>
+                    <li>Tap <span className="font-medium text-[#0A0A0A]">Allow</span> and you'll come straight back here.</li>
+                  </ol>
+                  <Button onClick={connectStripe} disabled={payBusy} className="bg-[#635BFF] hover:bg-[#5249e6] text-white w-full sm:w-auto" data-testid="connect-stripe">
+                    {payBusy ? 'Opening Stripe...' : 'Connect Stripe'}
+                  </Button>
+                  <p className="text-xs text-[#999] mt-3">Deposits go directly to you. BookSlot never holds your money, and you can disconnect at any time. Stripe charges its usual card fee.</p>
+                </div>
+              ) : (
+                <div data-testid="stripe-connected">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border border-emerald-200 bg-emerald-50 mb-4">
+                    <div className="flex items-center gap-2 text-emerald-800 text-sm"><CheckCircle2 className="w-4 h-4 shrink-0" /><span>Stripe connected <span className="text-emerald-700/70 whitespace-nowrap">({pay.account})</span></span></div>
+                    <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-800 underline inline-flex items-center gap-1">Stripe dashboard <ExternalLink className="w-3 h-3" /></a>
+                  </div>
+                  <ToggleRow title="Take deposits online" description="Clients pay when they book any service with a deposit set (Services → edit → Require deposit). Their slot is held for 30 minutes while they pay."
+                    checked={pay.settings.deposits_enabled} onChange={(v) => savePaySettings({ deposits_enabled: v })} testId="deposits-toggle" />
+                  <div className="py-3 border-b border-[#E5E5E5]">
+                    <p className="font-medium text-[#0A0A0A]">Refund if the client cancels</p>
+                    <p className="text-sm text-[#666666] mb-2">If you cancel, the deposit is always refunded.</p>
+                    <select className="input-swiss !w-auto" value={pay.settings.refund_hours} data-testid="refund-hours"
+                      onChange={(e) => savePaySettings({ refund_hours: Number(e.target.value) })}>
+                      {[[0, 'Always refund'], [12, 'At least 12 hours before'], [24, 'At least 24 hours before'], [48, 'At least 48 hours before'], [72, 'At least 3 days before'], [168, 'At least 7 days before'], [336, 'At least 14 days before']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                  </div>
+                  <div className="pt-4">
+                    <Button variant="outline" onClick={disconnectStripe} disabled={payBusy} className="text-red-600 border-red-200 hover:bg-red-50" data-testid="disconnect-stripe">Disconnect Stripe</Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </>
+        )}
+
         {tab === 'integrations' && (
           <>
             <Card icon={Puzzle} title="Connected services" subtitle="Set up by the platform administrator">

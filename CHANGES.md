@@ -77,3 +77,12 @@
 - Chat button and messaging links only appear once an AI key is configured.
 - Public demo salon (Lumière Hair Studio) at /book/demo, created automatically; "Try the live demo" on the site.
 - New logo and indigo brand; "Built by QF Digital" in the footer.
+
+## Online deposits (Stripe Connect)
+- Settings > Payments: the business connects its own Stripe account (existing or new) with Stripe's own screen,
+  switches deposits on and picks a refund window. Deposits go straight to the business; BookSlot never holds money.
+- Services with "Require deposit" send clients to Stripe Checkout (Apple Pay / Google Pay / card) when they book.
+  The slot is held ~30 minutes; it's confirmed (and emails/notifications sent) only once Stripe confirms payment,
+  and released automatically if they don't pay.
+- Cancellations: the business cancelling always refunds; a client cancelling gets a refund if they cancel in time.
+- Webhooks are signature-checked and must come from the business's own connected Stripe account.

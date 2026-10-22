@@ -13,10 +13,11 @@ from fastapi import HTTPException
 from .db import db
 from .notify import create_notification, send_booking_message
 from .scheduling import (busy_intervals, compute_slots, fmt, local_now, overlaps)
-from .security import new_id, now_iso
+from . import config
+from .security import new_id, now_iso, now_utc
 from .webhooks import spawn, trigger_webhook
 
-ACTIVE_STATUSES = ["pending", "pending_approval", "confirmed", "completed", "no_show"]
+ACTIVE_STATUSES = ["pending", "pending_approval", "pending_payment", "confirmed", "completed", "no_show"]
 INACTIVE_STATUSES = ["cancelled"]
 
 DEFAULT_SETTINGS: Dict[str, Any] = {
@@ -34,6 +35,7 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
 ALLOWED_TRANSITIONS = {
     "pending": {"confirmed", "cancelled", "completed", "no_show"},
     "pending_approval": {"confirmed", "cancelled"},
+    "pending_payment": {"confirmed", "pending_approval", "cancelled"},  # waiting for the online deposit
     "confirmed": {"completed", "no_show", "cancelled", "pending"},
     "completed": {"confirmed", "no_show"},
     "no_show": {"confirmed", "completed"},
@@ -209,7 +211,10 @@ async def create_booking(
     client_id: Optional[str] = None,
     form_responses: Optional[List[Dict[str, Any]]] = None,
     created_by: Optional[str] = None,
+    deposit_cents: int = 0,
 ) -> Dict[str, Any]:
+    """deposit_cents > 0: the slot is held as 'pending_payment' and nothing is announced until the deposit is paid
+    (see finalize_paid_booking)."""
     if not staff_can_do(staff, service["service_id"]):
         raise HTTPException(status_code=400, detail=f"{staff['name']} doesn't offer {service['name']}")
     duration = int(service.get("duration") or 30)
@@ -256,10 +261,14 @@ async def create_booking(
             "blocked_until": fmt(blocked_until),
             "duration": duration,
             "notes": (notes or "").strip()[:2000] or None,
-            "status": "pending_approval" if needs_approval else "confirmed",
+            "status": "pending_payment" if deposit_cents else ("pending_approval" if needs_approval else "confirmed"),
             "source": source,
             "total_price": float(service.get("price") or 0),
             "deposit_paid": False,
+            "deposit_due": round(deposit_cents / 100, 2) if deposit_cents else 0,
+            "status_after_payment": ("pending_approval" if needs_approval else "confirmed") if deposit_cents else None,
+            "payment_expires_at": (now_utc() + timedelta(minutes=config.PAYMENT_HOLD_MINUTES + 4)).isoformat()
+            if deposit_cents else None,
             "form_responses": form_responses or [],
             "created_by": created_by,
             "reminder_sent_at": None,
@@ -268,20 +277,68 @@ async def create_booking(
         }
         await db.appointments.insert_one({**appt})
 
+    if deposit_cents:
+        return appt
+    await announce_booking(tenant, appt, service, staff)
+    return appt
+
+
+async def announce_booking(tenant: Dict[str, Any], appt: Dict[str, Any], service: Dict[str, Any],
+                           staff: Dict[str, Any]) -> None:
+    """Webhook + owner notification + client confirmation for a booking that is now real."""
+    needs_approval = appt["status"] == "pending_approval"
+    client_name = appt.get("client_name") or "A client"
     await trigger_webhook(tenant["tenant_id"], "booking.created", appt)
-    if source != "admin":
+    if appt.get("source") != "admin":
         if needs_approval:
             await create_notification(tenant["tenant_id"], "approval_needed", "Booking needs approval",
                                       f"{client_name} requested {service['name']} on {appt['start_time'][:10]} at "
                                       f"{appt['start_time'][11:16]}", {"appointment_id": appt["appointment_id"]})
         else:
+            paid = f" (deposit paid)" if appt.get("deposit_paid") else ""
             await create_notification(tenant["tenant_id"], "new_booking", "New booking",
                                       f"{client_name} booked {service['name']} with {staff['name']} on "
-                                      f"{appt['start_time'][:10]} at {appt['start_time'][11:16]}",
+                                      f"{appt['start_time'][:10]} at {appt['start_time'][11:16]}{paid}",
                                       {"appointment_id": appt["appointment_id"], "start_time": appt["start_time"]})
     trigger = "booking_pending" if needs_approval else "booking_confirmation"
     spawn(send_booking_message(trigger, appt, tenant, include_sms=not needs_approval))
+
+
+async def finalize_paid_booking(appointment_id: str, *, amount_cents: int, payment_intent: Optional[str],
+                                session_id: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Deposit paid: confirm the held booking (once - safe to call again for repeated webhooks)."""
+    appt = await db.appointments.find_one({"appointment_id": appointment_id}, {"_id": 0})
+    if not appt:
+        return None
+    paid = {"deposit_paid": True, "deposit_amount": round(amount_cents / 100, 2), "payment_intent_id": payment_intent,
+            "checkout_session_id": session_id, "deposit_paid_at": now_iso(), "updated_at": now_iso()}
+    if appt.get("status") != "pending_payment":
+        if not appt.get("deposit_paid"):
+            # paid after the hold was released: keep the money on record so the business can refund or rebook
+            await db.appointments.update_one({"appointment_id": appointment_id}, {"$set": {**paid, "paid_after_release": True}})
+            await create_notification(appt["tenant_id"], "payment_issue", "Deposit paid after the slot was released",
+                                      f"{appt.get('client_name')} paid a deposit for {appt['start_time'][:16].replace('T', ' ')} "
+                                      "after the hold expired. Please rebook them or refund in Stripe.",
+                                      {"appointment_id": appointment_id})
+        return appt
+    new_status = appt.get("status_after_payment") or "confirmed"
+    res = await db.appointments.update_one({"appointment_id": appointment_id, "status": "pending_payment"},
+                                           {"$set": {**paid, "status": new_status}})
+    if not res.modified_count:
+        return appt  # another delivery got there first
+    appt = {**appt, **paid, "status": new_status}
+    tenant = await db.tenants.find_one({"tenant_id": appt["tenant_id"]}, {"_id": 0})
+    service = await db.services.find_one({"service_id": appt["service_id"]}, {"_id": 0}) or {"name": "appointment"}
+    staff = await db.staff.find_one({"staff_id": appt["staff_id"]}, {"_id": 0}) or {"name": ""}
+    await announce_booking(tenant, appt, service, staff)
     return appt
+
+
+async def release_unpaid(appt: Dict[str, Any], reason: str = "Deposit not paid") -> None:
+    """Free a slot held for a deposit that never arrived. No client message: they never finished booking."""
+    await db.appointments.update_one({"appointment_id": appt["appointment_id"], "status": "pending_payment"},
+                                     {"$set": {"status": "cancelled", "cancelled_at": now_iso(), "cancelled_by": "system",
+                                               "cancellation_reason": reason, "updated_at": now_iso()}})
 
 
 # ---------- Status changes ----------
@@ -305,6 +362,9 @@ async def change_status(tenant: Dict[str, Any], appt: Dict[str, Any], new_status
     appt = {**appt, **updates}
 
     if new_status == "cancelled":
+        if appt.get("deposit_paid") and not appt.get("deposit_refunded"):
+            from .payments import maybe_refund_on_cancel  # local import: payments depends on booking
+            spawn(maybe_refund_on_cancel(tenant, appt, by))
         await trigger_webhook(tenant["tenant_id"], "booking.cancelled", appt)
         if by == "client":
             await create_notification(tenant["tenant_id"], "booking_cancelled", "Booking cancelled",

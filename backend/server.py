@@ -16,7 +16,7 @@ from starlette.middleware.cors import CORSMiddleware
 from core import config
 from core.db import client, db, ensure_indexes
 from core.jobs import reminder_loop, run_migrations
-from routes import admin, appointments, auth, catalog, clients, public, receptionist, reports, staff, tenants, webhooks
+from routes import admin, appointments, auth, catalog, clients, payments, public, receptionist, reports, staff, tenants, webhooks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("bookslot")
@@ -54,7 +54,7 @@ app = FastAPI(title="BookSlot API", version="2.0.0", lifespan=lifespan,
               redoc_url=None, openapi_url=None if config.IS_PRODUCTION else "/api/openapi.json")
 
 api = APIRouter(prefix="/api")
-for module in (auth, tenants, staff, catalog, clients, appointments, public, reports, webhooks, receptionist, admin):
+for module in (auth, tenants, staff, catalog, clients, appointments, public, reports, webhooks, receptionist, admin, payments):
     api.include_router(module.router)
 
 

@@ -122,3 +122,13 @@ RATE_LIMIT_SCALE = float(os.environ.get("RATE_LIMIT_SCALE", "1"))
 
 # Allow webhooks to private/internal addresses (only for local testing)
 ALLOW_PRIVATE_WEBHOOKS = _bool("ALLOW_PRIVATE_WEBHOOKS", not IS_PRODUCTION)
+
+
+# ---------- Online deposits (Stripe Connect, Standard accounts) ----------
+# Platform keys from the BookSlot/QF Digital Stripe account. Each business connects its OWN Stripe account
+# in Settings > Payments; deposits are paid straight into it.
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")        # sk_live_... / sk_test_...
+STRIPE_CLIENT_ID = os.environ.get("STRIPE_CLIENT_ID", "")          # ca_... (Connect > Settings > OAuth)
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")  # whsec_... for the Connect webhook
+PLATFORM_FEE_CENTS = int(os.environ.get("PLATFORM_FEE_CENTS", "0") or 0)  # optional fee per deposit, in cents
+PAYMENT_HOLD_MINUTES = 31  # Stripe Checkout's minimum session lifetime is 30 minutes

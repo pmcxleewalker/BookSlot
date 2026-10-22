@@ -281,7 +281,7 @@ const ServicesPage = () => {
             <div className="flex items-center justify-between py-3 border-y border-[#E5E5E5]">
               <div>
                 <p className="font-medium text-[#0A0A0A]">Require deposit</p>
-                <p className="text-sm text-[#666666]">Shown to clients when they book. Online payments aren't connected yet, so collect it yourself.</p>
+                <p className="text-sm text-[#666666]">Clients pay it online when they book once Stripe is connected (Settings → Payments). Otherwise it's shown at booking and you collect it yourself.</p>
               </div>
               <Switch
                 checked={formData.deposit_required}

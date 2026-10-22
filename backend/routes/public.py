@@ -1,11 +1,12 @@
 """Public (no login) endpoints used by the customer-facing booking page."""
 import calendar
+import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
-from core import config, booking
+from core import config, booking, payments
 from core.db import db
 from core.notify import messaging_links
 from core.plans import plan_features
@@ -14,6 +15,7 @@ from core.security import rate_limit
 from routes.tenants import DEFAULT_BRANDING
 
 router = APIRouter()
+logger = logging.getLogger("bookslot.public")
 
 
 async def get_public_tenant(slug: str) -> Dict[str, Any]:
@@ -68,6 +70,7 @@ async def public_booking_page(slug: str):
             "timezone": tenant.get("timezone"), "currency": tenant.get("currency", "EUR"),
             "slug": tenant["booking_url_slug"], "branding": branding,
             "messaging": messaging_links(tenant),
+            "deposits_online": payments.takes_online_deposits(tenant),
             "ai_chat_enabled": bool(config.AI_ENABLED) and bool(features.get("ai_assistant")) and bool(tenant.get("ai_chat_enabled", True)),
         },
         "settings": {k: settings[k] for k in ("online_booking_enabled", "require_email", "require_phone",
@@ -223,12 +226,30 @@ async def public_book(slug: str, request: Request, body: Dict[str, Any] = Body(.
     else:
         staff_candidates = [await booking.get_staff_member(tenant["tenant_id"], staff_id)]
 
+    cents = payments.deposit_cents(tenant, service)
     last_error: Optional[HTTPException] = None
     for staff in staff_candidates:
         try:
             appt = await booking.create_booking(
                 tenant, service, staff, start, client_name=name, client_email=email, client_phone=phone,
-                notes=body.get("notes"), source="online", enforce_availability=True, form_responses=form_responses)
+                notes=body.get("notes"), source="online", enforce_availability=True, form_responses=form_responses,
+                deposit_cents=cents)
+            if cents:
+                try:
+                    url = await payments.create_deposit_checkout(tenant, service, appt, cents)
+                except payments.StripeError as e:
+                    logger.error("Deposit checkout failed: %s", e)
+                    await booking.release_unpaid(appt, "Payment page could not be created")
+                    raise HTTPException(status_code=502, detail="Online payment isn't available right now. Please try "
+                                                                "again in a minute or contact the business to book.")
+                return {
+                    "appointment": {k: appt[k] for k in ("appointment_id", "start_time", "end_time", "status",
+                                                          "client_name", "client_email", "total_price", "deposit_due")},
+                    "staff_name": staff["name"], "service_name": service["name"],
+                    "confirmation_code": appt["appointment_id"], "status": appt["status"],
+                    "payment_url": url, "deposit_due": appt["deposit_due"],
+                    "message": "Pay the deposit to confirm your booking",
+                }
             return {
                 "appointment": {k: appt[k] for k in ("appointment_id", "start_time", "end_time", "status",
                                                       "client_name", "client_email", "total_price")},
@@ -272,8 +293,16 @@ async def get_booking(confirmation_code: str, request: Request):
     service = await db.services.find_one({"service_id": appt["service_id"]}, {"_id": 0}) or {}
     staff = await db.staff.find_one({"staff_id": appt["staff_id"]}, {"_id": 0}) or {}
     can_cancel, reason = can_client_cancel(tenant, appt)
+    refund_note = None
+    if appt.get("deposit_paid") and not appt.get("deposit_refunded") and can_cancel:
+        hours = payments.payment_settings(tenant)["refund_hours"]
+        refund_note = ("Your deposit will be refunded if you cancel now." if payments.refund_due(tenant, appt, "client")
+                       else f"Cancelling less than {hours} hours before means the deposit isn't refunded.")
     safe = {k: appt.get(k) for k in ("appointment_id", "start_time", "end_time", "status", "client_name",
-                                     "total_price", "cancellation_reason", "notes")}
+                                     "total_price", "cancellation_reason", "notes", "deposit_paid", "deposit_amount",
+                                     "deposit_due", "deposit_refunded", "deposit_kept")}
+    if appt.get("status") == "pending_payment" and appt.get("payment_url"):
+        safe["payment_url"] = appt["payment_url"]
     return {
         "appointment": safe,
         "business_name": tenant.get("name"), "business_phone": tenant.get("phone"),
@@ -281,7 +310,7 @@ async def get_booking(confirmation_code: str, request: Request):
         "business_slug": tenant.get("booking_url_slug"), "currency": tenant.get("currency", "EUR"),
         "logo_url": tenant.get("logo_url"),
         "service_name": service.get("name"), "staff_name": staff.get("name"),
-        "can_cancel": can_cancel, "cancel_blocked_reason": reason,
+        "can_cancel": can_cancel, "cancel_blocked_reason": reason, "refund_note": refund_note,
     }
 
 

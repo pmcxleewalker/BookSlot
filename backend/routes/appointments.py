@@ -10,7 +10,7 @@ from core.security import now_iso
 
 router = APIRouter()
 
-VALID_STATUSES = {"pending", "pending_approval", "confirmed", "completed", "cancelled", "no_show"}
+VALID_STATUSES = {"pending", "pending_approval", "pending_payment", "confirmed", "completed", "cancelled", "no_show"}
 
 
 def scope_query(actor: Actor, query: Dict[str, Any]) -> Dict[str, Any]:

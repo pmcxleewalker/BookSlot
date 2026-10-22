@@ -476,6 +476,8 @@ const CalendarPage = () => {
                 </p>
                 {selected.client_email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-[#666666]" /><a className="underline" href={`mailto:${selected.client_email}`}>{selected.client_email}</a></p>}
                 {selected.client_phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-[#666666]" /><a className="underline" href={`tel:${selected.client_phone}`}>{selected.client_phone}</a></p>}
+                {selected.deposit_paid && <p className="text-sm text-emerald-700" data-testid="appt-deposit">Deposit paid online: {formatMoney(selected.deposit_amount, currency)}{selected.deposit_refunded ? ' (refunded)' : selected.status === 'cancelled' && selected.deposit_kept ? ' (kept: late cancellation)' : ''}</p>}
+                {selected.status === 'pending_payment' && <p className="text-sm text-yellow-800">Waiting for the client to pay the deposit. The slot is released automatically if they don't.</p>}
                 <p className="text-xs text-[#999999]">Booked {selected.source === 'online' ? 'online' : selected.source === 'ai_receptionist' ? 'via AI receptionist' : selected.source === 'api' ? 'via API' : 'by the team'} · Code {selected.appointment_id}</p>
                 {selected.cancellation_reason && <p className="p-2 bg-red-50 text-red-700">Cancelled: {selected.cancellation_reason}</p>}
                 {selected.form_responses?.length > 0 && (
