@@ -20,6 +20,7 @@ import asyncio
 import json
 import re
 import requests
+from reminders import run_reminder_pass, reminder_loop
 
 # Resend and Twilio imports (optional - graceful fallback if not configured)
 try:
@@ -2769,6 +2770,16 @@ Thank you for choosing {tenant.get('name')}!
         sms_message = f"Booking confirmed at {tenant.get('name')}: {service_name} on {date_str} at {time_str}. Code: {appointment.get('appointment_id')[-6:]}"
         await send_sms_notification(tenant["tenant_id"], client_phone, sms_message)
 
+@api_router.post("/internal/run-reminders")
+async def run_reminders_now(request: Request):
+    """Run one reminder pass. For external cron jobs on hosts that sleep.
+    Requires the X-Cron-Secret header to match the CRON_SECRET env var."""
+    secret = os.environ.get("CRON_SECRET", "")
+    if not secret or not hmac.compare_digest(request.headers.get("X-Cron-Secret", ""), secret):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    sent = await run_reminder_pass(db, send_email_notification)
+    return {"sent": sent}
+
 @api_router.get("/notifications/logs")
 async def get_notification_logs(user: Dict = Depends(get_current_user), limit: int = 50, type: Optional[str] = None):
     """Get notification logs for tenant"""
@@ -4384,6 +4395,15 @@ async def startup_event():
         logger.info("Object storage initialized")
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
+
+    # Appointment reminder emails (set REMINDERS_ENABLED=false to turn off,
+    # e.g. when an external cron calls /api/internal/run-reminders instead)
+    if os.environ.get("REMINDERS_ENABLED", "true").lower() != "false":
+        interval = int(os.environ.get("REMINDER_INTERVAL_SECONDS", "900"))
+        app.state.reminder_task = asyncio.create_task(
+            reminder_loop(db, send_email_notification, interval)
+        )
+        logger.info(f"Reminder loop started (every {interval}s)")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
