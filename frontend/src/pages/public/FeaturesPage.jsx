@@ -130,7 +130,7 @@ const FeaturesPage = () => {
             <div className="bg-[#FAFAFA] border border-[#E5E5E5] p-8">
               <div className="bg-white border border-[#E5E5E5] p-4 mb-4 rounded-lg">
                 <p className="text-sm text-[#666666]">Customer:</p>
-                <p className="text-[#0A0A0A]">"Hi, do you have any openings for a haircut tomorrow afternoon?"</p>
+                <p className="text-[#0A0A0A]">"Hi, do you have anything for a first consultation tomorrow afternoon?"</p>
               </div>
               <div className="bg-[#4F46E5] text-white p-4 rounded-lg ml-8">
                 <p className="text-sm text-white/70">Assistant:</p>

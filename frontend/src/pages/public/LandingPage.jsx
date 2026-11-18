@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight, Calendar, Users, Bot, Shield, Bell, Smartphone, MessageCircle, PhoneOff, Moon, UserX,
   CalendarX, CheckCircle2, Link2, Sparkles, FileText, BarChart3, Palette, Lock, Scissors, Heart, Stethoscope,
+  Dumbbell, Wrench, PawPrint, GraduationCap, Mail, EyeOff,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 
@@ -21,7 +22,7 @@ const PAINS = [
 ];
 
 const STEPS = [
-  { n: '01', title: 'We set you up', desc: 'Your services, prices, team and opening hours, ready in a day. You get your own booking page and number.' },
+  { n: '01', title: 'We set you up', desc: 'Your services, prices, team and opening hours, ready in a day, under your own name, logo and colours.' },
   { n: '02', title: 'Clients book themselves', desc: 'From your booking link, Instagram bio, Google profile, by text or WhatsApp, at any hour, with no app to download.' },
   { n: '03', title: 'Everything else is automatic', desc: 'Confirmations, reminders, cancellations and rebookings are handled. Your diary is always up to date on your phone.' },
 ];
@@ -34,10 +35,10 @@ const FEATURES = [
   { icon: Calendar, title: 'A diary that can\'t clash', desc: 'Working hours, breaks and holidays are built in. Drag to move a booking; clashes are blocked.' },
   { icon: Users, title: 'Client records', desc: 'Visit history, spend, notes and contact details for every client, built up automatically.' },
   { icon: Shield, title: 'Booking rules you set', desc: 'Minimum notice, how far ahead clients can book, cancellation cut-offs and approval for long appointments.' },
-  { icon: FileText, title: 'Intake forms', desc: 'Collect patch-test answers, allergies or consultation notes before the client arrives.' },
+  { icon: FileText, title: 'Intake forms', desc: 'Collect what you need before the appointment: allergies, medical history, job details or consultation notes.' },
   { icon: BarChart3, title: 'Reports & exports', desc: 'Bookings, revenue, no-shows, busiest times and top services, ready to export for your accountant.' },
   { icon: Users, title: 'Team logins', desc: 'Each team member gets their own login and only sees what you allow.' },
-  { icon: Palette, title: 'Your brand', desc: 'Your logo, colours and name on the booking page and in every message.' },
+  { icon: Palette, title: 'White-label', desc: 'Your logo, colours and name on the booking page and in every message. BookSlot stays in the background.' },
   { icon: Lock, title: 'Secure & EU-hosted', desc: 'Data stored in the EU, encrypted connections and GDPR-minded from day one.' },
 ];
 
@@ -45,10 +46,23 @@ const INDUSTRIES = [
   { icon: Scissors, name: 'Hair salons & barbers' },
   { icon: Sparkles, name: 'Beauty, nails & brows' },
   { icon: Heart, name: 'Massage & wellness' },
-  { icon: Stethoscope, name: 'Clinics & therapists' },
+  { icon: Stethoscope, name: 'Clinics, physio & therapists' },
+  { icon: Dumbbell, name: 'Personal trainers & studios' },
+  { icon: Wrench, name: 'Trades & home services' },
+  { icon: PawPrint, name: 'Pet grooming & vets' },
+  { icon: GraduationCap, name: 'Tutors, coaches & consultants' },
+];
+
+const WHITE_LABEL = [
+  { icon: Palette, title: 'Your name, logo and colours', desc: 'Clients see your business on the booking page, not ours.' },
+  { icon: Mail, title: 'Messages from you', desc: 'Confirmations and reminders arrive in your business name, with your logo and contact details.' },
+  { icon: Smartphone, title: 'Feels like your own app', desc: 'Clients save your booking page to their home screen and rebook in a couple of taps.' },
+  { icon: EyeOff, title: 'Hide BookSlot completely', desc: 'Remove the "Powered by BookSlot" line so the whole experience is yours.' },
 ];
 
 const FAQS = [
+  { q: 'Is it only for hair and beauty?', a: 'No. BookSlot works for any business that books appointments or time slots: clinics, physios, trainers, trades, groomers, tutors, consultants and more. You set your own services, durations and prices.' },
+  { q: 'Will my clients see BookSlot or my business?', a: 'Your business. The booking page and every message carry your name, logo and colours, and you can remove the "Powered by BookSlot" line entirely.' },
   { q: 'Do my clients need to download anything?', a: 'No. They book from a link, a text message or WhatsApp, on whatever phone or computer they already have.' },
   { q: 'Can I still take bookings over the phone?', a: 'Of course. Open BookSlot on your phone, tap +, pick the service and a free time, and it\'s booked in about 30 seconds, with the reminder sent for you.' },
   { q: 'What if the AI receptionist can\'t answer something?', a: 'It only books times that are genuinely free and never makes up prices or policies. For anything it can\'t handle, it gives the client your contact details.' },
@@ -61,20 +75,20 @@ const Phone = () => (
     <div className="rounded-[2.5rem] bg-[#0A0A0A] p-3 shadow-2xl">
       <div className="rounded-[2rem] bg-[#F4F1EC] overflow-hidden">
         <div className="bg-[#0A0A0A] text-white px-5 pt-6 pb-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#3730A3] flex items-center justify-center text-sm font-semibold">S</div>
+          <div className="w-9 h-9 rounded-full bg-[#3730A3] flex items-center justify-center text-sm font-semibold">H</div>
           <div>
-            <p className="text-sm font-semibold leading-tight">Studio Salon</p>
+            <p className="text-sm font-semibold leading-tight">Harbour Physio</p>
             <p className="text-[11px] text-white/60 leading-tight">replies instantly</p>
           </div>
         </div>
         <div className="px-4 py-5 space-y-3 text-[13px] leading-snug">
-          <p className="ml-auto max-w-[80%] bg-[#DCF8C6] text-[#0A0A0A] px-3 py-2 rounded-2xl rounded-br-sm">Hi! Any chance of a cut &amp; blow dry Saturday? 🙏</p>
+          <p className="ml-auto max-w-[80%] bg-[#DCF8C6] text-[#0A0A0A] px-3 py-2 rounded-2xl rounded-br-sm">Hi! Any chance of a sports massage Saturday? 🙏</p>
           <p className="max-w-[85%] bg-white text-[#0A0A0A] px-3 py-2 rounded-2xl rounded-bl-sm shadow-sm">Hi Aoife! Saturday I have 10:00, 11:30 or 14:15 free. Which suits you?</p>
           <p className="ml-auto max-w-[80%] bg-[#DCF8C6] text-[#0A0A0A] px-3 py-2 rounded-2xl rounded-br-sm">11:30 please</p>
           <div className="max-w-[88%] bg-white px-3 py-2.5 rounded-2xl rounded-bl-sm shadow-sm">
             <p className="text-[#0A0A0A]">You're booked ✨</p>
             <div className="mt-2 border-t border-[#EEE] pt-2 text-[12px] text-[#555] space-y-0.5">
-              <p><span className="font-semibold text-[#0A0A0A]">Cut &amp; blow dry</span></p>
+              <p><span className="font-semibold text-[#0A0A0A]">Sports massage</span></p>
               <p>Sat 11:30 – 12:30</p>
               <p>Reminder the day before</p>
             </div>
@@ -140,14 +154,15 @@ const LandingPage = () => (
         <div>
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded-full mb-8">
             <Bot className="w-4 h-4 text-[#3730A3]" />
-            <span className="text-sm text-[#666666]">AI receptionist on web, SMS &amp; WhatsApp</span>
+            <span className="text-sm text-[#666666]">White-label booking app for any service business</span>
           </div>
           <h1 className="heading-marketing text-5xl md:text-6xl lg:text-7xl text-[#0A0A0A] mb-6 leading-[1.05]" data-testid="hero-title">
             Your diary fills itself.
           </h1>
           <p className="text-lg md:text-xl text-[#666666] mb-10 max-w-xl">
-            BookSlot takes bookings online, by text and on WhatsApp, day and night, then reminds every client so
-            they turn up. No more phone tag, late-night messages or empty chairs. You just do the work you love.
+            Your own booking app, with your name and logo on it. Clients book online, by text or on WhatsApp, day
+            and night, and get reminded so they turn up. Salons, clinics, trainers, trades, groomers: if you take
+            appointments, it works for you.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <a href={DEMO_LINK}>
@@ -162,7 +177,7 @@ const LandingPage = () => (
             </a>
           </div>
           <div className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#666666]">
-            {['Bookings 24/7', 'Automatic reminders', 'No app for clients', 'Set up in a day'].map((t) => (
+            {['Your brand, not ours', 'Bookings 24/7', 'Automatic reminders', 'Set up in a day'].map((t) => (
               <span key={t} className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#0A0A0A]" />{t}</span>
             ))}
           </div>
@@ -211,6 +226,29 @@ const LandingPage = () => (
               <p className="font-mono text-sm text-[#3730A3] mb-6">{s.n}</p>
               <h3 className="text-xl font-semibold text-[#0A0A0A] mb-3">{s.title}</h3>
               <p className="text-[#666666]">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* White-label */}
+    <section className="pb-24 px-6">
+      <div className="max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-12 items-center">
+        <div>
+          <p className="text-sm font-medium tracking-widest text-[#3730A3] mb-3">WHITE-LABEL</p>
+          <h2 className="heading-marketing text-4xl md:text-5xl text-[#0A0A0A] mb-4">Your booking app, not ours.</h2>
+          <p className="text-lg text-[#666666]">
+            BookSlot runs quietly in the background. To your clients, it's simply how your business takes bookings,
+            with your branding from the first tap to the reminder email.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-6">
+          {WHITE_LABEL.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="border border-[#E5E5E5] p-6">
+              <Icon className="w-6 h-6 text-[#3730A3] mb-4" />
+              <h3 className="font-semibold text-[#0A0A0A] mb-2">{title}</h3>
+              <p className="text-sm text-[#666666]">{desc}</p>
             </div>
           ))}
         </div>
@@ -278,7 +316,7 @@ const LandingPage = () => (
     {/* Industries */}
     <section className="py-20 px-6 bg-[#FAFAFA] border-y border-[#E5E5E5]">
       <div className="max-w-7xl mx-auto">
-        <p className="text-center text-sm font-medium tracking-widest text-[#666666] mb-10">MADE FOR APPOINTMENT-BASED BUSINESSES</p>
+        <p className="text-center text-sm font-medium tracking-widest text-[#666666] mb-10">FOR ANY BUSINESS THAT TAKES APPOINTMENTS</p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           {INDUSTRIES.map(({ icon: Icon, name }) => (
             <div key={name} className="bg-white border border-[#E5E5E5] p-6 flex flex-col items-center text-center gap-3">
@@ -287,6 +325,7 @@ const LandingPage = () => (
             </div>
           ))}
         </div>
+        <p className="text-center text-[#666666] mt-8">Don't see yours? If clients book a time with you, BookSlot fits.</p>
       </div>
     </section>
 
@@ -321,7 +360,7 @@ const LandingPage = () => (
           </Button>
         </a>
         <p className="text-sm text-white/50 mt-6">
-          Or <a href={LIVE_DEMO} className="underline text-white/80">try a booking at our demo salon</a> · email {CONTACT_EMAIL}
+          Or <a href={LIVE_DEMO} className="underline text-white/80">try a booking at our demo business</a> · email {CONTACT_EMAIL}
         </p>
       </div>
     </section>
