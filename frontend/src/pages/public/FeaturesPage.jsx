@@ -21,9 +21,9 @@ const FeaturesPage = () => {
     {
       title: 'AI & Automation',
       features: [
-        { icon: Bot, name: 'AI Receptionist', desc: 'Moltbot handles inquiries, checks availability, and books appointments automatically.' },
-        { icon: Bell, name: 'Smart Reminders', desc: 'Automatic email and SMS reminders before every appointment to cut no-shows.' },
-        { icon: Zap, name: 'Text & WhatsApp Booking', desc: 'Clients text or WhatsApp your number to book, move or cancel. The AI handles it using your real availability.' },
+        { icon: Bot, name: 'AI Receptionist', desc: 'Handles enquiries, checks availability and books appointments for you. Switched on during setup.' },
+        { icon: Bell, name: 'Smart Reminders', desc: 'Automatic email reminders before every appointment to cut no-shows.' },
+        { icon: Zap, name: 'WhatsApp Booking', desc: 'Clients WhatsApp you to book, move or cancel. The AI handles it using your real availability. Switched on during setup.' },
       ]
     },
     {
@@ -96,13 +96,13 @@ const FeaturesPage = () => {
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#4F46E5]/10 text-[#4F46E5] rounded-full mb-6">
                 <Bot className="w-4 h-4" />
-                <span className="text-sm font-medium">Moltbot AI</span>
+                <span className="text-sm font-medium">AI receptionist</span>
               </div>
               <h2 className="heading-marketing text-3xl md:text-4xl text-[#0A0A0A] mb-6">
                 Your AI receptionist never sleeps
               </h2>
               <p className="text-[#666666] mb-6 leading-relaxed">
-                Moltbot is designed to be your always-on receptionist. It handles booking inquiries, 
+                BookSlot's AI is designed to be your always-on receptionist. It handles booking inquiries, 
                 checks real-time availability, collects client information, and schedules appointments — 
                 all through natural conversation.
               </p>
@@ -112,7 +112,7 @@ const FeaturesPage = () => {
                   'Checks staff availability in real-time',
                   'Books, reschedules, and cancels appointments',
                   'Sends confirmations and reminders',
-                  'Works on your website chat, by SMS and on WhatsApp'
+                  'Works on WhatsApp and your booking page chat'
                 ].map((item, idx) => (
                   <li key={idx} className="flex items-center gap-3">
                     <div className="w-1.5 h-1.5 bg-[#4F46E5] rounded-full" />

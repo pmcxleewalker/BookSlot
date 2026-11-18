@@ -19,9 +19,9 @@ const WHY = [
   { icon: Percent, stat: '0%', label: 'commission, ever',
     title: 'Your brand, not a marketplace',
     desc: 'Marketplaces take a cut of new clients: 35% + VAT of the first booking on Treatwell, 20% on Fresha. BookSlot takes nothing, and your clients only ever see your business.' },
-  { icon: Bot, stat: 'Included', label: 'AI receptionist',
+  { icon: Bot, stat: 'Built in', label: 'AI receptionist',
     title: 'The receptionist comes with it',
-    desc: 'Fresha charges €94.95 a month extra for its AI. BookSlot\'s AI receptionist answers clients day and night and books real free slots, as part of our main plan.' },
+    desc: 'Fresha charges €94.95 a month extra for its AI. On our main plan, BookSlot\'s AI receptionist is part of the price: we switch it on during your setup, on WhatsApp and your booking page.' },
   { icon: Sparkles, stat: '1 day', label: 'to go live',
     title: 'We set it up for you',
     desc: 'Other tools hand you a login and a help centre. We load your services, team, hours and client list, so you\'re taking bookings tomorrow.' },
@@ -60,14 +60,14 @@ const NoShowCalculator = () => {
 
 const STEPS = [
   { n: '01', title: 'We set you up', desc: 'Your services, prices, team and opening hours, ready in a day, under your own name, logo and colours.' },
-  { n: '02', title: 'Clients book themselves', desc: 'From your booking link, Instagram bio, Google profile, by text or WhatsApp, at any hour, with no app to download.' },
+  { n: '02', title: 'Clients book themselves', desc: 'From your booking link, Instagram bio or Google profile, at any hour, with no app to download.' },
   { n: '03', title: 'Everything else is automatic', desc: 'Confirmations, reminders, cancellations and rebookings are handled. Your diary is always up to date on your phone.' },
 ];
 
 const FEATURES = [
   { icon: Link2, title: 'Your own booking page', desc: 'A clean, branded page where clients pick a service, a team member and a free time in a few taps.' },
-  { icon: Bot, title: 'AI receptionist, 24/7', desc: 'Answers questions and books, moves or cancels appointments on your website chat, by SMS and on WhatsApp.' },
-  { icon: Bell, title: 'Automatic reminders', desc: 'Confirmations and reminders by email and text, with wording you control.' },
+  { icon: Bot, title: 'AI receptionist', desc: 'Answers questions and books, moves or cancels appointments on WhatsApp and your booking page. Switched on during setup.' },
+  { icon: Bell, title: 'Automatic reminders', desc: 'Confirmations and reminders by email, with wording you control.' },
   { icon: Smartphone, title: 'Runs on your phone', desc: 'See today at a glance and add a phone booking in seconds. Save it to your home screen like an app.' },
   { icon: Calendar, title: 'A diary that can\'t clash', desc: 'Working hours, breaks and holidays are built in. Drag to move a booking; clashes are blocked.' },
   { icon: Users, title: 'Client records', desc: 'Visit history, spend, notes and contact details for every client, built up automatically.' },
@@ -101,7 +101,8 @@ const FAQS = [
   { q: 'Is it only for hair and beauty?', a: 'No. BookSlot works for any business that books appointments or time slots: clinics, physios, trainers, trades, groomers, tutors, consultants and more. You set your own services, durations and prices.' },
   { q: 'Will my clients see BookSlot or my business?', a: 'Your business. The booking page and every message carry your name, logo and colours, and you can remove the "Powered by BookSlot" line entirely.' },
   { q: 'What does it cost?', a: 'It depends on the size of your team, and there is never any commission on your bookings. We go through it on the demo so there are no surprises.' },
-  { q: 'Do my clients need to download anything?', a: 'No. They book from a link, a text message or WhatsApp, on whatever phone or computer they already have.' },
+  { q: 'Do my clients need to download anything?', a: 'No. They book from a link on whatever phone or computer they already have.' },
+  { q: 'Is the AI receptionist live straight away?', a: 'We switch it on as part of your setup, once your services, prices and hours are in, on WhatsApp and your booking page chat. It is included in our main plan.' },
   { q: 'Can I still take bookings over the phone?', a: 'Of course. Open BookSlot on your phone, tap +, pick the service and a free time, and it\'s booked in about 30 seconds, with the reminder sent for you.' },
   { q: 'What if the AI receptionist can\'t answer something?', a: 'It only books times that are genuinely free and never makes up prices or policies. For anything it can\'t handle, it gives the client your contact details.' },
   { q: 'How long does it take to get started?', a: 'Usually a day. We set up your services, hours and booking page with you, so there\'s nothing technical for you to do.' },
@@ -116,7 +117,7 @@ const Phone = () => (
           <div className="w-9 h-9 rounded-full bg-[#3730A3] flex items-center justify-center text-sm font-semibold">H</div>
           <div>
             <p className="text-sm font-semibold leading-tight">Harbour Physio</p>
-            <p className="text-[11px] text-white/60 leading-tight">replies instantly</p>
+            <p className="text-[11px] text-white/60 leading-tight">AI receptionist on WhatsApp</p>
           </div>
         </div>
         <div className="px-4 py-5 space-y-3 text-[13px] leading-snug">
@@ -131,7 +132,7 @@ const Phone = () => (
               <p>Reminder the day before</p>
             </div>
           </div>
-          <p className="text-center text-[11px] text-[#888] pt-1">Booked at 23:47 while you were off the clock</p>
+          <p className="text-center text-[11px] text-[#888] pt-1">Example conversation: booked at 23:47 while you were off the clock</p>
         </div>
       </div>
     </div>
@@ -196,11 +197,11 @@ const LandingPage = () => (
             <span className="text-sm text-[#666666]">No commission · No marketplace · Set up for you</span>
           </div>
           <h1 className="heading-marketing text-5xl md:text-6xl lg:text-7xl text-[#0A0A0A] mb-6 leading-[1.05]" data-testid="hero-title">
-            Your own booking app. Answers clients 24/7. Set up for you.
+            Your own booking app. Takes bookings 24/7. Set up for you.
           </h1>
           <p className="text-lg md:text-xl text-[#666666] mb-10 max-w-xl">
-            Clients book online, by text or on WhatsApp, under your name, not ours. No commission, no marketplace,
-            no setup headaches. For any business that takes appointments.
+            Clients book online at any hour, under your name, not ours. Add an AI receptionist on WhatsApp when you
+            join. No commission, no marketplace, no setup headaches. For any business that takes appointments.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <a href={DEMO_LINK}>
@@ -215,7 +216,7 @@ const LandingPage = () => (
             </a>
           </div>
           <div className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#666666]">
-            {['0% commission', 'AI receptionist included', 'We set it up', 'No app for clients'].map((t) => (
+            {['0% commission', 'Online booking 24/7', 'We set it up', 'No app for clients'].map((t) => (
               <span key={t} className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#0A0A0A]" />{t}</span>
             ))}
           </div>
@@ -319,16 +320,16 @@ const LandingPage = () => (
           </div>
           <h2 className="heading-marketing text-3xl md:text-5xl mb-5">A receptionist that never takes a day off.</h2>
           <p className="text-white/70 text-lg">
-            Clients message your number like they always have. BookSlot's assistant answers in seconds, knows your
-            services, prices and real availability, and books them straight into your diary. If they need to move or
-            cancel, they just text back.
+            Clients message you on WhatsApp like they always have. BookSlot's assistant answers in seconds, knows your
+            services, prices and real availability, and books them straight into your diary. We switch it on as part
+            of your setup.
           </p>
         </div>
         <ul className="space-y-4">
           {[
             'Answers questions about services, prices and opening hours',
             'Only ever offers times that are genuinely free',
-            'Books, moves and cancels appointments by text or WhatsApp',
+            'Books, moves and cancels appointments on WhatsApp',
             'Recognises returning clients by their number',
             'Hands over to you for anything it can\'t help with',
           ].map((t) => (
