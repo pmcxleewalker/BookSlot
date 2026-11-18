@@ -97,13 +97,13 @@ const OnboardingPage = () => {
             {[1, 2, 3].map((s) => (
               <React.Fragment key={s}>
                 <div className={`w-8 h-8 flex items-center justify-center text-sm font-medium ${
-                  step > s ? 'bg-[#121212] text-white' : 
-                  step === s ? 'bg-[#121212] text-white' : 
-                  'bg-[#E5E5E5] text-[#666666]'
+                  step > s ? 'bg-[#4F46E5] text-white' : 
+                  step === s ? 'bg-[#4F46E5] text-white' : 
+                  'bg-[#ECEAF5] text-[#6B6890]'
                 }`}>
                   {step > s ? <Check className="w-4 h-4" /> : s}
                 </div>
-                {s < 3 && <div className={`flex-1 h-0.5 ${step > s ? 'bg-[#121212]' : 'bg-[#E5E5E5]'}`} />}
+                {s < 3 && <div className={`flex-1 h-0.5 ${step > s ? 'bg-[#4F46E5]' : 'bg-[#ECEAF5]'}`} />}
               </React.Fragment>
             ))}
           </div>
@@ -111,17 +111,17 @@ const OnboardingPage = () => {
           {/* Step 1: Business Name */}
           {step === 1 && (
             <div className="animate-fade-in">
-              <div className="w-14 h-14 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center mb-6">
-                <Building2 className="w-7 h-7 text-[#0A0A0A]" />
+              <div className="w-14 h-14 bg-[#F7F6FC] border border-[#ECEAF5] flex items-center justify-center mb-6">
+                <Building2 className="w-7 h-7 text-[#1E1B3A]" />
               </div>
-              <h1 className="text-3xl font-semibold text-[#0A0A0A] mb-2" data-testid="onboarding-title">
+              <h1 className="text-3xl font-semibold text-[#1E1B3A] mb-2" data-testid="onboarding-title">
                 Let's set up your business
               </h1>
-              <p className="text-[#666666] mb-8">First, what's your business called?</p>
+              <p className="text-[#6B6890] mb-8">First, what's your business called?</p>
 
               <div className="space-y-6">
                 <div>
-                  <Label htmlFor="businessName" className="text-sm font-medium text-[#0A0A0A]">
+                  <Label htmlFor="businessName" className="text-sm font-medium text-[#1E1B3A]">
                     Business name
                   </Label>
                   <Input
@@ -152,19 +152,19 @@ const OnboardingPage = () => {
             <div className="animate-fade-in">
               <button 
                 onClick={() => setStep(1)} 
-                className="flex items-center gap-2 text-sm text-[#666666] hover:text-[#0A0A0A] mb-6"
+                className="flex items-center gap-2 text-sm text-[#6B6890] hover:text-[#1E1B3A] mb-6"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
 
-              <div className="w-14 h-14 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center mb-6">
-                <Briefcase className="w-7 h-7 text-[#0A0A0A]" />
+              <div className="w-14 h-14 bg-[#F7F6FC] border border-[#ECEAF5] flex items-center justify-center mb-6">
+                <Briefcase className="w-7 h-7 text-[#1E1B3A]" />
               </div>
-              <h1 className="text-3xl font-semibold text-[#0A0A0A] mb-2">
+              <h1 className="text-3xl font-semibold text-[#1E1B3A] mb-2">
                 What type of business?
               </h1>
-              <p className="text-[#666666] mb-8">We'll customize BookSlot for your industry</p>
+              <p className="text-[#6B6890] mb-8">We'll customize BookSlot for your industry</p>
 
               <div className="grid grid-cols-2 gap-3 mb-6">
                 {industries.map((ind) => (
@@ -173,13 +173,13 @@ const OnboardingPage = () => {
                     onClick={() => setIndustry(ind.value)}
                     className={`p-4 border text-left transition-all ${
                       industry === ind.value 
-                        ? 'border-[#121212] bg-[#FAFAFA]' 
-                        : 'border-[#E5E5E5] hover:border-[#121212]'
+                        ? 'border-[#4F46E5] bg-[#F7F6FC]' 
+                        : 'border-[#ECEAF5] hover:border-[#4F46E5]'
                     }`}
                     data-testid={`industry-${ind.value}`}
                   >
                     <span className="text-2xl block mb-2">{ind.icon}</span>
-                    <span className="text-sm font-medium text-[#0A0A0A]">{ind.label}</span>
+                    <span className="text-sm font-medium text-[#1E1B3A]">{ind.label}</span>
                   </button>
                 ))}
               </div>
@@ -201,23 +201,23 @@ const OnboardingPage = () => {
             <div className="animate-fade-in">
               <button 
                 onClick={() => setStep(2)} 
-                className="flex items-center gap-2 text-sm text-[#666666] hover:text-[#0A0A0A] mb-6"
+                className="flex items-center gap-2 text-sm text-[#6B6890] hover:text-[#1E1B3A] mb-6"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
 
-              <div className="w-14 h-14 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center mb-6">
-                <Users className="w-7 h-7 text-[#0A0A0A]" />
+              <div className="w-14 h-14 bg-[#F7F6FC] border border-[#ECEAF5] flex items-center justify-center mb-6">
+                <Users className="w-7 h-7 text-[#1E1B3A]" />
               </div>
-              <h1 className="text-3xl font-semibold text-[#0A0A0A] mb-2">
+              <h1 className="text-3xl font-semibold text-[#1E1B3A] mb-2">
                 Contact details
               </h1>
-              <p className="text-[#666666] mb-8">How can clients reach you?</p>
+              <p className="text-[#6B6890] mb-8">How can clients reach you?</p>
 
               <div className="space-y-4 mb-6">
                 <div>
-                  <Label htmlFor="email" className="text-sm font-medium text-[#0A0A0A]">
+                  <Label htmlFor="email" className="text-sm font-medium text-[#1E1B3A]">
                     Business email *
                   </Label>
                   <Input
@@ -233,7 +233,7 @@ const OnboardingPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="phone" className="text-sm font-medium text-[#0A0A0A]">
+                  <Label htmlFor="phone" className="text-sm font-medium text-[#1E1B3A]">
                     Phone (optional)
                   </Label>
                   <Input
@@ -248,7 +248,7 @@ const OnboardingPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="address" className="text-sm font-medium text-[#0A0A0A]">
+                  <Label htmlFor="address" className="text-sm font-medium text-[#1E1B3A]">
                     Address (optional)
                   </Label>
                   <Input
@@ -277,7 +277,7 @@ const OnboardingPage = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="hidden lg:flex w-1/2 bg-[#121212] items-center justify-center p-16">
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-[#4F46E5] via-[#6D28D9] to-[#9333EA] items-center justify-center p-16">
         <div className="text-white max-w-md">
           <h2 className="heading-marketing text-4xl mb-6">
             You're almost ready

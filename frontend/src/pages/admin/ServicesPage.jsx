@@ -124,7 +124,7 @@ const ServicesPage = () => {
     <TenantLayout title="Services">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <p className="text-[#666666]">{services.length} services</p>
+        <p className="text-[#6B6890]">{services.length} services</p>
         {canEdit && <Button 
           onClick={() => openDialog()} 
           className="btn-primary flex items-center gap-2"
@@ -137,12 +137,12 @@ const ServicesPage = () => {
 
       {/* Services Grid */}
       {loading ? (
-        <div className="py-12 text-center text-[#666666]">Loading...</div>
+        <div className="py-12 text-center text-[#6B6890]">Loading...</div>
       ) : services.length === 0 ? (
         <div className="card-flat py-12 text-center">
-          <Briefcase className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
-          <h3 className="font-semibold text-[#0A0A0A] mb-2">No services yet</h3>
-          <p className="text-[#666666] mb-4">Create services that your clients can book</p>
+          <Briefcase className="w-12 h-12 text-[#D6D3E8] mx-auto mb-4" />
+          <h3 className="font-semibold text-[#1E1B3A] mb-2">No services yet</h3>
+          <p className="text-[#6B6890] mb-4">Create services that your clients can book</p>
           {canEdit && <Button onClick={() => openDialog()} className="btn-primary">Add First Service</Button>}
         </div>
       ) : (
@@ -156,8 +156,8 @@ const ServicesPage = () => {
                     style={{ backgroundColor: service.color }}
                   />
                   <div>
-                    <h3 className="font-semibold text-[#0A0A0A]">{service.name}</h3>
-                    {service.category && <p className="text-xs text-[#666666]">{service.category}</p>}
+                    <h3 className="font-semibold text-[#1E1B3A]">{service.name}</h3>
+                    {service.category && <p className="text-xs text-[#6B6890]">{service.category}</p>}
                   </div>
                 </div>
                 {canEdit && <div className="flex gap-1">
@@ -182,22 +182,22 @@ const ServicesPage = () => {
               </div>
 
               {service.description && (
-                <p className="text-sm text-[#666666] mb-4 line-clamp-2">{service.description}</p>
+                <p className="text-sm text-[#6B6890] mb-4 line-clamp-2">{service.description}</p>
               )}
 
-              <div className="flex items-center justify-between pt-4 border-t border-[#E5E5E5]">
+              <div className="flex items-center justify-between pt-4 border-t border-[#ECEAF5]">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1 text-sm text-[#666666]">
+                  <div className="flex items-center gap-1 text-sm text-[#6B6890]">
                     <Clock className="w-4 h-4" />
                     {service.duration} min
                   </div>
-                  <div className="flex items-center gap-1 text-sm font-semibold text-[#0A0A0A]">
+                  <div className="flex items-center gap-1 text-sm font-semibold text-[#1E1B3A]">
                     <Banknote className="w-4 h-4" />
                     {formatMoney(service.price, currency)}
                   </div>
                 </div>
                 {service.deposit_required && (
-                  <span className="text-xs text-[#666666] bg-[#FAFAFA] px-2 py-1 border border-[#E5E5E5]">
+                  <span className="text-xs text-[#6B6890] bg-[#F7F6FC] px-2 py-1 border border-[#ECEAF5]">
                     {formatMoney(service.deposit_amount, currency)} deposit
                   </span>
                 )}
@@ -278,10 +278,10 @@ const ServicesPage = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between py-3 border-y border-[#E5E5E5]">
+            <div className="flex items-center justify-between py-3 border-y border-[#ECEAF5]">
               <div>
-                <p className="font-medium text-[#0A0A0A]">Require deposit</p>
-                <p className="text-sm text-[#666666]">Clients pay it online when they book once Stripe is connected (Settings → Payments). Otherwise it's shown at booking and you collect it yourself.</p>
+                <p className="font-medium text-[#1E1B3A]">Require deposit</p>
+                <p className="text-sm text-[#6B6890]">Clients pay it online when they book once Stripe is connected (Settings → Payments). Otherwise it's shown at booking and you collect it yourself.</p>
               </div>
               <Switch
                 checked={formData.deposit_required}
@@ -324,7 +324,7 @@ const ServicesPage = () => {
                     key={color}
                     onClick={() => setFormData({ ...formData, color })}
                     className={`w-8 h-8 rounded-full border-2 transition-transform ${
-                      formData.color === color ? 'border-[#121212] scale-110' : 'border-transparent'
+                      formData.color === color ? 'border-[#4F46E5] scale-110' : 'border-transparent'
                     }`}
                     style={{ backgroundColor: color }}
                     data-testid={`service-color-${color}`}

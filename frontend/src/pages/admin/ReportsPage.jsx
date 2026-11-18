@@ -181,7 +181,7 @@ const ReportsPage = () => {
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-36"
               />
-              <span className="text-[#666666]">to</span>
+              <span className="text-[#6B6890]">to</span>
               <Input
                 type="date"
                 value={endDate}
@@ -222,7 +222,7 @@ const ReportsPage = () => {
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-[#666666]">
+        <div className="py-12 text-center text-[#6B6890]">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" />
           Loading reports...
         </div>
@@ -236,8 +236,8 @@ const ReportsPage = () => {
                   <Banknote className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">{money(report.summary?.total_revenue)}</p>
-                  <p className="text-xs text-[#666666]">Total Revenue</p>
+                  <p className="text-2xl font-bold text-[#1E1B3A]">{money(report.summary?.total_revenue)}</p>
+                  <p className="text-xs text-[#6B6890]">Total Revenue</p>
                 </div>
               </div>
             </div>
@@ -248,8 +248,8 @@ const ReportsPage = () => {
                   <Calendar className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">{report.summary?.total_bookings || 0}</p>
-                  <p className="text-xs text-[#666666]">Total Bookings</p>
+                  <p className="text-2xl font-bold text-[#1E1B3A]">{report.summary?.total_bookings || 0}</p>
+                  <p className="text-xs text-[#6B6890]">Total Bookings</p>
                 </div>
               </div>
             </div>
@@ -260,8 +260,8 @@ const ReportsPage = () => {
                   <TrendingUp className="w-5 h-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">{report.summary?.completion_rate || 0}%</p>
-                  <p className="text-xs text-[#666666]">Completion Rate</p>
+                  <p className="text-2xl font-bold text-[#1E1B3A]">{report.summary?.completion_rate || 0}%</p>
+                  <p className="text-xs text-[#6B6890]">Completion Rate</p>
                 </div>
               </div>
             </div>
@@ -272,8 +272,8 @@ const ReportsPage = () => {
                   <BarChart3 className="w-5 h-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">{money(report.summary?.average_booking_value)}</p>
-                  <p className="text-xs text-[#666666]">Avg. Booking Value</p>
+                  <p className="text-2xl font-bold text-[#1E1B3A]">{money(report.summary?.average_booking_value)}</p>
+                  <p className="text-xs text-[#6B6890]">Avg. Booking Value</p>
                 </div>
               </div>
             </div>
@@ -281,7 +281,7 @@ const ReportsPage = () => {
 
           {/* Status Breakdown */}
           <div className="card-flat">
-            <h3 className="font-semibold text-[#0A0A0A] mb-4">Booking Status</h3>
+            <h3 className="font-semibold text-[#1E1B3A] mb-4">Booking Status</h3>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full" />
@@ -301,15 +301,15 @@ const ReportsPage = () => {
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Revenue by Service */}
             <div className="card-flat">
-              <h3 className="font-semibold text-[#0A0A0A] mb-4">Revenue by Service</h3>
+              <h3 className="font-semibold text-[#1E1B3A] mb-4">Revenue by Service</h3>
               <div className="space-y-3">
                 {report.by_service?.slice(0, 5).map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <div className="flex-1">
                       <p className="text-sm font-medium">{item.name}</p>
-                      <div className="w-full bg-[#E5E5E5] h-2 rounded mt-1">
+                      <div className="w-full bg-[#ECEAF5] h-2 rounded mt-1">
                         <div 
-                          className="bg-[#3730A3] h-2 rounded"
+                          className="bg-[#4F46E5] h-2 rounded"
                           style={{ 
                             width: `${Math.min(100, (item.revenue / (report.by_service[0]?.revenue || 1)) * 100)}%` 
                           }}
@@ -318,7 +318,7 @@ const ReportsPage = () => {
                     </div>
                     <div className="ml-4 text-right">
                       <p className="font-semibold">{money(item.revenue)}</p>
-                      <p className="text-xs text-[#666666]">{item.bookings} bookings</p>
+                      <p className="text-xs text-[#6B6890]">{item.bookings} bookings</p>
                     </div>
                   </div>
                 ))}
@@ -327,13 +327,13 @@ const ReportsPage = () => {
 
             {/* Revenue by Staff */}
             <div className="card-flat">
-              <h3 className="font-semibold text-[#0A0A0A] mb-4">Revenue by Staff</h3>
+              <h3 className="font-semibold text-[#1E1B3A] mb-4">Revenue by Staff</h3>
               <div className="space-y-3">
                 {report.by_staff?.slice(0, 5).map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <div className="flex-1">
                       <p className="text-sm font-medium">{item.name}</p>
-                      <div className="w-full bg-[#E5E5E5] h-2 rounded mt-1">
+                      <div className="w-full bg-[#ECEAF5] h-2 rounded mt-1">
                         <div 
                           className="bg-[#4F46E5] h-2 rounded"
                           style={{ 
@@ -344,7 +344,7 @@ const ReportsPage = () => {
                     </div>
                     <div className="ml-4 text-right">
                       <p className="font-semibold">{money(item.revenue)}</p>
-                      <p className="text-xs text-[#666666]">{item.bookings} bookings</p>
+                      <p className="text-xs text-[#6B6890]">{item.bookings} bookings</p>
                     </div>
                   </div>
                 ))}
@@ -354,7 +354,7 @@ const ReportsPage = () => {
 
           {/* Busiest Hours */}
           <div className="card-flat">
-            <h3 className="font-semibold text-[#0A0A0A] mb-4">Busiest Hours</h3>
+            <h3 className="font-semibold text-[#1E1B3A] mb-4">Busiest Hours</h3>
             <div className="flex items-end gap-1 h-32">
               {Array.from({ length: 12 }, (_, i) => i + 8).map(hour => {
                 const data = report.busiest_hours?.find(h => h.hour === hour);
@@ -365,11 +365,11 @@ const ReportsPage = () => {
                 return (
                   <div key={hour} className="flex-1 flex flex-col items-center">
                     <div 
-                      className="w-full bg-[#3730A3] rounded-t transition-all"
+                      className="w-full bg-[#4F46E5] rounded-t transition-all"
                       style={{ height: `${height}%`, minHeight: bookings > 0 ? '4px' : '0' }}
                       title={`${hour}:00 - ${bookings} bookings`}
                     />
-                    <span className="text-xs text-[#666666] mt-1">{hour}</span>
+                    <span className="text-xs text-[#6B6890] mt-1">{hour}</span>
                   </div>
                 );
               })}
@@ -379,19 +379,19 @@ const ReportsPage = () => {
           {/* Daily Trends */}
           {report.daily_trends && report.daily_trends.length > 0 && (
             <div className="card-flat">
-              <h3 className="font-semibold text-[#0A0A0A] mb-4">Daily Revenue Trend</h3>
+              <h3 className="font-semibold text-[#1E1B3A] mb-4">Daily Revenue Trend</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#E5E5E5]">
-                      <th className="text-left py-2 font-medium text-[#666666]">Date</th>
-                      <th className="text-right py-2 font-medium text-[#666666]">Bookings</th>
-                      <th className="text-right py-2 font-medium text-[#666666]">Revenue</th>
+                    <tr className="border-b border-[#ECEAF5]">
+                      <th className="text-left py-2 font-medium text-[#6B6890]">Date</th>
+                      <th className="text-right py-2 font-medium text-[#6B6890]">Bookings</th>
+                      <th className="text-right py-2 font-medium text-[#6B6890]">Revenue</th>
                     </tr>
                   </thead>
                   <tbody>
                     {report.daily_trends.slice(-10).map((day, idx) => (
-                      <tr key={idx} className="border-b border-[#E5E5E5] last:border-0">
+                      <tr key={idx} className="border-b border-[#ECEAF5] last:border-0">
                         <td className="py-2">{day.date}</td>
                         <td className="py-2 text-right">{day.bookings}</td>
                         <td className="py-2 text-right font-medium">{money(day.revenue)}</td>
@@ -405,9 +405,9 @@ const ReportsPage = () => {
         </div>
       ) : (
         <div className="card-flat py-12 text-center">
-          <BarChart3 className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
-          <h3 className="font-semibold text-[#0A0A0A] mb-2">No data available</h3>
-          <p className="text-[#666666]">Select a date range to view reports</p>
+          <BarChart3 className="w-12 h-12 text-[#D6D3E8] mx-auto mb-4" />
+          <h3 className="font-semibold text-[#1E1B3A] mb-2">No data available</h3>
+          <p className="text-[#6B6890]">Select a date range to view reports</p>
         </div>
       )}
     </TenantLayout>

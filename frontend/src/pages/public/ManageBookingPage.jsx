@@ -60,18 +60,18 @@ const ManageBookingPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-pulse text-[#666666]">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center app-bg">
+        <div className="animate-pulse text-[#6B6890]">Loading...</div>
       </div>
     );
   }
 
   if (!booking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center app-bg">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-[#0A0A0A] mb-4">Booking not found</h1>
-          <p className="text-[#666666] mb-6">The booking code may be incorrect or expired.</p>
+          <h1 className="text-2xl font-semibold text-[#1E1B3A] mb-4">Booking not found</h1>
+          <p className="text-[#6B6890] mb-6">The booking code may be incorrect or expired.</p>
           <Link to="/" className="text-[#4F46E5] hover:underline">Go to homepage</Link>
         </div>
       </div>
@@ -87,23 +87,23 @@ const ManageBookingPage = () => {
   const isPast = start < new Date();
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen app-bg">
       {/* Header */}
-      <header className="bg-white border-b border-[#E5E5E5] px-6 py-4">
+      <header className="bg-white/90 backdrop-blur border-b border-[#ECEAF5] px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           {logo_url && <img src={logo_url} alt={business_name} className="h-10 w-auto max-w-[100px] object-contain" />}
-          <span className="text-xl font-semibold text-[#0A0A0A]">{business_name}</span>
+          <span className="text-xl font-semibold text-[#1E1B3A]">{business_name}</span>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-semibold text-[#0A0A0A] mb-6" data-testid="manage-booking-title">
+      <main className="max-w-lg mx-auto px-4 sm:px-6 py-8">
+        <h1 className="text-2xl font-semibold text-[#1E1B3A] mb-6" data-testid="manage-booking-title">
           Manage Your Booking
         </h1>
 
         {/* Status Banner */}
         {isCancelled && (
-          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 mb-6">
+          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 mb-6 rounded-2xl">
             <X className="w-5 h-5 text-red-600" />
             <div>
               <p className="font-medium text-red-800">This booking has been cancelled</p>
@@ -118,16 +118,16 @@ const ManageBookingPage = () => {
         )}
 
         {isPending && (
-          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 mb-6">
+          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 mb-6 rounded-2xl">
             <Clock className="w-5 h-5 text-amber-600" />
             <p className="text-amber-800">This is a booking request - {business_name} will confirm it shortly.</p>
           </div>
         )}
 
         {!isCancelled && isPast && (
-          <div className="flex items-center gap-3 p-4 bg-[#FAFAFA] border border-[#E5E5E5] mb-6">
-            <Check className="w-5 h-5 text-[#666666]" />
-            <p className="text-[#666666]">This appointment has passed</p>
+          <div className="flex items-center gap-3 p-4 bg-indigo-50 border border-[#ECEAF5] mb-6 rounded-2xl">
+            <Check className="w-5 h-5 text-[#6B6890]" />
+            <p className="text-[#6B6890]">This appointment has passed</p>
           </div>
         )}
 
@@ -135,12 +135,12 @@ const ManageBookingPage = () => {
         <div className="card-flat mb-6">
           <div className="flex items-start justify-between mb-6">
             <div>
-              <p className="text-sm text-[#666666] mb-1">CONFIRMATION CODE</p>
-              <p className="font-mono font-semibold text-lg text-[#0A0A0A]" data-testid="confirmation-code">
+              <p className="text-sm text-[#6B6890] mb-1">CONFIRMATION CODE</p>
+              <p className="font-mono font-semibold text-lg text-[#1E1B3A]" data-testid="confirmation-code">
                 {confirmationCode}
               </p>
             </div>
-            <span className={`px-3 py-1 text-xs font-medium ${
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
               isCancelled ? 'badge-cancelled' : 
               appointment.status === 'confirmed' ? 'badge-confirmed' : 
               'badge-pending'
@@ -150,13 +150,13 @@ const ManageBookingPage = () => {
           </div>
 
           {appointment.status === 'pending_payment' && (
-            <div className="mb-5 p-4 border border-amber-200 bg-amber-50 text-sm text-amber-900" data-testid="awaiting-deposit">
+            <div className="mb-5 p-4 border border-amber-200 bg-amber-50 rounded-2xl text-sm text-amber-900" data-testid="awaiting-deposit">
               {justPaid ? 'Payment received, confirming your booking...' : (
                 <>
                   <p className="font-medium mb-1">{paymentCancelled ? 'Payment not completed' : 'Deposit not paid yet'}</p>
                   <p className="mb-3">Your time is held for a few minutes. Pay the deposit to confirm your booking.</p>
                   {appointment.payment_url && (
-                    <a href={appointment.payment_url} className="inline-block px-4 py-2 bg-[#0A0A0A] text-white font-medium" data-testid="pay-deposit-link">
+                    <a href={appointment.payment_url} className="inline-block px-5 py-2.5 rounded-xl bg-[#4F46E5] text-white font-semibold" data-testid="pay-deposit-link">
                       Pay {formatMoney(appointment.deposit_due, currency)} deposit
                     </a>
                   )}
@@ -165,50 +165,50 @@ const ManageBookingPage = () => {
             </div>
           )}
           {appointment.deposit_paid && (
-            <p className="mb-5 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 p-3" data-testid="deposit-paid">
+            <p className="mb-5 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 p-3 rounded-2xl" data-testid="deposit-paid">
               Deposit paid: {formatMoney(appointment.deposit_amount, currency)}{appointment.deposit_refunded ? ' (refunded)' : ''}
             </p>
           )}
           <div className="space-y-4">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-[#0A0A0A]" />
+              <div className="w-11 h-11 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-[#4F46E5]" />
               </div>
               <div>
-                <p className="font-medium text-[#0A0A0A]">
+                <p className="font-medium text-[#1E1B3A]">
                   {format(start, 'EEEE d MMMM yyyy')}
                 </p>
-                <p className="text-sm text-[#666666]">
+                <p className="text-sm text-[#6B6890]">
                   {format(start, 'HH:mm')} - {format(end, 'HH:mm')}
                 </p>
               </div>
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center">
-                <Clock className="w-5 h-5 text-[#0A0A0A]" />
+              <div className="w-11 h-11 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-[#4F46E5]" />
               </div>
               <div>
-                <p className="font-medium text-[#0A0A0A]">{service_name}</p>
-                <p className="text-sm text-[#666666]">{Number(appointment.total_price) > 0 ? formatMoney(appointment.total_price, currency) : 'Free'}</p>
+                <p className="font-medium text-[#1E1B3A]">{service_name}</p>
+                <p className="text-sm text-[#6B6890]">{Number(appointment.total_price) > 0 ? formatMoney(appointment.total_price, currency) : 'Free'}</p>
               </div>
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center">
-                <User className="w-5 h-5 text-[#0A0A0A]" />
+              <div className="w-11 h-11 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                <User className="w-5 h-5 text-[#4F46E5]" />
               </div>
               <div>
-                <p className="font-medium text-[#0A0A0A]">{staff_name}</p>
-                <p className="text-sm text-[#666666]">at {business_name}</p>
-                {business_address && <p className="text-sm text-[#666666] flex items-center gap-1 mt-1"><MapPin className="w-3 h-3" />{business_address}</p>}
+                <p className="font-medium text-[#1E1B3A]">{staff_name}</p>
+                <p className="text-sm text-[#6B6890]">at {business_name}</p>
+                {business_address && <p className="text-sm text-[#6B6890] flex items-center gap-1 mt-1"><MapPin className="w-3 h-3" />{business_address}</p>}
               </div>
             </div>
 
             {appointment.notes && (
-              <div className="pt-4 border-t border-[#E5E5E5]">
-                <p className="text-sm text-[#666666] mb-1">Notes</p>
-                <p className="text-[#0A0A0A]">{appointment.notes}</p>
+              <div className="pt-4 border-t border-[#ECEAF5]">
+                <p className="text-sm text-[#6B6890] mb-1">Notes</p>
+                <p className="text-[#1E1B3A]">{appointment.notes}</p>
               </div>
             )}
           </div>
@@ -216,7 +216,7 @@ const ManageBookingPage = () => {
 
         {/* Actions */}
         {!isCancelled && !isPast && !can_cancel && cancel_blocked_reason && (
-          <p className="text-sm text-[#666666] p-4 bg-white border border-[#E5E5E5]">{cancel_blocked_reason}</p>
+          <p className="text-sm text-[#6B6890] p-4 bg-white border border-[#ECEAF5] rounded-2xl">{cancel_blocked_reason}</p>
         )}
 
         {!isCancelled && can_cancel && (
@@ -264,8 +264,8 @@ const ManageBookingPage = () => {
         )}
 
         {/* Help */}
-        <div className="mt-8 pt-8 border-t border-[#E5E5E5] text-center">
-          <p className="text-sm text-[#666666]">
+        <div className="mt-8 pt-8 border-t border-[#ECEAF5] text-center">
+          <p className="text-sm text-[#6B6890]">
             Need to change something? Contact {business_name}
             {business_phone && <> on <a className="underline" href={`tel:${business_phone}`}>{business_phone}</a></>}
             {business_email && <> or <a className="underline" href={`mailto:${business_email}`}>{business_email}</a></>}.

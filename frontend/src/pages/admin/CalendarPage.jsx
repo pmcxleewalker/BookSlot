@@ -100,6 +100,14 @@ const CalendarPage = () => {
     }).catch(() => toast.error('Appointment not found'));
   }, [searchParams]);
 
+  // "New booking" from the top bar or phone tab bar (?new=1) opens the form once data is loaded
+  useEffect(() => {
+    if (loading || !searchParams.get('new')) return;
+    openNew(viewMode === 'day' ? currentDate : undefined);
+    searchParams.delete('new');
+    setSearchParams(searchParams, { replace: true });
+  }, [loading, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const closeDetail = () => {
     setSelected(null);
     setReschedule(null);
@@ -259,17 +267,17 @@ const CalendarPage = () => {
       {/* Header */}
       <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-6">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex border border-[#E5E5E5] rounded-md overflow-hidden">
+          <div className="flex p-1 bg-white border border-[#ECEAF5] rounded-xl shadow-sm">
             <button onClick={() => setViewMode('day')} data-testid="view-day"
-              className={`px-3 py-1.5 flex items-center gap-1.5 text-sm ${viewMode === 'day' ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#666666] hover:bg-[#FAFAFA]'}`}>
+              className={`px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 text-sm font-semibold transition-all ${viewMode === 'day' ? 'bg-[#4F46E5] text-white shadow-sm' : 'text-[#6B6890] hover:bg-[#F7F6FC]'}`}>
               <Clock className="w-4 h-4" /> Day
             </button>
             <button onClick={() => setViewMode('calendar')} data-testid="view-calendar"
-              className={`px-3 py-1.5 flex items-center gap-1.5 text-sm ${viewMode === 'calendar' ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#666666] hover:bg-[#FAFAFA]'}`}>
+              className={`px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 text-sm font-semibold transition-all ${viewMode === 'calendar' ? 'bg-[#4F46E5] text-white shadow-sm' : 'text-[#6B6890] hover:bg-[#F7F6FC]'}`}>
               <CalendarIcon className="w-4 h-4" /> Week
             </button>
             <button onClick={() => setViewMode('list')} data-testid="view-list"
-              className={`px-3 py-1.5 flex items-center gap-1.5 text-sm ${viewMode === 'list' ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#666666] hover:bg-[#FAFAFA]'}`}>
+              className={`px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 text-sm font-semibold transition-all ${viewMode === 'list' ? 'bg-[#4F46E5] text-white shadow-sm' : 'text-[#6B6890] hover:bg-[#F7F6FC]'}`}>
               <List className="w-4 h-4" /> List
             </button>
           </div>
@@ -278,7 +286,7 @@ const CalendarPage = () => {
               <Button variant="outline" size="sm" onClick={() => setCurrentDate(subWeeks(currentDate, 1))} data-testid="prev-week"><ChevronLeft className="w-4 h-4" /></Button>
               <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())} data-testid="today-btn">Today</Button>
               <Button variant="outline" size="sm" onClick={() => setCurrentDate(addWeeks(currentDate, 1))} data-testid="next-week"><ChevronRight className="w-4 h-4" /></Button>
-              <span className="ml-1 font-semibold text-[#0A0A0A]" data-testid="current-week">
+              <span className="ml-1 font-semibold text-[#1E1B3A]" data-testid="current-week">
                 {format(weekStart, 'd MMM')} - {format(addDays(weekStart, 6), 'd MMM yyyy')}
               </span>
             </div>
@@ -288,7 +296,7 @@ const CalendarPage = () => {
               <Button variant="outline" size="sm" onClick={() => setCurrentDate(addDays(currentDate, -1))} data-testid="prev-day"><ChevronLeft className="w-4 h-4" /></Button>
               <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())} data-testid="today-day-btn">Today</Button>
               <Button variant="outline" size="sm" onClick={() => setCurrentDate(addDays(currentDate, 1))} data-testid="next-day"><ChevronRight className="w-4 h-4" /></Button>
-              <span className="ml-1 font-semibold text-[#0A0A0A]" data-testid="current-day">{format(currentDate, 'EEE d MMM')}</span>
+              <span className="ml-1 font-semibold text-[#1E1B3A]" data-testid="current-day">{format(currentDate, 'EEE d MMM')}</span>
             </div>
           )}
           {canSeeAll && staff.length > 1 && (
@@ -298,13 +306,13 @@ const CalendarPage = () => {
             </select>
           )}
           {viewMode === 'calendar' && (
-            <label className="flex items-center gap-2 text-sm text-[#666666] cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-[#6B6890] cursor-pointer">
               <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />
               Show cancelled
             </label>
           )}
         </div>
-        <Button onClick={() => openNew(viewMode === 'day' ? currentDate : undefined)} className="btn-primary hidden md:flex items-center gap-2" data-testid="new-appointment-btn">
+        <Button onClick={() => openNew(viewMode === 'day' ? currentDate : undefined)} className="hidden md:flex lg:hidden items-center gap-2" data-testid="new-appointment-btn">
           <Plus className="w-4 h-4" /> New appointment
         </Button>
       </div>
@@ -314,7 +322,7 @@ const CalendarPage = () => {
         <>
           <div className="flex flex-col lg:flex-row gap-4 mb-6">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666666]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B6890]" />
               <Input placeholder="Search by client name, email, phone or code..." value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" data-testid="search-appointments" />
             </div>
@@ -331,32 +339,32 @@ const CalendarPage = () => {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#FAFAFA] border-b border-[#E5E5E5]">
+                  <tr className="bg-[#F7F6FC] border-b border-[#ECEAF5]">
                     {['Client', 'Date & time', 'Service', 'With', 'Status', 'Price'].map((h) => (
-                      <th key={h} className="text-left p-4 text-sm font-medium text-[#666666]">{h}</th>
+                      <th key={h} className="text-left p-4 text-sm font-medium text-[#6B6890]">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={6} className="p-8 text-center text-[#666666]">Loading...</td></tr>
+                    <tr><td colSpan={6} className="p-8 text-center text-[#6B6890]">Loading...</td></tr>
                   ) : listAppointments.length === 0 ? (
-                    <tr><td colSpan={6} className="p-8 text-center text-[#666666]">No appointments found</td></tr>
+                    <tr><td colSpan={6} className="p-8 text-center text-[#6B6890]">No appointments found</td></tr>
                   ) : listAppointments.map((appt) => (
                     <tr key={appt.appointment_id} onClick={() => setSelected(appt)}
-                      className="border-b border-[#E5E5E5] last:border-0 hover:bg-[#FAFAFA] cursor-pointer" data-testid={`appt-row-${appt.appointment_id}`}>
+                      className="border-b border-[#ECEAF5] last:border-0 hover:bg-[#F7F6FC] cursor-pointer" data-testid={`appt-row-${appt.appointment_id}`}>
                       <td className="p-4">
-                        <p className="font-medium text-[#0A0A0A]">{appt.client_name || 'Walk-in'}</p>
-                        <p className="text-sm text-[#666666]">{appt.client_email || appt.client_phone || '-'}</p>
+                        <p className="font-medium text-[#1E1B3A]">{appt.client_name || 'Walk-in'}</p>
+                        <p className="text-sm text-[#6B6890]">{appt.client_email || appt.client_phone || '-'}</p>
                       </td>
                       <td className="p-4 whitespace-nowrap">
-                        <p className="text-[#0A0A0A]">{format(parseLocal(appt.start_time), 'EEE d MMM yyyy')}</p>
-                        <p className="text-sm text-[#666666]">{appt.start_time.slice(11, 16)} - {appt.end_time.slice(11, 16)}</p>
+                        <p className="text-[#1E1B3A]">{format(parseLocal(appt.start_time), 'EEE d MMM yyyy')}</p>
+                        <p className="text-sm text-[#6B6890]">{appt.start_time.slice(11, 16)} - {appt.end_time.slice(11, 16)}</p>
                       </td>
-                      <td className="p-4 text-[#0A0A0A]">{appt.service_name}</td>
-                      <td className="p-4 text-[#0A0A0A]">{appt.staff_name}</td>
+                      <td className="p-4 text-[#1E1B3A]">{appt.service_name}</td>
+                      <td className="p-4 text-[#1E1B3A]">{appt.staff_name}</td>
                       <td className="p-4"><span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${STATUS_STYLES[appt.status] || ''}`}>{STATUS_LABELS[appt.status] || appt.status}</span></td>
-                      <td className="p-4 font-mono text-[#0A0A0A]">{formatMoney(appt.total_price, currency)}</td>
+                      <td className="p-4 font-mono text-[#1E1B3A]">{formatMoney(appt.total_price, currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -370,24 +378,24 @@ const CalendarPage = () => {
       {viewMode === 'day' && (
         <div className="space-y-3 pb-24 md:pb-0" data-testid="day-view">
           {loading ? (
-            <p className="p-8 text-center text-[#666666]">Loading...</p>
+            <p className="p-8 text-center text-[#6B6890]">Loading...</p>
           ) : visibleAppointments.length === 0 ? (
             <div className="card-flat p-8 text-center">
-              <p className="text-[#666666] mb-4">No appointments on {format(currentDate, 'EEEE d MMMM')}</p>
+              <p className="text-[#6B6890] mb-4">No appointments on {format(currentDate, 'EEEE d MMMM')}</p>
               <Button onClick={() => openNew(currentDate)} className="btn-primary"><Plus className="w-4 h-4 mr-1" />Add a booking</Button>
             </div>
           ) : [...visibleAppointments].sort((a, b) => a.start_time.localeCompare(b.start_time)).map((appt) => (
             <button key={appt.appointment_id} onClick={() => setSelected(appt)} data-testid={`day-appt-${appt.appointment_id}`}
-              className={`w-full text-left card-flat !p-4 flex gap-4 items-start border-l-4 ${appt.status === 'cancelled' ? 'opacity-50' : ''}`}
+              className={`w-full text-left card-flat !p-4 flex gap-4 items-start border-l-[6px] transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] ${appt.status === 'cancelled' ? 'opacity-50' : ''}`}
               style={{ borderLeftColor: staffColor(appt.staff_id) }}>
               <div className="w-14 shrink-0">
-                <p className="font-semibold text-[#0A0A0A]">{appt.start_time.slice(11, 16)}</p>
-                <p className="text-xs text-[#666666]">{appt.end_time.slice(11, 16)}</p>
+                <p className="font-bold text-lg leading-tight text-[#1E1B3A]">{appt.start_time.slice(11, 16)}</p>
+                <p className="text-xs text-[#6B6890]">{appt.end_time.slice(11, 16)}</p>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-[#0A0A0A] truncate">{appt.client_name || 'Walk-in'}</p>
-                <p className="text-sm text-[#666666] truncate">{appt.service_name}{staff.length > 1 ? ` · ${appt.staff_name}` : ''}</p>
-                {appt.client_phone && <p className="text-sm text-[#666666]">{appt.client_phone}</p>}
+                <p className="font-medium text-[#1E1B3A] truncate">{appt.client_name || 'Walk-in'}</p>
+                <p className="text-sm text-[#6B6890] truncate">{appt.service_name}{staff.length > 1 ? ` · ${appt.staff_name}` : ''}</p>
+                {appt.client_phone && <p className="text-sm text-[#6B6890]">{appt.client_phone}</p>}
               </div>
               <span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${STATUS_STYLES[appt.status] || ''}`}>{STATUS_LABELS[appt.status] || appt.status}</span>
             </button>
@@ -395,32 +403,25 @@ const CalendarPage = () => {
         </div>
       )}
 
-      {/* Quick "new booking" button on phones */}
-      <button onClick={() => openNew(viewMode === 'day' ? currentDate : undefined)} aria-label="New appointment"
-        className="md:hidden fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-[#0A0A0A] text-white shadow-lg flex items-center justify-center"
-        data-testid="new-appointment-fab">
-        <Plus className="w-7 h-7" />
-      </button>
-
       {/* Week view */}
       {viewMode === 'calendar' && (
         <div className="card-flat overflow-x-auto !p-0">
           <div className="min-w-[900px]">
-            <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-[#E5E5E5]">
+            <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-[#ECEAF5]">
               <div />
               {weekDays.map((day) => {
                 const isToday = isSameDay(day, new Date());
                 return (
-                  <div key={day.toISOString()} className={`p-3 text-center ${isToday ? 'bg-[#FAFAFA]' : ''}`}>
-                    <p className="text-xs text-[#666666] uppercase">{format(day, 'EEE')}</p>
-                    <p className={`text-lg font-semibold ${isToday ? 'text-[#3730A3]' : 'text-[#0A0A0A]'}`}>{format(day, 'd')}</p>
+                  <div key={day.toISOString()} className={`p-3 text-center ${isToday ? 'bg-[#F7F6FC]' : ''}`}>
+                    <p className="text-xs text-[#6B6890] uppercase">{format(day, 'EEE')}</p>
+                    <p className={`mx-auto mt-0.5 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold ${isToday ? 'bg-[#4F46E5] text-white shadow-md shadow-indigo-500/30' : 'text-[#1E1B3A]'}`}>{format(day, 'd')}</p>
                   </div>
                 );
               })}
             </div>
             {HOURS.map((hour) => (
-              <div key={hour} className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-[#E5E5E5] last:border-0">
-                <div className="p-2 text-xs font-mono text-[#666666] border-r border-[#E5E5E5]">{String(hour).padStart(2, '0')}:00</div>
+              <div key={hour} className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-[#ECEAF5] last:border-0">
+                <div className="p-2 text-xs font-mono text-[#6B6890] border-r border-[#ECEAF5]">{String(hour).padStart(2, '0')}:00</div>
                 {weekDays.map((day) => {
                   const key = `${format(day, 'yyyy-MM-dd')}-${hour}`;
                   const cellAppts = apptsForCell(day, hour);
@@ -429,7 +430,7 @@ const CalendarPage = () => {
                       onDragOver={(e) => { e.preventDefault(); if (dropTarget !== key) setDropTarget(key); }}
                       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropTarget(null); }}
                       onDrop={(e) => onDrop(e, day, hour)}
-                      className={`min-h-[56px] p-1 space-y-1 border-r border-[#F0F0F0] last:border-r-0 cursor-pointer hover:bg-[#FAFAFA] ${isSameDay(day, new Date()) ? 'bg-[#FAFAFA]/60' : ''} ${dropTarget === key ? 'bg-[#3730A3]/10 ring-2 ring-[#3730A3] ring-inset' : ''}`}
+                      className={`min-h-[56px] p-1 space-y-1 border-r border-[#F2F1F8] last:border-r-0 cursor-pointer hover:bg-[#F7F6FC] ${isSameDay(day, new Date()) ? 'bg-[#F7F6FC]/60' : ''} ${dropTarget === key ? 'bg-[#4F46E5]/10 ring-2 ring-[#4F46E5] ring-inset' : ''}`}
                       data-testid={`slot-${key}`}>
                       {cellAppts.map((appt) => {
                         const movable = ['confirmed', 'pending', 'pending_approval'].includes(appt.status);
@@ -438,7 +439,7 @@ const CalendarPage = () => {
                             onDragStart={(e) => { setDragged(appt); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', appt.appointment_id); }}
                             onDragEnd={() => { setDragged(null); setDropTarget(null); }}
                             onClick={(e) => { e.stopPropagation(); setSelected(appt); }}
-                            className={`px-1.5 py-1 text-xs text-white rounded-sm ${movable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${appt.status === 'cancelled' ? 'opacity-40 line-through' : ''} ${appt.status === 'pending_approval' ? 'ring-2 ring-orange-400' : ''}`}
+                            className={`px-2 py-1 text-xs text-white rounded-lg shadow-sm ${movable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${appt.status === 'cancelled' ? 'opacity-40 line-through' : ''} ${appt.status === 'pending_approval' ? 'ring-2 ring-orange-400' : ''}`}
                             style={{ backgroundColor: appt.staff_color || staffColor(appt.staff_id) }}
                             title={`${appt.client_name} - ${appt.service_name} (${STATUS_LABELS[appt.status]})`}
                             data-testid={`appt-${appt.appointment_id}`}>
@@ -468,23 +469,23 @@ const CalendarPage = () => {
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-3 mt-2 text-sm">
-                <p className="flex items-center gap-2 text-[#0A0A0A]"><Clock className="w-4 h-4 text-[#666666]" />
+                <p className="flex items-center gap-2 text-[#1E1B3A]"><Clock className="w-4 h-4 text-[#6B6890]" />
                   {format(parseLocal(selected.start_time), 'EEEE d MMMM yyyy')}, {selected.start_time.slice(11, 16)} - {selected.end_time.slice(11, 16)}
                 </p>
-                <p className="flex items-center gap-2 text-[#0A0A0A]"><CalendarIcon className="w-4 h-4 text-[#666666]" />
+                <p className="flex items-center gap-2 text-[#1E1B3A]"><CalendarIcon className="w-4 h-4 text-[#6B6890]" />
                   {selected.service_name} with {selected.staff_name} · {formatMoney(selected.total_price, currency)}
                 </p>
-                {selected.client_email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-[#666666]" /><a className="underline" href={`mailto:${selected.client_email}`}>{selected.client_email}</a></p>}
-                {selected.client_phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-[#666666]" /><a className="underline" href={`tel:${selected.client_phone}`}>{selected.client_phone}</a></p>}
+                {selected.client_email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-[#6B6890]" /><a className="underline" href={`mailto:${selected.client_email}`}>{selected.client_email}</a></p>}
+                {selected.client_phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-[#6B6890]" /><a className="underline" href={`tel:${selected.client_phone}`}>{selected.client_phone}</a></p>}
                 {selected.deposit_paid && <p className="text-sm text-emerald-700" data-testid="appt-deposit">Deposit paid online: {formatMoney(selected.deposit_amount, currency)}{selected.deposit_refunded ? ' (refunded)' : selected.status === 'cancelled' && selected.deposit_kept ? ' (kept: late cancellation)' : ''}</p>}
                 {selected.status === 'pending_payment' && <p className="text-sm text-yellow-800">Waiting for the client to pay the deposit. The slot is released automatically if they don't.</p>}
-                <p className="text-xs text-[#999999]">Booked {selected.source === 'online' ? 'online' : selected.source === 'ai_receptionist' ? 'via AI receptionist' : selected.source === 'api' ? 'via API' : 'by the team'} · Code {selected.appointment_id}</p>
+                <p className="text-xs text-[#9A97B0]">Booked {selected.source === 'online' ? 'online' : selected.source === 'ai_receptionist' ? 'via AI receptionist' : selected.source === 'api' ? 'via API' : 'by the team'} · Code {selected.appointment_id}</p>
                 {selected.cancellation_reason && <p className="p-2 bg-red-50 text-red-700">Cancelled: {selected.cancellation_reason}</p>}
                 {selected.form_responses?.length > 0 && (
-                  <div className="p-3 bg-[#FAFAFA] border border-[#E5E5E5]">
+                  <div className="p-3 bg-[#F7F6FC] border border-[#ECEAF5]">
                     <p className="font-medium mb-2">Form answers</p>
                     {selected.form_responses.map((r) => (
-                      <p key={r.field_id}><span className="text-[#666666]">{r.label}:</span> {String(r.value === true ? 'Yes' : r.value)}</p>
+                      <p key={r.field_id}><span className="text-[#6B6890]">{r.label}:</span> {String(r.value === true ? 'Yes' : r.value)}</p>
                     ))}
                   </div>
                 )}
@@ -497,7 +498,7 @@ const CalendarPage = () => {
               </div>
 
               {reschedule && (
-                <div className="mt-4 p-3 border border-[#E5E5E5] space-y-3">
+                <div className="mt-4 p-3 border border-[#ECEAF5] space-y-3">
                   <p className="font-medium text-sm">Move appointment</p>
                   <div className="grid grid-cols-2 gap-3">
                     <Input type="date" value={reschedule.date} onChange={(e) => setReschedule({ ...reschedule, date: e.target.value })} />
@@ -512,7 +513,7 @@ const CalendarPage = () => {
                     <Button size="sm" className="btn-primary" onClick={saveReschedule}>Save</Button>
                     <Button size="sm" variant="outline" onClick={() => setReschedule(null)}>Close</Button>
                   </div>
-                  <p className="text-xs text-[#666666]">The client will be emailed the new time.</p>
+                  <p className="text-xs text-[#6B6890]">The client will be emailed the new time.</p>
                 </div>
               )}
 
@@ -527,7 +528,7 @@ const CalendarPage = () => {
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-[#E5E5E5]">
+              <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-[#ECEAF5]">
                 {selected.status === 'pending_approval' && (
                   <>
                     <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => approve(selected)} data-testid="approve-btn"><ThumbsUp className="w-4 h-4 mr-1" />Approve</Button>
@@ -598,13 +599,13 @@ const CalendarPage = () => {
             </div>
             {freeSlots && (
               <div>
-                <p className="text-xs text-[#666666] mb-2">{freeSlots.length ? 'Free times (within working hours):' : 'No free time in working hours that day - you can still pick a time manually.'}</p>
+                <p className="text-xs text-[#6B6890] mb-2">{freeSlots.length ? 'Free times (within working hours):' : 'No free time in working hours that day - you can still pick a time manually.'}</p>
                 <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
                   {freeSlots.map((s) => {
                     const t = s.start_time.slice(11, 16);
                     return (
                       <button key={t} type="button" onClick={() => setNewAppt({ ...newAppt, time: t })}
-                        className={`px-3 py-2 sm:px-2 sm:py-1 text-sm sm:text-xs font-mono border rounded ${newAppt.time === t ? 'bg-[#0A0A0A] text-white border-[#0A0A0A]' : 'border-[#E5E5E5] hover:border-[#0A0A0A]'}`}>{t}</button>
+                        className={`px-3 py-2 sm:px-2 sm:py-1 text-sm sm:text-xs font-mono border rounded ${newAppt.time === t ? 'bg-[#4F46E5] text-white border-[#4F46E5]' : 'border-[#ECEAF5] hover:border-[#4F46E5]'}`}>{t}</button>
                     );
                   })}
                 </div>

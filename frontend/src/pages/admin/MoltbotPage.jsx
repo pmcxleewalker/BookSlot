@@ -137,8 +137,8 @@ const MoltbotPage = () => {
         <div className="card-flat mb-6 flex gap-3 items-start">
           <Bot className="w-6 h-6 text-[#4F46E5] flex-shrink-0" />
           <div>
-            <p className="font-semibold text-[#0A0A0A]">The AI receptionist is part of the Growth and Pro plans</p>
-            <p className="text-sm text-[#666666]">It chats with clients on your booking page, answers questions and books, checks or cancels appointments for them. You can still edit your email and SMS templates below.</p>
+            <p className="font-semibold text-[#1E1B3A]">The AI receptionist is part of the Growth and Pro plans</p>
+            <p className="text-sm text-[#6B6890]">It chats with clients on your booking page, answers questions and books, checks or cancels appointments for them. You can still edit your email and SMS templates below.</p>
           </div>
         </div>
       )}
@@ -149,10 +149,10 @@ const MoltbotPage = () => {
         </div>
       )}
 
-      <div className="flex gap-1 mb-6 border-b border-[#E5E5E5] overflow-x-auto">
+      <div className="flex gap-1 mb-6 border-b border-[#ECEAF5] overflow-x-auto">
         {tabs.filter((t) => !t.needsAi || features.ai_assistant).map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setActiveTab(id)} data-testid={`tab-${id}`}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === id ? 'border-[#4F46E5] text-[#4F46E5]' : 'border-transparent text-[#666666] hover:text-[#0A0A0A]'}`}>
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === id ? 'border-[#4F46E5] text-[#4F46E5]' : 'border-transparent text-[#6B6890] hover:text-[#1E1B3A]'}`}>
             <Icon className="w-4 h-4" /> {label}
           </button>
         ))}
@@ -163,19 +163,19 @@ const MoltbotPage = () => {
         <div className="card-flat max-w-2xl">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[#0A0A0A]">Talk to your receptionist</h3>
-              <p className="text-sm text-[#666666]">Chat like a client would. Bookings made here are real - cancel them afterwards if you're just testing.</p>
+              <h3 className="font-semibold text-[#1E1B3A]">Talk to your receptionist</h3>
+              <p className="text-sm text-[#6B6890]">Chat like a client would. Bookings made here are real - cancel them afterwards if you're just testing.</p>
             </div>
             <Button variant="outline" size="sm" onClick={resetChat}><RotateCcw className="w-4 h-4 mr-1" />New chat</Button>
           </div>
-          <div className="h-[380px] overflow-y-auto border border-[#E5E5E5] p-4 space-y-3 bg-[#FAFAFA]">
-            {chat.length === 0 && <p className="text-sm text-[#666666] text-center mt-24">Try "What services do you offer?" or "Can I book a consultation next Tuesday afternoon?"</p>}
+          <div className="h-[380px] overflow-y-auto border border-[#ECEAF5] p-4 space-y-3 bg-[#F7F6FC]">
+            {chat.length === 0 && <p className="text-sm text-[#6B6890] text-center mt-24">Try "What services do you offer?" or "Can I book a consultation next Tuesday afternoon?"</p>}
             {chat.map((m, i) => (
               <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${m.role === 'user' ? 'bg-[#121212]' : 'bg-[#4F46E5]'}`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${m.role === 'user' ? 'bg-[#4F46E5]' : 'bg-[#4F46E5]'}`}>
                   {m.role === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
                 </div>
-                <div className={`max-w-[80%] p-3 rounded-lg text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-[#121212] text-white' : 'bg-white border border-[#E5E5E5]'}`}>
+                <div className={`max-w-[80%] p-3 rounded-lg text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-[#4F46E5] text-white' : 'bg-white border border-[#ECEAF5]'}`}>
                   {m.content}
                   {m.actions?.length > 0 && (
                     <p className="text-xs text-[#999] mt-2">{m.actions.map((a) => `${a.action.replace('_', ' ')}${a.result?.success === false ? ' (failed)' : ''}`).join(' · ')}</p>
@@ -183,7 +183,7 @@ const MoltbotPage = () => {
                 </div>
               </div>
             ))}
-            {sending && <p className="text-xs text-[#666666]">Typing...</p>}
+            {sending && <p className="text-xs text-[#6B6890]">Typing...</p>}
             <div ref={endRef} />
           </div>
           <div className="flex gap-2 mt-3">
@@ -200,25 +200,25 @@ const MoltbotPage = () => {
       {activeTab === 'conversations' && features.ai_assistant && (
         <div className="card-flat">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[#0A0A0A]">Client conversations</h3>
+            <h3 className="font-semibold text-[#1E1B3A]">Client conversations</h3>
             <Button variant="outline" size="sm" onClick={load}><RefreshCw className="w-4 h-4" /></Button>
           </div>
           {conversations.length === 0 ? (
-            <p className="py-8 text-center text-[#666666]">No conversations yet. They appear here when clients use the chat on your booking page.</p>
+            <p className="py-8 text-center text-[#6B6890]">No conversations yet. They appear here when clients use the chat on your booking page.</p>
           ) : (
-            <div className="divide-y divide-[#E5E5E5]">
+            <div className="divide-y divide-[#ECEAF5]">
               {conversations.map((conv) => {
                 const last = conv.messages?.[conv.messages.length - 1];
                 return (
-                  <button key={conv.conversation_id} onClick={() => setSelectedConversation(conv)} className="w-full text-left py-3 hover:bg-[#FAFAFA] px-2 flex items-center justify-between gap-4">
+                  <button key={conv.conversation_id} onClick={() => setSelectedConversation(conv)} className="w-full text-left py-3 hover:bg-[#F7F6FC] px-2 flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-[#0A0A0A] flex items-center gap-2">
+                      <p className="text-sm font-medium text-[#1E1B3A] flex items-center gap-2">
                         {conv.channel === 'sms' ? <Smartphone className="w-4 h-4" /> : conv.channel === 'email' ? <Mail className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
                         {conv.channel === 'whatsapp' ? 'WhatsApp' : conv.channel === 'sms' ? 'Text' : conv.channel === 'email' ? 'Email' : 'Website chat'}
                         <span className="text-[#999] font-normal">·</span>
                         {conv.context?.booked ? 'Booked an appointment' : `${conv.messages?.length || 0} messages`}
                       </p>
-                      <p className="text-sm text-[#666666] truncate">{last?.content}</p>
+                      <p className="text-sm text-[#6B6890] truncate">{last?.content}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="text-xs text-[#999]">{fmtTime(conv.updated_at)}</p>
@@ -237,8 +237,8 @@ const MoltbotPage = () => {
         <div className="card-flat max-w-2xl space-y-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="font-medium text-[#0A0A0A]">Show chat on my booking page</p>
-              <p className="text-sm text-[#666666]">A chat bubble clients can use to ask questions and book</p>
+              <p className="font-medium text-[#1E1B3A]">Show chat on my booking page</p>
+              <p className="text-sm text-[#6B6890]">A chat bubble clients can use to ask questions and book</p>
             </div>
             <Switch checked={aiSettings.ai_chat_enabled} onCheckedChange={(v) => setAiSettings({ ...aiSettings, ai_chat_enabled: v })} disabled={!isManager} />
           </div>
@@ -247,7 +247,7 @@ const MoltbotPage = () => {
             <textarea value={aiSettings.ai_instructions} onChange={(e) => setAiSettings({ ...aiSettings, ai_instructions: e.target.value })}
               rows={6} maxLength={2000} disabled={!isManager} className="mt-1.5 input-swiss resize-y"
               placeholder={'e.g. Parking is free behind the building.\nWe ask clients to arrive 10 minutes early.\nPatch tests are needed 48 hours before any colour service.'} />
-            <p className="text-xs text-[#666666] mt-1">The receptionist already knows your services, prices, team and opening hours.</p>
+            <p className="text-xs text-[#6B6890] mt-1">The receptionist already knows your services, prices, team and opening hours.</p>
           </div>
           {isManager && <Button className="btn-primary" onClick={saveAiSettings}>Save</Button>}
           {status && <p className="text-xs text-[#999]">AI service: {status.enabled ? `${status.provider} (${status.model})` : 'not connected'}</p>}
@@ -257,15 +257,15 @@ const MoltbotPage = () => {
       {/* Templates */}
       {activeTab === 'templates' && (
         <div className="space-y-3 max-w-3xl">
-          <p className="text-sm text-[#666666]">The emails and texts your clients receive. Switch any off, or change the wording.</p>
+          <p className="text-sm text-[#6B6890]">The emails and texts your clients receive. Switch any off, or change the wording.</p>
           {templates.map((tpl) => (
             <div key={tpl.template_id} className="card-flat flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="font-medium text-[#0A0A0A] flex items-center gap-2">
-                  {tpl.type === 'sms' ? <Smartphone className="w-4 h-4 text-[#666666]" /> : <Mail className="w-4 h-4 text-[#666666]" />}
+                <p className="font-medium text-[#1E1B3A] flex items-center gap-2">
+                  {tpl.type === 'sms' ? <Smartphone className="w-4 h-4 text-[#6B6890]" /> : <Mail className="w-4 h-4 text-[#6B6890]" />}
                   {TRIGGER_LABELS[tpl.trigger] || tpl.name} <span className="text-xs text-[#999] uppercase">{tpl.type}</span>
                 </p>
-                {tpl.subject && <p className="text-sm text-[#666666] truncate">Subject: {tpl.subject}</p>}
+                {tpl.subject && <p className="text-sm text-[#6B6890] truncate">Subject: {tpl.subject}</p>}
                 <p className="text-sm text-[#999] line-clamp-2 whitespace-pre-line">{tpl.content}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -284,7 +284,7 @@ const MoltbotPage = () => {
           <div className="space-y-3 mt-2">
             {selectedConversation?.messages?.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : ''}`}>
-                <div className={`max-w-[85%] p-3 rounded-lg text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-[#121212] text-white' : 'bg-[#FAFAFA] border border-[#E5E5E5]'}`}>
+                <div className={`max-w-[85%] p-3 rounded-lg text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-[#4F46E5] text-white' : 'bg-[#F7F6FC] border border-[#ECEAF5]'}`}>
                   {m.content}
                   <p className={`text-[10px] mt-1 ${m.role === 'user' ? 'text-white/60' : 'text-[#999]'}`}>{fmtTime(m.timestamp)}</p>
                 </div>
@@ -313,10 +313,10 @@ const MoltbotPage = () => {
                 <Label className="text-sm font-medium">Message</Label>
                 <textarea value={editingTemplate.content} onChange={(e) => setEditingTemplate({ ...editingTemplate, content: e.target.value })}
                   rows={10} className="mt-1.5 input-swiss font-mono text-sm resize-y" />
-                {editingTemplate.type === 'sms' && <p className="text-xs text-[#666666] mt-1">Keep texts short - long messages cost more.</p>}
+                {editingTemplate.type === 'sms' && <p className="text-xs text-[#6B6890] mt-1">Keep texts short - long messages cost more.</p>}
               </div>
-              <div className="text-xs text-[#666666]">
-                Placeholders: {placeholders.map((p) => <code key={p} className="bg-[#FAFAFA] px-1 mr-1">{`{${p}}`}</code>)}
+              <div className="text-xs text-[#6B6890]">
+                Placeholders: {placeholders.map((p) => <code key={p} className="bg-[#F7F6FC] px-1 mr-1">{`{${p}}`}</code>)}
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={resetTemplate}><RotateCcw className="w-4 h-4 mr-1" />Restore default</Button>

@@ -96,32 +96,32 @@ const HelpPanel = ({ isOpen, onClose }) => {
       />
       
       {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl z-50 flex flex-col lg:absolute lg:right-4 lg:top-16 lg:h-[600px] lg:rounded-lg lg:border lg:border-[#E5E5E5]">
+      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl z-50 flex flex-col lg:absolute lg:right-4 lg:top-16 lg:h-[600px] lg:rounded-lg lg:border lg:border-[#ECEAF5]">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E5E5]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#ECEAF5]">
           <div className="flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-[#3730A3]" />
-            <h2 className="font-semibold text-[#0A0A0A]">Help Center</h2>
+            <HelpCircle className="w-5 h-5 text-[#4F46E5]" />
+            <h2 className="font-semibold text-[#1E1B3A]">Help Center</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-[#FAFAFA] rounded transition-colors"
+            className="p-1 hover:bg-[#F7F6FC] rounded transition-colors"
             data-testid="close-help"
           >
-            <X className="w-5 h-5 text-[#666666]" />
+            <X className="w-5 h-5 text-[#6B6890]" />
           </button>
         </div>
 
         {/* Search */}
-        <div className="px-4 py-3 border-b border-[#E5E5E5]">
+        <div className="px-4 py-3 border-b border-[#ECEAF5]">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666666]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B6890]" />
             <input
               type="text"
               placeholder="Search help topics..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[#E5E5E5] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/20 focus:border-[#3730A3]"
+              className="w-full pl-10 pr-4 py-2 border border-[#ECEAF5] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5]"
               data-testid="help-search"
             />
           </div>
@@ -134,32 +134,32 @@ const HelpPanel = ({ isOpen, onClose }) => {
             <div className="p-4">
               <button
                 onClick={() => setSelectedTopic(null)}
-                className="flex items-center gap-1 text-sm text-[#666666] hover:text-[#0A0A0A] mb-4"
+                className="flex items-center gap-1 text-sm text-[#6B6890] hover:text-[#1E1B3A] mb-4"
               >
                 <ChevronRight className="w-4 h-4 rotate-180" />
                 Back to topics
               </button>
               
               <div className="flex items-center gap-3 mb-4">
-                {React.createElement(selectedTopic.icon, { className: 'w-6 h-6 text-[#3730A3]' })}
-                <h3 className="font-semibold text-lg text-[#0A0A0A]">{selectedTopic.title}</h3>
+                {React.createElement(selectedTopic.icon, { className: 'w-6 h-6 text-[#4F46E5]' })}
+                <h3 className="font-semibold text-lg text-[#1E1B3A]">{selectedTopic.title}</h3>
               </div>
 
               <div className="space-y-3">
                 {selectedTopic.content.map((item, idx) => (
                   <div
                     key={idx}
-                    className="border border-[#E5E5E5] rounded-lg overflow-hidden"
+                    className="border border-[#ECEAF5] rounded-lg overflow-hidden"
                   >
                     <button
                       onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
-                      className="w-full flex items-center justify-between p-3 text-left hover:bg-[#FAFAFA] transition-colors"
+                      className="w-full flex items-center justify-between p-3 text-left hover:bg-[#F7F6FC] transition-colors"
                     >
-                      <span className="text-sm font-medium text-[#0A0A0A] pr-2">{item.q}</span>
-                      <ChevronRight className={`w-4 h-4 text-[#666666] flex-shrink-0 transition-transform ${expandedFaq === idx ? 'rotate-90' : ''}`} />
+                      <span className="text-sm font-medium text-[#1E1B3A] pr-2">{item.q}</span>
+                      <ChevronRight className={`w-4 h-4 text-[#6B6890] flex-shrink-0 transition-transform ${expandedFaq === idx ? 'rotate-90' : ''}`} />
                     </button>
                     {expandedFaq === idx && (
-                      <div className="px-3 pb-3 text-sm text-[#666666] border-t border-[#E5E5E5] pt-3 bg-[#FAFAFA]">
+                      <div className="px-3 pb-3 text-sm text-[#6B6890] border-t border-[#ECEAF5] pt-3 bg-[#F7F6FC]">
                         {item.a}
                       </div>
                     )}
@@ -176,23 +176,23 @@ const HelpPanel = ({ isOpen, onClose }) => {
                   <button
                     key={topic.id}
                     onClick={() => setSelectedTopic(topic)}
-                    className="w-full flex items-center gap-3 p-3 border border-[#E5E5E5] rounded-lg hover:border-[#3730A3] hover:bg-[#FAFAFA] transition-colors text-left group"
+                    className="w-full flex items-center gap-3 p-3 border border-[#ECEAF5] rounded-lg hover:border-[#4F46E5] hover:bg-[#F7F6FC] transition-colors text-left group"
                     data-testid={`help-topic-${topic.id}`}
                   >
-                    <div className="w-10 h-10 bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg flex items-center justify-center group-hover:bg-white">
-                      <Icon className="w-5 h-5 text-[#666666] group-hover:text-[#3730A3]" />
+                    <div className="w-10 h-10 bg-[#F7F6FC] border border-[#ECEAF5] rounded-lg flex items-center justify-center group-hover:bg-white">
+                      <Icon className="w-5 h-5 text-[#6B6890] group-hover:text-[#4F46E5]" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-[#0A0A0A]">{topic.title}</p>
-                      <p className="text-xs text-[#666666]">{topic.description}</p>
+                      <p className="font-medium text-[#1E1B3A]">{topic.title}</p>
+                      <p className="text-xs text-[#6B6890]">{topic.description}</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-[#666666] group-hover:text-[#3730A3]" />
+                    <ChevronRight className="w-4 h-4 text-[#6B6890] group-hover:text-[#4F46E5]" />
                   </button>
                 );
               })}
               
               {filteredTopics.length === 0 && (
-                <div className="text-center py-8 text-[#666666]">
+                <div className="text-center py-8 text-[#6B6890]">
                   <HelpCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">No results found</p>
                 </div>
@@ -202,8 +202,8 @@ const HelpPanel = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-[#E5E5E5] bg-[#FAFAFA]">
-          <p className="text-xs text-center text-[#666666]">
+        <div className="px-4 py-3 border-t border-[#ECEAF5] bg-[#F7F6FC]">
+          <p className="text-xs text-center text-[#6B6890]">
             Need more help? Contact support@bookslot.io
           </p>
         </div>
@@ -224,7 +224,7 @@ export const HelpTooltip = ({ text, children }) => {
         className="inline-flex items-center gap-1 cursor-help"
       >
         {children}
-        <HelpCircle className="w-3.5 h-3.5 text-[#999999] hover:text-[#666666]" />
+        <HelpCircle className="w-3.5 h-3.5 text-[#9A97B0] hover:text-[#6B6890]" />
       </div>
       
       {showTooltip && (

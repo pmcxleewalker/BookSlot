@@ -37,12 +37,12 @@ const Card = ({ icon: Icon, title, subtitle, children, right }) => (
   <div className="card-flat mb-6">
     <div className="flex items-start justify-between gap-4 mb-6">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center flex-shrink-0">
-          <Icon className="w-5 h-5 text-[#666666]" />
+        <div className="w-10 h-10 bg-[#F7F6FC] border border-[#ECEAF5] flex items-center justify-center flex-shrink-0">
+          <Icon className="w-5 h-5 text-[#6B6890]" />
         </div>
         <div>
-          <h3 className="font-semibold text-[#0A0A0A]">{title}</h3>
-          {subtitle && <p className="text-sm text-[#666666]">{subtitle}</p>}
+          <h3 className="font-semibold text-[#1E1B3A]">{title}</h3>
+          {subtitle && <p className="text-sm text-[#6B6890]">{subtitle}</p>}
         </div>
       </div>
       {right}
@@ -52,10 +52,10 @@ const Card = ({ icon: Icon, title, subtitle, children, right }) => (
 );
 
 const ToggleRow = ({ title, description, checked, onChange, testId, disabled }) => (
-  <div className="flex items-center justify-between gap-4 py-3 border-b border-[#E5E5E5] last:border-0">
+  <div className="flex items-center justify-between gap-4 py-3 border-b border-[#ECEAF5] last:border-0">
     <div>
-      <p className="font-medium text-[#0A0A0A]">{title}</p>
-      {description && <p className="text-sm text-[#666666]">{description}</p>}
+      <p className="font-medium text-[#1E1B3A]">{title}</p>
+      {description && <p className="text-sm text-[#6B6890]">{description}</p>}
     </div>
     <Switch checked={!!checked} onCheckedChange={onChange} data-testid={testId} disabled={disabled} />
   </div>
@@ -324,10 +324,10 @@ const SettingsPage = () => {
 
   return (
     <TenantLayout title="Settings">
-      <div className="flex gap-1 mb-6 border-b border-[#E5E5E5] overflow-x-auto">
+      <div className="flex gap-1 mb-6 border-b border-[#ECEAF5] overflow-x-auto">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setActiveTab(id)} data-testid={`tab-${id}`}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${tab === id ? 'border-[#3730A3] text-[#3730A3]' : 'border-transparent text-[#666666] hover:text-[#0A0A0A]'}`}>
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${tab === id ? 'border-[#4F46E5] text-[#4F46E5]' : 'border-transparent text-[#6B6890] hover:text-[#1E1B3A]'}`}>
             <Icon className="w-4 h-4" /> {label}
           </button>
         ))}
@@ -371,22 +371,22 @@ const SettingsPage = () => {
 
             <Card icon={LinkIcon} title="Booking link" subtitle="The web address clients use to book you">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-[#666666] whitespace-nowrap">{window.location.host}/book/</span>
+                <span className="text-sm text-[#6B6890] whitespace-nowrap">{window.location.host}/book/</span>
                 <Input value={formData.booking_url_slug} onChange={(e) => setFormData({ ...formData, booking_url_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} data-testid="setting-slug" />
                 <Button variant="outline" size="sm" onClick={() => copy(bookingUrl, 'Booking link copied')}><Copy className="w-4 h-4" /></Button>
               </div>
-              <p className="text-xs text-[#666666] mt-2">Changing this breaks the old link - update it anywhere you've shared it.</p>
+              <p className="text-xs text-[#6B6890] mt-2">Changing this breaks the old link - update it anywhere you've shared it.</p>
             </Card>
 
             <Card icon={Shield} title="Subscription" subtitle="Your current plan">
-              <div className="flex items-center justify-between p-4 bg-[#FAFAFA] border border-[#E5E5E5]">
+              <div className="flex items-center justify-between p-4 bg-[#F7F6FC] border border-[#ECEAF5]">
                 <div>
-                  <p className="font-semibold text-[#0A0A0A] capitalize">{tenant?.plan || 'starter'} plan</p>
-                  <p className="text-sm text-[#666666]">
+                  <p className="font-semibold text-[#1E1B3A] capitalize">{tenant?.plan || 'starter'} plan</p>
+                  <p className="text-sm text-[#6B6890]">
                     {formatMoney(planPrice, 'EUR')}/month{notificationSettings?.sms_addon_enabled ? ` + ${formatMoney(notificationSettings.sms_addon_price, 'EUR')}/month SMS` : ''}
                   </p>
                 </div>
-                <a href="/pricing" target="_blank" rel="noreferrer" className="text-sm underline text-[#666666]">Compare plans</a>
+                <a href="/pricing" target="_blank" rel="noreferrer" className="text-sm underline text-[#6B6890]">Compare plans</a>
               </div>
             </Card>
 
@@ -439,7 +439,7 @@ const SettingsPage = () => {
               <select value={booking.approval_threshold_minutes ?? 0} onChange={(e) => setBooking({ ...booking, approval_threshold_minutes: Number(e.target.value) })} className="input-swiss" data-testid="setting-approval">
                 {[[0, 'Off - confirm all bookings automatically'], [60, '60 minutes or longer'], [90, '90 minutes or longer'], [120, '2 hours or longer'], [180, '3 hours or longer'], [240, '4 hours or longer']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
-              <p className="text-xs text-[#666666] mt-2">Requests appear in your notifications and on the calendar with an orange outline.</p>
+              <p className="text-xs text-[#6B6890] mt-2">Requests appear in your notifications and on the calendar with an orange outline.</p>
             </Card>
 
             <Button onClick={saveBooking} disabled={savingBooking} className="btn-primary w-full" data-testid="save-booking-settings">
@@ -457,25 +457,25 @@ const SettingsPage = () => {
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                   {Object.values(themes).map((t) => (
                     <button key={t.id} onClick={() => setBranding({ ...branding, theme: t.id })} data-testid={`theme-${t.id}`}
-                      className={`p-4 border-2 rounded-lg text-left transition-all ${branding.theme === t.id ? 'border-[#3730A3] ring-2 ring-[#3730A3]/20' : 'border-[#E5E5E5] hover:border-[#999]'}`}>
+                      className={`p-4 border-2 rounded-lg text-left transition-all ${branding.theme === t.id ? 'border-[#4F46E5] ring-2 ring-[#4F46E5]/20' : 'border-[#ECEAF5] hover:border-[#999]'}`}>
                       <div className="flex gap-1 mb-2">
                         {[t.colors.background, t.colors.accent, t.colors.text].map((col) => (
-                          <div key={col} className="w-6 h-6 rounded-full border border-[#E5E5E5]" style={{ backgroundColor: col }} />
+                          <div key={col} className="w-6 h-6 rounded-full border border-[#ECEAF5]" style={{ backgroundColor: col }} />
                         ))}
                       </div>
-                      <p className="font-medium text-sm text-[#0A0A0A]">{t.name}</p>
-                      <p className="text-xs text-[#666666]">{t.description}</p>
+                      <p className="font-medium text-sm text-[#1E1B3A]">{t.name}</p>
+                      <p className="text-xs text-[#6B6890]">{t.description}</p>
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-[#666666] mt-2">The theme is applied to your dashboard and your public booking page after you save.</p>
+                <p className="text-xs text-[#6B6890] mt-2">The theme is applied to your dashboard and your public booking page after you save.</p>
               </div>
 
               <div>
                 <Label className="text-sm font-medium">Logo</Label>
                 <div className="mt-1.5 flex items-start gap-4">
-                  <div className="w-20 h-20 border border-[#E5E5E5] rounded flex items-center justify-center overflow-hidden bg-[#FAFAFA]">
-                    {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <Image className="w-8 h-8 text-[#E5E5E5]" />}
+                  <div className="w-20 h-20 border border-[#ECEAF5] rounded flex items-center justify-center overflow-hidden bg-[#F7F6FC]">
+                    {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <Image className="w-8 h-8 text-[#D6D3E8]" />}
                   </div>
                   <div className="flex-1">
                     <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleFileUpload} className="hidden" />
@@ -485,7 +485,7 @@ const SettingsPage = () => {
                       </Button>
                       {logoUrl && <Button variant="ghost" onClick={removeLogo} className="text-red-500">Remove</Button>}
                     </div>
-                    <p className="text-xs text-[#666666]">JPG, PNG, GIF or WebP, up to 5MB. Saved straight away.</p>
+                    <p className="text-xs text-[#6B6890]">JPG, PNG, GIF or WebP, up to 5MB. Saved straight away.</p>
                   </div>
                 </div>
               </div>
@@ -495,7 +495,7 @@ const SettingsPage = () => {
                   <div key={k}>
                     <Label className="text-sm font-medium">{label}</Label>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <input type="color" value={branding[k]} onChange={(e) => setBranding({ ...branding, [k]: e.target.value })} className="w-10 h-10 rounded border border-[#E5E5E5] cursor-pointer" />
+                      <input type="color" value={branding[k]} onChange={(e) => setBranding({ ...branding, [k]: e.target.value })} className="w-10 h-10 rounded border border-[#ECEAF5] cursor-pointer" />
                       <Input value={branding[k]} onChange={(e) => setBranding({ ...branding, [k]: e.target.value })} className="flex-1 font-mono text-sm" />
                     </div>
                   </div>
@@ -514,7 +514,7 @@ const SettingsPage = () => {
         {tab === 'notifications' && (
           <Card icon={Bell} title="Client notifications" subtitle="Confirmations, reminders and cancellations">
             {!notificationSettings ? (
-              <div className="text-center py-4 text-[#666666]">Loading...</div>
+              <div className="text-center py-4 text-[#6B6890]">Loading...</div>
             ) : (
               <div className="space-y-4" data-testid="notification-settings">
                 {!notificationSettings.email_configured && (
@@ -523,37 +523,37 @@ const SettingsPage = () => {
                     Emails aren't being delivered yet: the platform's email provider (Resend) hasn't been set up. Messages are logged but not sent.
                   </div>
                 )}
-                <div className="flex items-center justify-between py-3 border-b border-[#E5E5E5]">
+                <div className="flex items-center justify-between py-3 border-b border-[#ECEAF5]">
                   <div className="flex items-center gap-3">
-                    <Mail className="w-5 h-5 text-[#666666]" />
+                    <Mail className="w-5 h-5 text-[#6B6890]" />
                     <div>
-                      <p className="font-medium text-[#0A0A0A]">Email confirmations & reminders</p>
-                      <p className="text-sm text-[#666666]">Included in every plan</p>
+                      <p className="font-medium text-[#1E1B3A]">Email confirmations & reminders</p>
+                      <p className="text-sm text-[#6B6890]">Included in every plan</p>
                     </div>
                   </div>
                   <Switch checked={notificationSettings.email_reminders_enabled} onCheckedChange={(v) => updateNotificationSetting('email_reminders_enabled', v)} data-testid="email-reminders-toggle" />
                 </div>
 
-                <div className="flex items-center justify-between py-3 border-b border-[#E5E5E5]">
+                <div className="flex items-center justify-between py-3 border-b border-[#ECEAF5]">
                   <div>
-                    <p className="font-medium text-[#0A0A0A]">Reminder timing</p>
-                    <p className="text-sm text-[#666666]">How long before the appointment</p>
+                    <p className="font-medium text-[#1E1B3A]">Reminder timing</p>
+                    <p className="text-sm text-[#6B6890]">How long before the appointment</p>
                   </div>
                   <select value={notificationSettings.reminder_hours_before || 24} onChange={(e) => updateNotificationSetting('reminder_hours_before', parseInt(e.target.value, 10))} className="input-swiss !w-36">
                     {[1, 2, 4, 12, 24, 48, 72].map((h) => <option key={h} value={h}>{h} hour{h > 1 ? 's' : ''}</option>)}
                   </select>
                 </div>
 
-                <div className="p-4 bg-[#FAFAFA] border border-[#E5E5E5]">
+                <div className="p-4 bg-[#F7F6FC] border border-[#ECEAF5]">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <Smartphone className="w-5 h-5 text-[#3730A3]" />
+                      <Smartphone className="w-5 h-5 text-[#4F46E5]" />
                       <div>
-                        <p className="font-medium text-[#0A0A0A]">SMS add-on</p>
-                        <p className="text-sm text-[#666666]">Text message confirmations & reminders</p>
+                        <p className="font-medium text-[#1E1B3A]">SMS add-on</p>
+                        <p className="text-sm text-[#6B6890]">Text message confirmations & reminders</p>
                       </div>
                     </div>
-                    <p className="font-semibold text-[#3730A3]">+{formatMoney(notificationSettings.sms_addon_price, 'EUR')}/mo</p>
+                    <p className="font-semibold text-[#4F46E5]">+{formatMoney(notificationSettings.sms_addon_price, 'EUR')}/mo</p>
                   </div>
                   {!notificationSettings.sms_configured && <p className="text-xs text-amber-700 mb-2">SMS sending isn't set up on the platform yet (Twilio).</p>}
                   {notificationSettings.sms_addon_enabled ? (
@@ -566,7 +566,7 @@ const SettingsPage = () => {
                     <Button onClick={toggleSMSAddon} className="btn-primary w-full mt-2"><MessageSquare className="w-4 h-4 mr-2" />Enable SMS add-on</Button>
                   )}
                 </div>
-                <p className="text-xs text-[#666666]">Edit the wording of these messages under AI Receptionist → Message templates.</p>
+                <p className="text-xs text-[#6B6890]">Edit the wording of these messages under AI Receptionist → Message templates.</p>
               </div>
             )}
           </Card>
@@ -576,16 +576,16 @@ const SettingsPage = () => {
         {tab === 'payments' && (
           <>
             <Card icon={CreditCard} title="Online deposits" subtitle="Clients pay a deposit when they book, straight into your own Stripe account">
-              {!pay ? <p className="text-sm text-[#666666]">Loading...</p> : !pay.platform_ready ? (
-                <p className="text-sm text-[#666666]" data-testid="payments-unavailable">Online payments aren't switched on for BookSlot yet. Your BookSlot provider can enable them.</p>
+              {!pay ? <p className="text-sm text-[#6B6890]">Loading...</p> : !pay.platform_ready ? (
+                <p className="text-sm text-[#6B6890]" data-testid="payments-unavailable">Online payments aren't switched on for BookSlot yet. Your BookSlot provider can enable them.</p>
               ) : !pay.connected ? (
                 <div data-testid="stripe-not-connected">
-                  <ol className="text-sm text-[#666666] space-y-1.5 mb-5 list-decimal pl-5">
-                    <li>Tap <span className="font-medium text-[#0A0A0A]">Connect Stripe</span>.</li>
+                  <ol className="text-sm text-[#6B6890] space-y-1.5 mb-5 list-decimal pl-5">
+                    <li>Tap <span className="font-medium text-[#1E1B3A]">Connect Stripe</span>.</li>
                     <li>Log in to your existing Stripe account, or create one (about 5 minutes).</li>
-                    <li>Tap <span className="font-medium text-[#0A0A0A]">Allow</span> and you'll come straight back here.</li>
+                    <li>Tap <span className="font-medium text-[#1E1B3A]">Allow</span> and you'll come straight back here.</li>
                   </ol>
-                  <Button onClick={connectStripe} disabled={payBusy} className="bg-[#635BFF] hover:bg-[#5249e6] text-white w-full sm:w-auto" data-testid="connect-stripe">
+                  <Button onClick={connectStripe} disabled={payBusy} className="bg-[#635BFF] hover:bg-[#4338CA] text-white w-full sm:w-auto" data-testid="connect-stripe">
                     {payBusy ? 'Opening Stripe...' : 'Connect Stripe'}
                   </Button>
                   <p className="text-xs text-[#999] mt-3">Deposits go directly to you. BookSlot never holds your money, and you can disconnect at any time. Stripe charges its usual card fee.</p>
@@ -598,9 +598,9 @@ const SettingsPage = () => {
                   </div>
                   <ToggleRow title="Take deposits online" description="Clients pay when they book any service with a deposit set (Services → edit → Require deposit). Their slot is held for 30 minutes while they pay."
                     checked={pay.settings.deposits_enabled} onChange={(v) => savePaySettings({ deposits_enabled: v })} testId="deposits-toggle" />
-                  <div className="py-3 border-b border-[#E5E5E5]">
-                    <p className="font-medium text-[#0A0A0A]">Refund if the client cancels</p>
-                    <p className="text-sm text-[#666666] mb-2">If you cancel, the deposit is always refunded.</p>
+                  <div className="py-3 border-b border-[#ECEAF5]">
+                    <p className="font-medium text-[#1E1B3A]">Refund if the client cancels</p>
+                    <p className="text-sm text-[#6B6890] mb-2">If you cancel, the deposit is always refunded.</p>
                     <select className="input-swiss !w-auto" value={pay.settings.refund_hours} data-testid="refund-hours"
                       onChange={(e) => savePaySettings({ refund_hours: Number(e.target.value) })}>
                       {[[0, 'Always refund'], [12, 'At least 12 hours before'], [24, 'At least 24 hours before'], [48, 'At least 48 hours before'], [72, 'At least 3 days before'], [168, 'At least 7 days before'], [336, 'At least 14 days before']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -625,9 +625,9 @@ const SettingsPage = () => {
                   { icon: Bot, name: 'AI receptionist', on: integration?.ai?.configured, extra: !features.ai_assistant ? 'Growth plan or higher' : null },
                   { icon: Globe, name: 'Online booking page', on: true },
                 ].map(({ icon: Icon, name, on, extra }) => (
-                  <div key={name} className="flex items-center justify-between p-3 border border-[#E5E5E5]">
-                    <div className="flex items-center gap-3"><Icon className="w-5 h-5 text-[#666666]" /><span className="text-[#0A0A0A]">{name}</span></div>
-                    <span className={`text-xs px-2 py-0.5 ${on && !extra ? 'bg-emerald-50 text-emerald-700' : 'bg-[#FAFAFA] text-[#666666]'}`}>
+                  <div key={name} className="flex items-center justify-between p-3 border border-[#ECEAF5]">
+                    <div className="flex items-center gap-3"><Icon className="w-5 h-5 text-[#6B6890]" /><span className="text-[#1E1B3A]">{name}</span></div>
+                    <span className={`text-xs px-2 py-0.5 ${on && !extra ? 'bg-emerald-50 text-emerald-700' : 'bg-[#F7F6FC] text-[#6B6890]'}`}>
                       {extra || (on ? 'Active' : 'Not configured')}
                     </span>
                   </div>
@@ -636,7 +636,7 @@ const SettingsPage = () => {
               <div className="mt-4">
                 <Label className="text-sm font-medium">Add booking to your own website</Label>
                 <div className="flex gap-2 mt-1.5">
-                  <code className="flex-1 text-xs p-2 bg-[#FAFAFA] border border-[#E5E5E5] overflow-x-auto whitespace-nowrap">{`<a href="${bookingUrl}">Book now</a>`}</code>
+                  <code className="flex-1 text-xs p-2 bg-[#F7F6FC] border border-[#ECEAF5] overflow-x-auto whitespace-nowrap">{`<a href="${bookingUrl}">Book now</a>`}</code>
                   <Button variant="outline" size="sm" onClick={() => copy(`<a href="${bookingUrl}">Book now</a>`, 'Snippet copied')}><Copy className="w-4 h-4" /></Button>
                 </div>
               </div>
@@ -644,7 +644,7 @@ const SettingsPage = () => {
 
             <Card icon={KeyRound} title="API access" subtitle="Connect phone bots, Zapier or your own systems">
               {!features.api_webhooks ? (
-                <p className="text-sm text-[#666666]">API access and webhooks are part of the Pro plan.</p>
+                <p className="text-sm text-[#6B6890]">API access and webhooks are part of the Pro plan.</p>
               ) : (
                 <div className="space-y-3 text-sm">
                   {apiKey ? (
@@ -656,15 +656,15 @@ const SettingsPage = () => {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-[#666666]">{tenant?.has_api_key ? 'An API key is active. For security it can only be viewed when created.' : 'No API key yet.'}</p>
+                    <p className="text-[#6B6890]">{tenant?.has_api_key ? 'An API key is active. For security it can only be viewed when created.' : 'No API key yet.'}</p>
                   )}
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={generateKey} data-testid="generate-api-key">{tenant?.has_api_key ? 'Replace key' : 'Create API key'}</Button>
                     {tenant?.has_api_key && <Button variant="ghost" size="sm" className="text-red-500" onClick={revokeKey}>Revoke</Button>}
                   </div>
-                  <div className="pt-3 border-t border-[#E5E5E5] text-[#666666]">
-                    <p className="mb-1">Business ID: <code className="bg-[#FAFAFA] px-1">{tenant?.tenant_id}</code> <button onClick={() => copy(tenant?.tenant_id)} className="underline text-xs">copy</button></p>
-                    <p className="mb-2">Send the key in an <code className="bg-[#FAFAFA] px-1">X-API-Key</code> header:</p>
+                  <div className="pt-3 border-t border-[#ECEAF5] text-[#6B6890]">
+                    <p className="mb-1">Business ID: <code className="bg-[#F7F6FC] px-1">{tenant?.tenant_id}</code> <button onClick={() => copy(tenant?.tenant_id)} className="underline text-xs">copy</button></p>
+                    <p className="mb-2">Send the key in an <code className="bg-[#F7F6FC] px-1">X-API-Key</code> header:</p>
                     <ul className="space-y-1 font-mono text-xs">
                       <li>GET /api/receptionist/{'{business_id}'}/info</li>
                       <li>GET /api/receptionist/{'{business_id}'}/availability?service_id=&date=YYYY-MM-DD</li>
@@ -681,15 +681,15 @@ const SettingsPage = () => {
             <Card icon={Webhook} title="Webhooks" subtitle="Get notified at your own URL when bookings change"
               right={features.api_webhooks && <Button onClick={() => setShowWebhookDialog(true)} className="btn-primary flex items-center gap-2" size="sm"><Plus className="w-4 h-4" />Add</Button>}>
               {!features.api_webhooks ? (
-                <p className="text-sm text-[#666666]">Webhooks are part of the Pro plan.</p>
+                <p className="text-sm text-[#6B6890]">Webhooks are part of the Pro plan.</p>
               ) : webhooks.length === 0 ? (
-                <p className="py-4 text-center text-[#666666] text-sm">No webhooks yet</p>
+                <p className="py-4 text-center text-[#6B6890] text-sm">No webhooks yet</p>
               ) : (
                 <div className="space-y-3">
                   {webhooks.map((hook) => (
-                    <div key={hook.webhook_id} className="p-4 bg-[#FAFAFA] border border-[#E5E5E5] space-y-2">
+                    <div key={hook.webhook_id} className="p-4 bg-[#F7F6FC] border border-[#ECEAF5] space-y-2">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="font-mono text-sm text-[#0A0A0A] break-all">{hook.url}</p>
+                        <p className="font-mono text-sm text-[#1E1B3A] break-all">{hook.url}</p>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <Switch checked={hook.is_active} onCheckedChange={() => toggleWebhook(hook)} />
                           <Button variant="ghost" size="sm" onClick={() => testWebhook(hook.webhook_id)} title="Send test"><Send className="w-4 h-4" /></Button>
@@ -697,11 +697,11 @@ const SettingsPage = () => {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {hook.events?.map((ev) => <span key={ev} className="text-xs bg-white px-2 py-0.5 border border-[#E5E5E5]">{ev}</span>)}
+                        {hook.events?.map((ev) => <span key={ev} className="text-xs bg-white px-2 py-0.5 border border-[#ECEAF5]">{ev}</span>)}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-[#666666]">
+                      <div className="flex items-center gap-2 text-xs text-[#6B6890]">
                         Signing secret:
-                        <code className="bg-white px-1 border border-[#E5E5E5]">{revealed[hook.webhook_id] ? hook.secret : '••••••••••••'}</code>
+                        <code className="bg-white px-1 border border-[#ECEAF5]">{revealed[hook.webhook_id] ? hook.secret : '••••••••••••'}</code>
                         <button onClick={() => setRevealed({ ...revealed, [hook.webhook_id]: !revealed[hook.webhook_id] })}>
                           {revealed[hook.webhook_id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                         </button>
@@ -709,7 +709,7 @@ const SettingsPage = () => {
                       </div>
                     </div>
                   ))}
-                  <p className="text-xs text-[#666666]">Each request has an <code>X-BookSlot-Signature: sha256=…</code> header: an HMAC-SHA256 of the raw body using the signing secret.</p>
+                  <p className="text-xs text-[#6B6890]">Each request has an <code>X-BookSlot-Signature: sha256=…</code> header: an HMAC-SHA256 of the raw body using the signing secret.</p>
                 </div>
               )}
             </Card>
@@ -730,7 +730,7 @@ const SettingsPage = () => {
                           <Checkbox checked={newWebhook.events.includes(ev.value)} onCheckedChange={(checked) => setNewWebhook({
                             ...newWebhook, events: checked ? [...newWebhook.events, ev.value] : newWebhook.events.filter((x) => x !== ev.value),
                           })} />
-                          <span className="text-sm text-[#0A0A0A]">{ev.label}</span>
+                          <span className="text-sm text-[#1E1B3A]">{ev.label}</span>
                         </label>
                       ))}
                     </div>
@@ -749,7 +749,7 @@ const SettingsPage = () => {
         {tab === 'account' && (
           <Card icon={Lock} title="My account" subtitle={user?.email}>
             <div className="space-y-4">
-              <p className="text-sm text-[#666666]">Change your password. If you sign in with Google only, leave "current password" empty to set one.</p>
+              <p className="text-sm text-[#6B6890]">Change your password. If you sign in with Google only, leave "current password" empty to set one.</p>
               <div>
                 <Label className="text-sm font-medium">Current password</Label>
                 <Input type="password" value={passwords.current_password} onChange={(e) => setPasswords({ ...passwords, current_password: e.target.value })} className="mt-1.5" autoComplete="current-password" />
