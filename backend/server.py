@@ -50,11 +50,18 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # JWT Configuration
-JWT_SECRET = os.environ.get('JWT_SECRET', 'bookslot-secret-key-change-in-production')
+JWT_SECRET = os.environ.get('JWT_SECRET', '')
+if not JWT_SECRET:
+    # Never fall back to a known default: anyone could forge login tokens.
+    # A random per-process secret is safe; users just get logged out on restart.
+    import secrets as _secrets
+    JWT_SECRET = _secrets.token_urlsafe(48)
+    logging.getLogger(__name__).warning("JWT_SECRET not set - using a random secret. Set JWT_SECRET in the environment.")
 
 # Email Configuration (Resend)
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
+PUBLIC_SITE_URL = os.environ.get('PUBLIC_SITE_URL', 'https://bookslot1.com').rstrip('/')
 if RESEND_AVAILABLE and RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
 
@@ -2096,6 +2103,53 @@ async def get_booking_by_code(confirmation_code: str):
         "staff_name": staff.get("name") if staff else None
     }
 
+# ============== DEMO REQUESTS (marketing site) ==============
+
+DEMO_NOTIFY_EMAIL = os.environ.get('DEMO_NOTIFY_EMAIL', '')
+
+class DemoRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    phone: Optional[str] = Field(default=None, max_length=40)
+    business_name: str = Field(min_length=1, max_length=160)
+    business_type: Optional[str] = Field(default=None, max_length=60)
+    message: Optional[str] = Field(default=None, max_length=2000)
+    website: Optional[str] = None  # honeypot - real people leave this empty
+
+@api_router.post("/public/demo-request")
+async def create_demo_request(data: DemoRequest, request: Request):
+    """Marketing-site demo request. Stored, and emailed to DEMO_NOTIFY_EMAIL if set."""
+    if data.website:  # bot filled the hidden field
+        return {"ok": True}
+
+    ip = request.client.host if request.client else None
+    since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    if ip and await db.demo_requests.count_documents({"ip": ip, "created_at": {"$gte": since}}) >= 5:
+        raise HTTPException(status_code=429, detail="Too many requests - please try again later")
+
+    doc = {
+        "request_id": f"demo_{uuid.uuid4().hex[:12]}",
+        **data.model_dump(exclude={"website"}),
+        "ip": ip,
+        "status": "new",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.demo_requests.insert_one({**doc})
+
+    if DEMO_NOTIFY_EMAIL:
+        body = (
+            f"New BookSlot demo request\n\n"
+            f"Name: {data.name}\nEmail: {data.email}\nPhone: {data.phone or '-'}\n"
+            f"Business: {data.business_name} ({data.business_type or '-'})\n\n"
+            f"Message:\n{data.message or '-'}"
+        )
+        try:
+            await send_email_notification("platform", DEMO_NOTIFY_EMAIL, f"Demo request: {data.business_name}", body, "demo_request")
+        except Exception as e:
+            logger.error(f"Demo request email failed: {e}")
+
+    return {"ok": True}
+
 @api_router.post("/public/booking/manage/{confirmation_code}/cancel")
 async def cancel_booking_by_code(confirmation_code: str, body: Dict[str, Any] = None):
     """Cancel booking by confirmation code"""
@@ -2758,7 +2812,7 @@ Location: {tenant.get('address', 'See booking details')}
 
 Confirmation Code: {appointment.get('appointment_id')}
 
-To manage your booking, visit: /booking/{appointment.get('appointment_id')}
+To manage your booking, visit: {PUBLIC_SITE_URL}/booking/{appointment.get('appointment_id')}
 
 Thank you for choosing {tenant.get('name')}!
 """
@@ -3673,6 +3727,39 @@ async def execute_moltbot_action(
     
     return {"success": False, "error": "Unknown action"}
 
+# Public AI receptionist chat for a business's booking page (no API key; rate-limited)
+_public_chat_hits: Dict[str, List[float]] = {}
+
+@api_router.post("/public/booking/{slug}/chat")
+async def public_booking_chat(slug: str, body: Dict[str, Any], request: Request):
+    tenant = await db.tenants.find_one({"booking_url_slug": slug, "is_active": True}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Business not found")
+    if not tenant.get("features", {}).get("ai_assistant", True):
+        raise HTTPException(status_code=403, detail="AI assistant not enabled for this business")
+
+    message = str(body.get("message", "")).strip()[:1000]
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+    session_id = re.sub(r"[^a-zA-Z0-9_-]", "", str(body.get("session_id", "")))[:64] or "anon"
+
+    # Simple per-IP limit: 30 messages per 10 minutes
+    ip = request.client.host if request.client else "unknown"
+    now = datetime.now(timezone.utc).timestamp()
+    hits = [t for t in _public_chat_hits.get(ip, []) if now - t < 600]
+    if len(hits) >= 30:
+        raise HTTPException(status_code=429, detail="You're sending messages too quickly. Please wait a few minutes.")
+    hits.append(now)
+    _public_chat_hits[ip] = hits
+
+    result = await process_moltbot_message(
+        tenant_id=tenant["tenant_id"],
+        client_identifier=f"web_{session_id}",
+        message=message,
+        channel="web_chat",
+    )
+    return {"response": result.get("response"), "conversation_id": result.get("conversation_id")}
+
 # Moltbot Conversation API Endpoints
 
 @api_router.post("/moltbot/{tenant_id}/chat")
@@ -3995,6 +4082,13 @@ async def get_super_admin(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=401, detail="Admin not found")
     
     return admin
+
+@api_router.get("/admin/demo-requests")
+async def list_demo_requests(request: Request):
+    """Super admin: list demo requests from the marketing site"""
+    await get_super_admin(request)
+    items = await db.demo_requests.find({}, {"_id": 0, "ip": 0}).sort("created_at", -1).to_list(500)
+    return {"demo_requests": items}
 
 @api_router.post("/admin/login")
 async def admin_login(credentials: UserLogin, response: Response):
@@ -4376,6 +4470,80 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ============== APPOINTMENT REMINDERS ==============
+
+async def send_due_reminders():
+    """Email clients whose appointment falls within their business's reminder window."""
+    from zoneinfo import ZoneInfo
+    sent = 0
+    tenants = await db.tenants.find({"email_reminders_enabled": {"$ne": False}}, {"_id": 0}).to_list(5000)
+    for tenant in tenants:
+        try:
+            tz = ZoneInfo(tenant.get("timezone") or "Europe/Dublin")
+        except Exception:
+            tz = ZoneInfo("Europe/Dublin")
+        hours = int(tenant.get("reminder_hours_before") or 24)
+        now_local = datetime.now(tz).replace(tzinfo=None)
+        window_end = now_local + timedelta(hours=hours)
+        due = await db.appointments.find({
+            "tenant_id": tenant["tenant_id"],
+            "status": {"$in": ["pending", "confirmed"]},
+            "reminder_sent": {"$ne": True},
+            "client_email": {"$nin": [None, ""]},
+            "start_time": {"$gt": now_local.strftime("%Y-%m-%dT%H:%M:%S"), "$lte": window_end.strftime("%Y-%m-%dT%H:%M:%S")},
+        }, {"_id": 0}).to_list(500)
+        for appt in due:
+            # Claim it first so two workers never double-send
+            claimed = await db.appointments.update_one(
+                {"appointment_id": appt["appointment_id"], "reminder_sent": {"$ne": True}},
+                {"$set": {"reminder_sent": True, "reminder_sent_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            if claimed.modified_count == 0:
+                continue
+            # Booked less than 2 hours ago? They've just had a confirmation email - don't send a second one.
+            try:
+                created = appt.get("created_at")
+                created_dt = created if isinstance(created, datetime) else datetime.fromisoformat(str(created).replace("Z", "+00:00"))
+                if created_dt.tzinfo is None:
+                    created_dt = created_dt.replace(tzinfo=timezone.utc)
+                if datetime.now(timezone.utc) - created_dt < timedelta(hours=2):
+                    continue
+            except Exception:
+                pass
+            service = await db.services.find_one({"service_id": appt.get("service_id")}, {"_id": 0})
+            service_name = service.get("name", "your appointment") if service else "your appointment"
+            try:
+                dt = datetime.fromisoformat(str(appt["start_time"]).replace("Z", "+00:00"))
+                when = dt.strftime("%A %d %B at %H:%M")
+            except Exception:
+                when = str(appt["start_time"])
+            body = f"""Hi {appt.get('client_name') or 'there'},
+
+This is a reminder of your upcoming appointment with {tenant.get('name')}.
+
+Service: {service_name}
+When: {when}
+Where: {tenant.get('address') or 'See your booking details'}
+
+Need to change or cancel? {PUBLIC_SITE_URL}/booking/{appt['appointment_id']}
+
+See you soon,
+{tenant.get('name')}
+"""
+            await send_email_notification(tenant["tenant_id"], appt["client_email"], f"Reminder: {service_name} - {when}", body, "reminder")
+            sent += 1
+    return sent
+
+async def reminder_loop():
+    while True:
+        try:
+            n = await send_due_reminders()
+            if n:
+                logger.info(f"Sent {n} appointment reminder(s)")
+        except Exception as e:
+            logger.error(f"Reminder loop error: {e}")
+        await asyncio.sleep(600)  # every 10 minutes
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
@@ -4384,6 +4552,9 @@ async def startup_event():
         logger.info("Object storage initialized")
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
+    if os.environ.get('REMINDERS_ENABLED', 'true').lower() == 'true':
+        asyncio.create_task(reminder_loop())
+        logger.info("Appointment reminder loop started")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

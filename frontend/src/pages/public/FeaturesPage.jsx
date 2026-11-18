@@ -1,73 +1,51 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '../../components/ui/button';
+import { MarketingNav, MarketingFooter } from '../../components/MarketingChrome';
 import { 
-  Calendar, Users, Clock, Bot, Shield, Zap, 
-  Bell, CreditCard, FileText, BarChart3, 
+  Calendar, Users, Clock, Bot, Zap,
+  Bell, FileText, BarChart3,
   Globe, Puzzle, ArrowRight
 } from 'lucide-react';
 
 const FeaturesPage = () => {
   const featureGroups = [
     {
-      title: 'Scheduling & Booking',
+      title: 'Scheduling & booking',
       features: [
-        { icon: Calendar, name: 'Drag-and-drop Calendar', desc: 'Visual calendar with day, week, and month views. Easily move appointments.' },
-        { icon: Clock, name: 'Online Booking', desc: 'Beautiful booking page your clients can access 24/7 from any device.' },
-        { icon: Users, name: 'Staff Scheduling', desc: 'Manage individual schedules, working hours, and time off for each team member.' },
+        { icon: Calendar, name: 'Drag-and-drop calendar', desc: 'Day, week and list views for the whole team. Move appointments in a click; double-bookings are blocked.' },
+        { icon: Clock, name: 'Online booking page', desc: 'A booking page with your logo and colours that clients can use 24/7 from any phone or computer.' },
+        { icon: Users, name: 'Staff scheduling', desc: 'Working hours, breaks and the services each person offers, so clients only see real availability.' },
       ]
     },
     {
-      title: 'AI & Automation',
+      title: 'Clients & reminders',
       features: [
-        { icon: Bot, name: 'AI Receptionist', desc: 'Moltbot handles inquiries, checks availability, and books appointments automatically.' },
-        { icon: Bell, name: 'Smart Reminders', desc: 'Automated email and SMS reminders to reduce no-shows by up to 90%.' },
-        { icon: Zap, name: 'Waitlist Automation', desc: 'Automatically fill cancelled slots from your waitlist.' },
+        { icon: Bell, name: 'Email confirmations & reminders', desc: 'Every booking gets a confirmation email and a reminder before the appointment, with timing you choose.' },
+        { icon: Zap, name: 'Self-serve cancellations', desc: 'Clients cancel from the link in their email, freeing the slot for someone else.' },
+        { icon: FileText, name: 'Client records & forms', desc: 'Visit history, notes and VIP flags, plus intake forms to collect details before the appointment.' },
       ]
     },
     {
-      title: 'Business Tools',
+      title: 'Running the business',
       features: [
-        { icon: CreditCard, name: 'Deposits & Payments', desc: 'Collect deposits upfront to protect against no-shows.' },
-        { icon: FileText, name: 'Custom Forms', desc: 'Create intake forms and gather important client information before appointments.' },
-        { icon: BarChart3, name: 'Reports & Analytics', desc: 'Track revenue, appointments, and staff performance with visual dashboards.' },
-      ]
-    },
-    {
-      title: 'Enterprise Ready',
-      features: [
-        { icon: Globe, name: 'Multi-location', desc: 'Manage multiple business locations from a single dashboard.' },
-        { icon: Shield, name: 'GDPR Compliance', desc: 'Built-in privacy controls, data export, and right-to-delete support.' },
-        { icon: Puzzle, name: 'API & Webhooks', desc: 'Connect with your existing tools and build custom integrations.' },
+        { icon: BarChart3, name: 'Reports', desc: 'Bookings, revenue and busiest times at a glance. Export to CSV or PDF.' },
+        { icon: Globe, name: 'Your branding', desc: 'Upload your logo and pick your colours. Clients see your business, not ours.' },
+        { icon: Puzzle, name: 'Webhooks', desc: 'Send booking events to your other tools when you need to.' },
       ]
     }
   ];
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="glass fixed top-0 left-0 right-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="text-xl font-semibold text-[#0A0A0A]">BookSlot</Link>
-          <div className="hidden md:flex items-center gap-8">
-            <Link to="/features" className="text-sm text-[#0A0A0A] font-medium">Features</Link>
-            <Link to="/pricing" className="text-sm text-[#666666] hover:text-[#0A0A0A] transition-colors">Pricing</Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link to="/login"><Button variant="ghost" className="text-sm">Log in</Button></Link>
-            <Link to="/signup"><Button className="btn-primary text-sm">Start Free</Button></Link>
-          </div>
-        </div>
-      </nav>
+      <MarketingNav />
 
       {/* Hero */}
       <section className="pt-32 pb-16 px-6 noise-overlay">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="heading-marketing text-5xl md:text-6xl text-[#0A0A0A] mb-6" data-testid="features-title">
-            Everything you need to run your business
+            Everything you need to run your bookings
           </h1>
           <p className="text-lg text-[#666666] max-w-2xl mx-auto">
-            Powerful features designed for appointment-based businesses. Simple to use, quick to set up.
+            Built for appointment-based businesses. Simple to use, and we set it up with you.
           </p>
         </div>
       </section>
@@ -115,7 +93,7 @@ const FeaturesPage = () => {
               </h2>
               <p className="text-[#666666] mb-6 leading-relaxed">
                 Moltbot is designed to be your always-on receptionist. It handles booking inquiries, 
-                checks real-time availability, collects client information, and schedules appointments — 
+                checks real-time availability, collects client details and schedules appointments,
                 all through natural conversation.
               </p>
               <ul className="space-y-3 mb-8">
@@ -123,8 +101,7 @@ const FeaturesPage = () => {
                   'Answers FAQs about your services',
                   'Checks staff availability in real-time',
                   'Books, reschedules, and cancels appointments',
-                  'Sends confirmations and reminders',
-                  'Works via website chat or messaging apps'
+                  'Works in a chat on your booking page'
                 ].map((item, idx) => (
                   <li key={idx} className="flex items-center gap-3">
                     <div className="w-1.5 h-1.5 bg-[#4F46E5] rounded-full" />
@@ -132,12 +109,10 @@ const FeaturesPage = () => {
                   </li>
                 ))}
               </ul>
-              <Link to="/signup">
-                <Button className="btn-primary flex items-center gap-2">
-                  Try Moltbot Free
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
+              <a href="/#demo" className="btn-primary inline-flex items-center gap-2">
+                See it in a demo
+                <ArrowRight className="w-4 h-4" />
+              </a>
             </div>
             <div className="bg-[#FAFAFA] border border-[#E5E5E5] p-8">
               <div className="bg-white border border-[#E5E5E5] p-4 mb-4 rounded-lg">
@@ -157,26 +132,18 @@ const FeaturesPage = () => {
       <section className="py-24 px-6 bg-[#121212]">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="heading-marketing text-4xl text-white mb-6">
-            Ready to get started?
+            Want to see it with your business in it?
           </h2>
           <p className="text-lg text-white/70 mb-10">
-            14-day free trial. No credit card required.
+            Book a short demo and we'll walk you through it.
           </p>
-          <Link to="/signup">
-            <Button className="bg-white text-[#0A0A0A] hover:bg-white/90 px-10 py-4 text-base">
-              Start Free Trial
-            </Button>
-          </Link>
+          <a href="/#demo" className="inline-block bg-white text-[#0A0A0A] hover:bg-white/90 px-10 py-4 text-base font-medium">
+            Book a demo
+          </a>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-6 border-t border-[#E5E5E5]">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-xl font-semibold text-[#0A0A0A]">BookSlot</div>
-          <p className="text-sm text-[#666666]">© 2026 BookSlot. All rights reserved.</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 };

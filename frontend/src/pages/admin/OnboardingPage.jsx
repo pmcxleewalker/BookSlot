@@ -289,7 +289,7 @@ const OnboardingPage = () => {
               <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
                 <Check className="w-3 h-3" />
               </div>
-              <span className="text-white/80">14-day free trial</span>
+              <span className="text-white/80">Your own branded booking page</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">

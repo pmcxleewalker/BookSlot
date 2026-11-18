@@ -43,7 +43,7 @@ const helpTopics = [
     content: [
       { q: 'What can the AI receptionist do?', a: 'It can handle booking requests, answer questions about services, and manage rescheduling via chat.' },
       { q: 'How do I test the AI?', a: 'Go to AI Receptionist page and use the test chat to try different booking scenarios.' },
-      { q: 'Can clients message the AI?', a: 'Yes! When fully activated, clients can interact via SMS, email, or the chat widget.' }
+      { q: 'Can clients message the AI?', a: 'Yes. Clients can chat with the AI receptionist in the widget on your booking page.' }
     ]
   },
   {
@@ -64,7 +64,7 @@ const helpTopics = [
     description: 'Configuring your account',
     content: [
       { q: 'How do I customize my booking page?', a: 'Go to Settings > Branding to change colors and upload your logo.' },
-      { q: 'How do I enable SMS reminders?', a: 'In Settings > Notifications, enable the SMS add-on (+€10/month) and configure reminder timing.' },
+      { q: 'How do I change reminder timing?', a: 'In Settings > Notifications, turn email reminders on or off and choose how many hours before the appointment they go out.' },
       { q: 'Where is my booking link?', a: 'Find your public booking URL in Settings under Booking Settings section.' }
     ]
   }

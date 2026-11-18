@@ -131,10 +131,10 @@ const LoginPage = () => {
           </form>
 
           <p className="mt-8 text-center text-sm text-[#666666]">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-[#0A0A0A] font-medium hover:underline" data-testid="signup-link">
-              Sign up free
-            </Link>
+            New to BookSlot?{' '}
+            <a href="/#demo" className="text-[#0A0A0A] font-medium hover:underline" data-testid="signup-link">
+              Book a demo
+            </a>
           </p>
         </div>
       </div>
@@ -146,8 +146,7 @@ const LoginPage = () => {
             Simplify your scheduling
           </h2>
           <p className="text-white/70 text-lg">
-            Join thousands of businesses using BookSlot to manage appointments, reduce no-shows, 
-            and grow their revenue.
+            Online booking, automatic reminders and one calendar for your whole team.
           </p>
         </div>
       </div>

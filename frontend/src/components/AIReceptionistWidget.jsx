@@ -1,66 +1,66 @@
 import React, { useState } from 'react';
 import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
-import { useAuth } from '../App';
+import axios from 'axios';
+import { useLocation } from 'react-router-dom';
+
+const API = `${process.env.REACT_APP_BACKEND_URL || ''}/api`;
+
+const getSessionId = () => {
+  try {
+    let id = sessionStorage.getItem('bs_chat_session');
+    if (!id) {
+      id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      sessionStorage.setItem('bs_chat_session', id);
+    }
+    return id;
+  } catch {
+    return 'anon';
+  }
+};
 
 const AIReceptionistWidget = () => {
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: 1,
       type: 'bot',
-      text: "Hi! I'm Moltbot, your AI receptionist. I can help you book appointments, check availability, or answer questions about our services. How can I assist you today?"
+      text: "Hi! I can answer questions about our services and opening hours, check availability, or book you in. What can I help with?"
     }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const { tenant } = useAuth();
 
-  // Only show on public pages or when tenant exists
-  const shouldShow = !window.location.pathname.startsWith('/dashboard') && 
-                     !window.location.pathname.startsWith('/calendar') &&
-                     !window.location.pathname.startsWith('/appointments') &&
-                     !window.location.pathname.startsWith('/staff') &&
-                     !window.location.pathname.startsWith('/services') &&
-                     !window.location.pathname.startsWith('/resources') &&
-                     !window.location.pathname.startsWith('/clients') &&
-                     !window.location.pathname.startsWith('/forms') &&
-                     !window.location.pathname.startsWith('/messages') &&
-                     !window.location.pathname.startsWith('/reports') &&
-                     !window.location.pathname.startsWith('/settings') &&
-                     !window.location.pathname.startsWith('/integrations') &&
-                     !window.location.pathname.startsWith('/onboarding') &&
-                     !window.location.pathname.startsWith('/login') &&
-                     !window.location.pathname.startsWith('/signup');
-
-  if (!shouldShow) return null;
+  // Only on a business's public booking page (/book/:slug), where it talks to that business's AI receptionist
+  const match = location.pathname.match(/^\/book\/([^/]+)/);
+  const slug = match ? decodeURIComponent(match[1]) : null;
+  if (!slug) return null;
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    const text = input.trim();
+    if (!text || isTyping) return;
 
-    const userMessage = { id: Date.now(), type: 'user', text: input };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => [...prev, { id: Date.now(), type: 'user', text }]);
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response (in production, this would call the Moltbot API)
-    setTimeout(() => {
-      const responses = [
-        "I'd be happy to help you book an appointment! What service are you interested in?",
-        "Let me check our availability for you. What date and time works best?",
-        "Great choice! Our team is highly skilled in that service. Would you like me to find the next available slot?",
-        "I can see several openings this week. Would you prefer morning or afternoon appointments?",
-        "Perfect! I'll need your name and contact information to complete the booking."
-      ];
-      
-      const botResponse = {
+    try {
+      const res = await axios.post(
+        `${API}/public/booking/${encodeURIComponent(slug)}/chat`,
+        { message: text, session_id: getSessionId() },
+        { withCredentials: false }
+      );
+      setMessages(prev => [...prev, { id: Date.now() + 1, type: 'bot', text: res.data.response || "Sorry, I didn't catch that. Could you rephrase?" }]);
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setMessages(prev => [...prev, {
         id: Date.now() + 1,
         type: 'bot',
-        text: responses[Math.floor(Math.random() * responses.length)]
-      };
-      
-      setMessages(prev => [...prev, botResponse]);
+        text: typeof detail === 'string' ? detail : "Sorry, I'm having trouble right now. You can still book using the page."
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -94,7 +94,7 @@ const AIReceptionistWidget = () => {
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-semibold">Moltbot</h3>
+              <h3 className="font-semibold">Ask us anything</h3>
               <p className="text-xs text-white/80">AI Receptionist</p>
             </div>
           </div>
@@ -170,7 +170,7 @@ const AIReceptionistWidget = () => {
             </button>
           </div>
           <p className="text-xs text-[#666666] mt-2 text-center">
-            Powered by Moltbot AI Receptionist
+            AI receptionist · Powered by BookSlot
           </p>
         </div>
       </div>
