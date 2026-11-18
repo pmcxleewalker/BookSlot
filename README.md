@@ -16,10 +16,15 @@ Booking software for service businesses. Built by QF Digital (QuickFleet Limited
 | `PUBLIC_SITE_URL` | no | Used in email links. Default `https://bookslot1.com` |
 | `DEMO_NOTIFY_EMAIL` | no | Where marketing-site demo requests are emailed |
 | `REMINDERS_ENABLED` | no | `true` by default. Sends reminder emails every 10 minutes |
-| `EMERGENT_LLM_KEY` | for AI | Powers the AI receptionist |
+| `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | for AI | Powers the AI receptionist. Anthropic is used if its key is set |
+| `AI_PROVIDER`, `AI_MODEL` | no | Override provider (`anthropic`/`openai`) and model |
+| `GOOGLE_CLIENT_ID` | for Google sign-in | OAuth client ID from Google Cloud Console |
 
 ## Frontend environment variables
 
 | Variable | What it does |
 |---|---|
 | `REACT_APP_BACKEND_URL` | Base URL of the backend (no trailing `/api`) |
+| `REACT_APP_GOOGLE_CLIENT_ID` | Same Google client ID. If unset, the Google button is hidden |
+
+No Emergent services are used. Uploaded files are stored in MongoDB.

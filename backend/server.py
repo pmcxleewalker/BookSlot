@@ -34,12 +34,6 @@ try:
 except ImportError:
     TWILIO_AVAILABLE = False
 
-# Emergent LLM integration for Moltbot AI
-try:
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-    MOLTBOT_LLM_AVAILABLE = True
-except ImportError:
-    MOLTBOT_LLM_AVAILABLE = False
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -73,55 +67,53 @@ twilio_client = None
 if TWILIO_AVAILABLE and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
     twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
-# Moltbot AI Configuration
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
+# AI receptionist configuration - your own Anthropic or OpenAI key
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+AI_PROVIDER = os.environ.get('AI_PROVIDER', 'anthropic' if ANTHROPIC_API_KEY else 'openai').lower()
+AI_MODEL = os.environ.get('AI_MODEL', 'claude-haiku-5-5' if AI_PROVIDER == 'anthropic' else 'gpt-4o-mini')
+AI_CONFIGURED = bool(ANTHROPIC_API_KEY if AI_PROVIDER == 'anthropic' else OPENAI_API_KEY)
+
+async def llm_complete(system_prompt: str, user_text: str) -> str:
+    """One-shot chat completion against the configured provider."""
+    async with httpx.AsyncClient(timeout=45) as http:
+        if AI_PROVIDER == 'anthropic':
+            r = await http.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                json={"model": AI_MODEL, "max_tokens": 800, "system": system_prompt,
+                      "messages": [{"role": "user", "content": user_text}]},
+            )
+            r.raise_for_status()
+            return "".join(b.get("text", "") for b in r.json().get("content", []) if b.get("type") == "text")
+        r = await http.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "content-type": "application/json"},
+            json={"model": AI_MODEL, "max_tokens": 800,
+                  "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_text}]},
+        )
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"] or ""
+
 MOLTBOT_ENABLED = os.environ.get('MOLTBOT_ENABLED', 'true').lower() == 'true'
 
-# Object Storage Configuration
-STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+# File storage - uploads (logos etc., max 5MB) are kept in MongoDB
+from bson import Binary
 APP_NAME = "bookslot"
-storage_key = None
 
-def init_storage():
-    """Initialize object storage - call once at startup"""
-    global storage_key
-    if storage_key:
-        return storage_key
-    if not EMERGENT_LLM_KEY:
-        return None
-    try:
-        resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_LLM_KEY}, timeout=30)
-        resp.raise_for_status()
-        storage_key = resp.json()["storage_key"]
-        return storage_key
-    except Exception as e:
-        logging.error(f"Storage init failed: {e}")
-        return None
-
-def put_object(path: str, data: bytes, content_type: str) -> dict:
-    """Upload file to object storage"""
-    key = init_storage()
-    if not key:
-        raise Exception("Storage not initialized")
-    resp = requests.put(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=120
+async def put_object(path: str, data: bytes, content_type: str) -> dict:
+    await db.file_blobs.update_one(
+        {"path": path},
+        {"$set": {"path": path, "data": Binary(data), "content_type": content_type, "size": len(data)}},
+        upsert=True,
     )
-    resp.raise_for_status()
-    return resp.json()
+    return {"path": path, "size": len(data)}
 
-def get_object(path: str) -> tuple:
-    """Download file from object storage"""
-    key = init_storage()
-    if not key:
-        raise Exception("Storage not initialized")
-    resp = requests.get(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key}, timeout=60
-    )
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+async def get_object(path: str) -> tuple:
+    doc = await db.file_blobs.find_one({"path": path})
+    if not doc:
+        raise FileNotFoundError(path)
+    return bytes(doc["data"]), doc.get("content_type", "application/octet-stream")
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 168  # 7 days
@@ -585,7 +577,7 @@ async def login(credentials: UserLogin, response: Response):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     if not user.get("password_hash"):
-        raise HTTPException(status_code=401, detail="Please use Google login")
+        raise HTTPException(status_code=401, detail="This account uses Google sign-in. Use Continue with Google.")
     
     if not verify_password(credentials.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -606,87 +598,54 @@ async def login(credentials: UserLogin, response: Response):
         "token": token
     }
 
-@api_router.post("/auth/session")
-async def google_auth_session(request: Request, response: Response):
-    """Exchange Google OAuth session_id for user session"""
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+
+@api_router.post("/auth/google")
+async def google_sign_in(request: Request, response: Response):
+    """Sign in with a Google ID token from Google Identity Services (no third party in between)."""
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured")
     body = await request.json()
-    session_id = body.get("session_id")
-    
-    if not session_id:
-        raise HTTPException(status_code=400, detail="session_id required")
-    
-    # Fetch user data from Emergent Auth
-    async with httpx.AsyncClient() as client:
-        try:
-            resp = await client.get(
-                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-                headers={"X-Session-ID": session_id}
-            )
-            if resp.status_code != 200:
-                raise HTTPException(status_code=401, detail="Invalid session")
-            
-            auth_data = resp.json()
-        except Exception as e:
-            logger.error(f"Auth error: {e}")
-            raise HTTPException(status_code=401, detail="Authentication failed")
-    
-    # Check if user exists
-    existing_user = await db.users.find_one({"email": auth_data["email"]}, {"_id": 0})
-    
+    credential = body.get("credential")
+    if not credential:
+        raise HTTPException(status_code=400, detail="credential required")
+
+    async with httpx.AsyncClient(timeout=15) as http:
+        r = await http.get("https://oauth2.googleapis.com/tokeninfo", params={"id_token": credential})
+    if r.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid Google sign-in")
+    info = r.json()
+    if info.get("aud") != GOOGLE_CLIENT_ID or info.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+        raise HTTPException(status_code=401, detail="Invalid Google sign-in")
+    if str(info.get("email_verified")).lower() != "true" or not info.get("email"):
+        raise HTTPException(status_code=401, detail="Google account email is not verified")
+
+    email = info["email"].lower()
+    existing_user = await db.users.find_one({"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}}, {"_id": 0})
     if existing_user:
         user_id = existing_user["user_id"]
-        # Update user info
-        await db.users.update_one(
-            {"user_id": user_id},
-            {"$set": {
-                "name": auth_data.get("name", existing_user.get("name")),
-                "picture": auth_data.get("picture", existing_user.get("picture"))
-            }}
-        )
-        tenant_id = existing_user.get("tenant_id")
+        await db.users.update_one({"user_id": user_id}, {"$set": {
+            "name": existing_user.get("name") or info.get("name", ""),
+            "picture": info.get("picture", existing_user.get("picture")),
+        }})
     else:
         user_id = f"user_{uuid.uuid4().hex[:12]}"
-        new_user = {
+        await db.users.insert_one({
             "user_id": user_id,
-            "email": auth_data["email"],
-            "name": auth_data.get("name", ""),
-            "picture": auth_data.get("picture"),
+            "email": email,
+            "name": info.get("name", ""),
+            "picture": info.get("picture"),
             "role": UserRole.OWNER.value,
             "tenant_id": None,
             "is_active": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        await db.users.insert_one(new_user)
-        tenant_id = None
-    
-    # Store session
-    session_token = auth_data.get("session_token", f"session_{uuid.uuid4().hex}")
-    session_doc = {
-        "user_id": user_id,
-        "session_token": session_token,
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.user_sessions.delete_many({"user_id": user_id})
-    await db.user_sessions.insert_one(session_doc)
-    
-    response.set_cookie(
-        key="session_token",
-        value=session_token,
-        httponly=True,
-        secure=True,
-        samesite="none",
-        path="/",
-        max_age=7 * 24 * 3600
-    )
-    
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
-    
-    return {
-        "user": UserResponse(**user).model_dump(),
-        "token": session_token
-    }
+    token = create_jwt_token(user_id, user.get("tenant_id"))
+    response.set_cookie(key="session_token", value=token, httponly=True, secure=True,
+                        samesite="none", path="/", max_age=JWT_EXPIRATION_HOURS * 3600)
+    return {"user": UserResponse(**user).model_dump(), "token": token}
 
 @api_router.get("/auth/me")
 async def get_me(user: Dict = Depends(get_current_user)):
@@ -861,7 +820,7 @@ async def upload_image(file: UploadFile = File(...), user: Dict = Depends(get_cu
     content_type = content_types.get(ext, "application/octet-stream")
     
     try:
-        result = put_object(path, data, content_type)
+        result = await put_object(path, data, content_type)
         
         # Store reference in database
         file_record = {
@@ -894,7 +853,7 @@ async def get_file(file_id: str, auth: str = Query(None)):
         raise HTTPException(status_code=404, detail="File not found")
     
     try:
-        data, content_type = get_object(record["storage_path"])
+        data, content_type = await get_object(record["storage_path"])
         return Response(content=data, media_type=record.get("content_type", content_type))
     except Exception as e:
         logger.error(f"File retrieval failed: {e}")
@@ -3464,7 +3423,7 @@ async def process_moltbot_message(
     """Process incoming message and generate AI response"""
     
     # Check if Moltbot is available
-    if not MOLTBOT_LLM_AVAILABLE or not EMERGENT_LLM_KEY:
+    if not AI_CONFIGURED:
         return {
             "response": "AI assistant is not configured. Please contact the business directly.",
             "conversation_id": None,
@@ -3501,13 +3460,6 @@ async def process_moltbot_message(
     # Build conversation history for LLM
     system_prompt = MOLTBOT_SYSTEM_PROMPT.format(**context)
     
-    # Create LLM chat instance
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=conversation["conversation_id"],
-        system_message=system_prompt
-    ).with_model("openai", "gpt-4o-mini")
-    
     # Build message history for context
     history_text = ""
     for msg in conversation["messages"][-10:]:  # Last 10 messages for context
@@ -3516,8 +3468,7 @@ async def process_moltbot_message(
     
     try:
         # Get AI response
-        user_message = UserMessage(text=f"Conversation history:\n{history_text}\n\nCustomer's latest message: {message}")
-        ai_response = await chat.send_message(user_message)
+        ai_response = await llm_complete(system_prompt, f"Conversation history:\n{history_text}\n\nCustomer's latest message: {message}")
         
         # Parse JSON response
         try:
@@ -3901,8 +3852,8 @@ async def get_moltbot_status():
     """Check Moltbot AI system status"""
     return {
         "enabled": MOLTBOT_ENABLED,
-        "llm_available": MOLTBOT_LLM_AVAILABLE,
-        "llm_configured": bool(EMERGENT_LLM_KEY),
+        "llm_available": AI_CONFIGURED,
+        "llm_configured": AI_CONFIGURED,
         "features": {
             "chat": True,
             "sms_webhook": bool(TWILIO_AVAILABLE and twilio_client),
@@ -4547,11 +4498,6 @@ async def reminder_loop():
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
-    try:
-        init_storage()
-        logger.info("Object storage initialized")
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
     if os.environ.get('REMINDERS_ENABLED', 'true').lower() == 'true':
         asyncio.create_task(reminder_loop())
         logger.info("Appointment reminder loop started")

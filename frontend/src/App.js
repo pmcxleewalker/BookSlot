@@ -30,7 +30,6 @@ import AdminTenantsPage from './pages/superadmin/AdminTenantsPage';
 import AdminTenantDetailPage from './pages/superadmin/AdminTenantDetailPage';
 
 // Components
-import AuthCallback from './components/auth/AuthCallback';
 import AIReceptionistWidget from './components/AIReceptionistWidget';
 import EliteBorder from './components/EliteBorder';
 
@@ -61,13 +60,6 @@ const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
 
   const checkAuth = useCallback(async () => {
-    // CRITICAL: Skip auth check if returning from OAuth callback
-    // AuthCallback will handle authentication in that case
-    if (window.location.hash?.includes('session_id=')) {
-      setLoading(false);
-      return;
-    }
-
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.get(`${API}/auth/me`, { headers });
@@ -117,8 +109,8 @@ const AuthProvider = ({ children }) => {
     return userData;
   };
 
-  const googleAuth = async (sessionId) => {
-    const response = await axios.post(`${API}/auth/session`, { session_id: sessionId });
+  const googleAuth = async (credential) => {
+    const response = await axios.post(`${API}/auth/google`, { credential });
     const { user: userData, token: newToken } = response.data;
     setUser(userData);
     setToken(newToken);
@@ -216,14 +208,6 @@ const ProtectedRoute = ({ children }) => {
 
 // App Router Component
 const AppRouter = () => {
-  const location = useLocation();
-
-  // Handle OAuth callback - check URL fragment synchronously during render
-  // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-  if (location.hash?.includes('session_id=')) {
-    return <AuthCallback />;
-  }
-
   return (
     <Routes>
       {/* Public Routes */}

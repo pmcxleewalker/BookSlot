@@ -7,8 +7,8 @@ BookSlot is a comprehensive multi-tenant SaaS booking platform designed for serv
 - **Backend**: FastAPI (Python) - Single server.py file (~4000+ lines)
 - **Frontend**: React with Tailwind CSS and Shadcn UI components
 - **Database**: MongoDB
-- **Authentication**: JWT + Emergent-managed Google OAuth
-- **AI**: Moltbot AI receptionist using GPT-4o-mini via emergentintegrations
+- **Authentication**: JWT + Google Identity Services (verified by our backend)
+- **AI**: AI receptionist via your own Anthropic or OpenAI key (direct API calls)
 
 ## Current Implementation Status
 
@@ -170,8 +170,8 @@ BookSlot is a comprehensive multi-tenant SaaS booking platform designed for serv
 - Add caching layer
 
 ## Third-Party Integrations
-- **Emergent Auth:** Google OAuth
-- **Emergent LLM:** GPT-4o-mini for Moltbot
-- **Emergent Object Storage:** File uploads
+- **Google Identity Services:** Google sign-in
+- **Anthropic / OpenAI:** AI receptionist
+- **MongoDB:** File uploads (logos)
 - **Resend:** Email notifications (requires API key)
 - **Twilio:** SMS notifications (requires API key)
