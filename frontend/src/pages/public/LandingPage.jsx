@@ -1,25 +1,62 @@
-import React from 'react';
+import React, { useState } from 'react';
 import BrandLogo from '../../components/BrandLogo';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight, Calendar, Users, Bot, Shield, Bell, Smartphone, MessageCircle, PhoneOff, Moon, UserX,
-  CalendarX, CheckCircle2, Link2, Sparkles, FileText, BarChart3, Palette, Lock, Scissors, Heart, Stethoscope,
-  Dumbbell, Wrench, PawPrint, GraduationCap, Mail, EyeOff,
+  ArrowRight, Calendar, Users, Bot, Shield, Bell, Smartphone, MessageCircle,
+  CheckCircle2, Link2, Sparkles, FileText, BarChart3, Palette, Lock, Scissors, Heart, Stethoscope,
+  Dumbbell, Wrench, PawPrint, GraduationCap, Mail, EyeOff, Percent, Calculator,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 
 // Where "Book a demo" goes. Change to a form or calendar link later if you like.
 export const CONTACT_EMAIL = 'qfdigitalmedia@gmail.com';
 export const DEMO_LINK = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('BookSlot demo')}`;
-export const LIVE_DEMO = '/book/demo';
+export const LIVE_DEMO = '/book/demo-physio';
+export const LIVE_DEMO_SALON = '/book/demo';
 export const QF_DIGITAL = 'https://qf-digital.netlify.app';
 
-const PAINS = [
-  { icon: PhoneOff, pain: 'The phone rings mid-appointment', fix: 'Clients book themselves online, by text or on WhatsApp. You keep working and the diary fills itself.' },
-  { icon: Moon, pain: 'Answering messages at midnight', fix: 'The AI receptionist replies instantly, day and night, checks your real free times and books the slot.' },
-  { icon: UserX, pain: 'No-shows and forgotten appointments', fix: 'Every client gets a confirmation and a reminder before they\'re due, automatically.' },
-  { icon: CalendarX, pain: 'Double bookings and a messy diary', fix: 'One live diary that only ever offers genuinely free times, so two people can never take the same slot.' },
+const WHY = [
+  { icon: Percent, stat: '0%', label: 'commission, ever',
+    title: 'Your brand, not a marketplace',
+    desc: 'Marketplaces take a cut of new clients: 35% + VAT of the first booking on Treatwell, 20% on Fresha. BookSlot takes nothing, and your clients only ever see your business.' },
+  { icon: Bot, stat: 'Included', label: 'AI receptionist',
+    title: 'The receptionist comes with it',
+    desc: 'Fresha charges €94.95 a month extra for its AI. BookSlot\'s AI receptionist answers clients day and night and books real free slots, as part of our main plan.' },
+  { icon: Sparkles, stat: '1 day', label: 'to go live',
+    title: 'We set it up for you',
+    desc: 'Other tools hand you a login and a help centre. We load your services, team, hours and client list, so you\'re taking bookings tomorrow.' },
 ];
+
+const NoShowCalculator = () => {
+  const [bookings, setBookings] = useState(200);
+  const [price, setPrice] = useState(50);
+  const b = Math.max(0, Number(bookings) || 0);
+  const p = Math.max(0, Number(price) || 0);
+  const saved = Math.round(b * 0.06 * p);
+  return (
+    <div className="bg-white border border-[#E5E5E5] p-8 md:p-10 grid md:grid-cols-2 gap-10 items-center">
+      <div className="space-y-5">
+        <label className="block">
+          <span className="text-sm font-medium text-[#0A0A0A]">Appointments a month</span>
+          <input type="number" min="0" inputMode="numeric" value={bookings} onChange={(e) => setBookings(e.target.value)}
+            className="mt-2 w-full h-12 px-4 border border-[#E5E5E5] rounded-md text-lg focus:outline-none focus:border-[#3730A3]" />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium text-[#0A0A0A]">Average price (€)</span>
+          <input type="number" min="0" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)}
+            className="mt-2 w-full h-12 px-4 border border-[#E5E5E5] rounded-md text-lg focus:outline-none focus:border-[#3730A3]" />
+        </label>
+      </div>
+      <div className="text-center md:text-left">
+        <p className="text-sm font-medium tracking-widest text-[#3730A3] mb-2">MONEY BACK EACH MONTH</p>
+        <p className="heading-marketing text-6xl md:text-7xl text-[#0A0A0A]" data-testid="calc-result">€{saved.toLocaleString('en-IE')}</p>
+        <p className="text-[#666666] mt-3">
+          from fewer missed appointments, about {Math.round(b * 0.06)} more clients turning up each month.
+        </p>
+      </div>
+    </div>
+  );
+};
 
 const STEPS = [
   { n: '01', title: 'We set you up', desc: 'Your services, prices, team and opening hours, ready in a day, under your own name, logo and colours.' },
@@ -63,6 +100,7 @@ const WHITE_LABEL = [
 const FAQS = [
   { q: 'Is it only for hair and beauty?', a: 'No. BookSlot works for any business that books appointments or time slots: clinics, physios, trainers, trades, groomers, tutors, consultants and more. You set your own services, durations and prices.' },
   { q: 'Will my clients see BookSlot or my business?', a: 'Your business. The booking page and every message carry your name, logo and colours, and you can remove the "Powered by BookSlot" line entirely.' },
+  { q: 'What does it cost?', a: 'It depends on the size of your team, and there is never any commission on your bookings. We go through it on the demo so there are no surprises.' },
   { q: 'Do my clients need to download anything?', a: 'No. They book from a link, a text message or WhatsApp, on whatever phone or computer they already have.' },
   { q: 'Can I still take bookings over the phone?', a: 'Of course. Open BookSlot on your phone, tap +, pick the service and a free time, and it\'s booked in about 30 seconds, with the reminder sent for you.' },
   { q: 'What if the AI receptionist can\'t answer something?', a: 'It only books times that are genuinely free and never makes up prices or policies. For anything it can\'t handle, it gives the client your contact details.' },
@@ -112,6 +150,7 @@ export const MarketingNav = () => (
     <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
       <Link to="/" aria-label="BookSlot home" data-testid="logo"><BrandLogo size={32} /></Link>
       <div className="hidden md:flex items-center gap-8">
+        <a href="/#why" className="text-sm text-[#666666] hover:text-[#0A0A0A] transition-colors">Why BookSlot</a>
         <a href="/#how" className="text-sm text-[#666666] hover:text-[#0A0A0A] transition-colors">How it works</a>
         <Link to="/features" className="text-sm text-[#666666] hover:text-[#0A0A0A] transition-colors" data-testid="nav-features">Features</Link>
         <a href="/#faq" className="text-sm text-[#666666] hover:text-[#0A0A0A] transition-colors">FAQ</a>
@@ -154,15 +193,14 @@ const LandingPage = () => (
         <div>
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded-full mb-8">
             <Bot className="w-4 h-4 text-[#3730A3]" />
-            <span className="text-sm text-[#666666]">White-label booking app for any service business</span>
+            <span className="text-sm text-[#666666]">No commission · No marketplace · Set up for you</span>
           </div>
           <h1 className="heading-marketing text-5xl md:text-6xl lg:text-7xl text-[#0A0A0A] mb-6 leading-[1.05]" data-testid="hero-title">
-            Your diary fills itself.
+            Your own booking app. Answers clients 24/7. Set up for you.
           </h1>
           <p className="text-lg md:text-xl text-[#666666] mb-10 max-w-xl">
-            Your own booking app, with your name and logo on it. Clients book online, by text or on WhatsApp, day
-            and night, and get reminded so they turn up. Salons, clinics, trainers, trades, groomers: if you take
-            appointments, it works for you.
+            Clients book online, by text or on WhatsApp, under your name, not ours. No commission, no marketplace,
+            no setup headaches. For any business that takes appointments.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <a href={DEMO_LINK}>
@@ -172,12 +210,12 @@ const LandingPage = () => (
             </a>
             <a href={LIVE_DEMO}>
               <Button variant="outline" className="btn-secondary px-8 py-4 text-base w-full sm:w-auto" data-testid="cta-secondary">
-                Try the live demo
+                Try a live booking
               </Button>
             </a>
           </div>
           <div className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#666666]">
-            {['Your brand, not ours', 'Bookings 24/7', 'Automatic reminders', 'Set up in a day'].map((t) => (
+            {['0% commission', 'AI receptionist included', 'We set it up', 'No app for clients'].map((t) => (
               <span key={t} className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#0A0A0A]" />{t}</span>
             ))}
           </div>
@@ -186,29 +224,45 @@ const LandingPage = () => (
       </div>
     </section>
 
-    {/* Pain points */}
-    <section className="py-24 px-6 bg-[#FAFAFA] border-y border-[#E5E5E5]">
+    {/* Why BookSlot */}
+    <section id="why" className="py-24 px-6 bg-[#FAFAFA] border-y border-[#E5E5E5] scroll-mt-16">
       <div className="max-w-7xl mx-auto">
         <div className="max-w-2xl mb-14">
-          <p className="text-sm font-medium tracking-widest text-[#3730A3] mb-3">SOUND FAMILIAR?</p>
-          <h2 className="heading-marketing text-4xl md:text-5xl text-[#0A0A0A]">Running the diary shouldn't be a second job.</h2>
+          <p className="text-sm font-medium tracking-widest text-[#3730A3] mb-3">WHY BOOKSLOT</p>
+          <h2 className="heading-marketing text-4xl md:text-5xl text-[#0A0A0A]">Everything the big booking apps do. None of the catches.</h2>
         </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          {PAINS.map(({ icon: Icon, pain, fix }) => (
-            <div key={pain} className="bg-white border border-[#E5E5E5] p-8">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-full bg-[#EEF0FF] flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-[#3730A3]" />
-                </div>
-                <h3 className="text-lg font-semibold text-[#0A0A0A]">{pain}</h3>
+        <div className="grid md:grid-cols-3 gap-6">
+          {WHY.map(({ icon: Icon, stat, label, title, desc }) => (
+            <div key={title} className="bg-white border border-[#E5E5E5] p-8 flex flex-col">
+              <div className="flex items-baseline gap-3 mb-6">
+                <span className="heading-marketing text-5xl text-[#3730A3]">{stat}</span>
+                <span className="text-sm text-[#666666]">{label}</span>
               </div>
-              <p className="text-[#666666] flex gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <span><span className="font-medium text-[#0A0A0A]">With BookSlot: </span>{fix}</span>
-              </p>
+              <div className="flex items-center gap-2 mb-3">
+                <Icon className="w-5 h-5 text-[#0A0A0A]" />
+                <h3 className="text-lg font-semibold text-[#0A0A0A]">{title}</h3>
+              </div>
+              <p className="text-[#666666]">{desc}</p>
             </div>
           ))}
         </div>
+        <p className="text-xs text-[#999999] mt-6">Competitor fees as published on their websites, November 2026.</p>
+      </div>
+    </section>
+
+    {/* No-show calculator */}
+    <section id="savings" className="py-24 px-6 scroll-mt-16">
+      <div className="max-w-5xl mx-auto">
+        <div className="max-w-2xl mb-12">
+          <p className="text-sm font-medium tracking-widest text-[#3730A3] mb-3 flex items-center gap-2"><Calculator className="w-4 h-4" />IS IT WORTH IT?</p>
+          <h2 className="heading-marketing text-4xl md:text-5xl text-[#0A0A0A] mb-4">Reminders pay for themselves.</h2>
+          <p className="text-lg text-[#666666]">
+            Across 21 studies, people who got reminders missed 15% of appointments, against 21% without.
+            See what that gap is worth to you.
+          </p>
+        </div>
+        <NoShowCalculator />
+        <p className="text-xs text-[#999999] mt-4">Estimate: appointments × 6% × average price. Your results will vary.</p>
       </div>
     </section>
 
@@ -360,7 +414,7 @@ const LandingPage = () => (
           </Button>
         </a>
         <p className="text-sm text-white/50 mt-6">
-          Or <a href={LIVE_DEMO} className="underline text-white/80">try a booking at our demo business</a> · email {CONTACT_EMAIL}
+          Or try a live booking at our demo <a href={LIVE_DEMO} className="underline text-white/80">physio clinic</a> or <a href={LIVE_DEMO_SALON} className="underline text-white/80">salon</a> · email {CONTACT_EMAIL}
         </p>
       </div>
     </section>

@@ -1,4 +1,4 @@
-"""A public demo salon, created on start-up, so prospects can try a real booking at /book/demo."""
+"""Public demo businesses, created on start-up, so prospects can try a real booking (/book/demo, /book/demo-physio)."""
 import logging
 import os
 import secrets
@@ -19,7 +19,7 @@ def _hours(days, start="09:00", end="18:00", late=None):
     return wh
 
 
-SERVICES = [
+SALON_SERVICES = [
     ("Cut & finish", 45, 48, "Consultation, wash, precision cut and blow-dry finish.", "#3730A3"),
     ("Gents cut", 30, 25, "Scissor or clipper cut, styled to finish.", "#0F766E"),
     ("Blow dry", 30, 32, "Wash and a smooth or bouncy blow-dry.", "#7C3AED"),
@@ -28,45 +28,71 @@ SERVICES = [
     ("Balayage", 150, 145, "Hand-painted highlights with toner and finish.", "#E34A33"),
 ]
 
+PHYSIO_SERVICES = [
+    ("Initial assessment", 60, 75, "Full assessment, diagnosis and a treatment plan for your injury.", "#0F766E"),
+    ("Follow-up treatment", 45, 60, "Hands-on treatment and exercise progression.", "#3730A3"),
+    ("Sports massage", 45, 55, "Deep tissue massage for recovery and tight muscles.", "#7C3AED"),
+    ("Back & neck pain session", 45, 60, "Treatment and advice for back or neck pain.", "#D97706"),
+    ("Online video consultation", 30, 40, "Assessment and exercise plan by video call.", "#BE185D"),
+]
+
+# slug, business, industry, description, services, staff [(name, title, color, n services or None=all)], email domain, owner name
+DEMOS = [
+    (DEMO_SLUG, "Lumière Hair Studio", "salon",
+     "This is a BookSlot demo salon. Book anything you like: it's not a real business.",
+     SALON_SERVICES, [("Sophie", "Senior stylist", "#3730A3", None), ("Jack", "Stylist & barber", "#0F766E", 3)],
+     "lumiere-demo.ie", "Sophie (demo)"),
+    ("demo-physio", "Harbour Physio", "clinic",
+     "This is a BookSlot demo clinic. Book anything you like: it's not a real business.",
+     PHYSIO_SERVICES, [("Ciara", "Chartered physiotherapist", "#0F766E", None), ("Mark", "Sports therapist", "#3730A3", 3)],
+     "harbourphysio-demo.ie", "Ciara (demo)"),
+]
+
 
 async def ensure_demo_tenant() -> None:
     if os.environ.get("DEMO_TENANT", "true").lower() in ("0", "false", "no"):
         return
-    if await db.tenants.find_one({"booking_url_slug": DEMO_SLUG}, {"_id": 1}):
+    for demo in DEMOS:
+        try:
+            await _ensure_demo(*demo)
+        except Exception as e:  # one broken demo must never stop start-up
+            logger.error("Demo %s failed: %s", demo[0], e)
+
+
+async def _ensure_demo(slug, business, industry, description, services, staff_list, domain, owner_name) -> None:
+    if await db.tenants.find_one({"booking_url_slug": slug}, {"_id": 1}):
         return
     from routes.tenants import create_tenant_record  # local import avoids a cycle
     tenant = await create_tenant_record({
-        "name": "Lumière Hair Studio", "industry": "salon", "email": "hello@lumiere-demo.ie",
+        "name": business, "industry": industry, "email": f"hello@{domain}",
         "address": "Main Street (demo business)", "timezone": "Europe/Dublin", "currency": "EUR",
     }, plan="growth", onboarding_completed=True)
     tid = tenant["tenant_id"]
     await db.tenants.update_one({"tenant_id": tid}, {"$set": {
-        "booking_url_slug": DEMO_SLUG, "is_demo": True,
-        "description": "This is a BookSlot demo salon. Book anything you like: it's not a real business.",
+        "booking_url_slug": slug, "is_demo": True, "description": description,
     }})
     owner_id = new_id("user")
     await db.users.insert_one({  # owner exists so the platform admin can "View as Owner"; nobody knows this password
-        "user_id": owner_id, "email": "owner@lumiere-demo.ie", "name": "Sophie (demo)", "picture": None,
+        "user_id": owner_id, "email": f"owner@{domain}", "name": owner_name, "picture": None,
         "tenant_id": tid, "role": "owner", "is_active": True, "token_version": 0,
         "password_hash": hash_password(secrets.token_urlsafe(24)), "created_at": now_iso(),
     })
     service_ids = []
-    for name, dur, price, desc, color in SERVICES:
+    for name, dur, price, desc, color in services:
         sid = new_id("service"); service_ids.append(sid)
         await db.services.insert_one({"service_id": sid, "tenant_id": tid, "name": name, "description": desc,
                                       "duration": dur, "buffer_time": 0, "price": price, "deposit_required": False,
                                       "deposit_amount": 0.0, "color": color, "category": None, "is_active": True,
                                       "created_at": now_iso()})
     week = ["tuesday", "wednesday", "thursday", "friday", "saturday"]
-    for name, title, color, services, user_id in [
-        ("Sophie", "Senior stylist", "#3730A3", [], owner_id),
-        ("Jack", "Stylist & barber", "#0F766E", service_ids[:3], None),
-    ]:
+    for i, (name, title, color, n) in enumerate(staff_list):
+        user_id = owner_id if i == 0 else None
         await db.staff.insert_one({
             "staff_id": new_id("staff"), "tenant_id": tid, "user_id": user_id, "name": name, "email": None,
-            "phone": None, "title": title, "bio": None, "avatar_url": None, "color": color, "services": services,
+            "phone": None, "title": title, "bio": None, "avatar_url": None, "color": color,
+            "services": [] if n is None else service_ids[:n],
             "working_hours": _hours(week, late="20:00"), "role": "admin" if user_id else "staff",
             "can_view_all_bookings": True, "can_edit_services": bool(user_id), "can_manage_staff": bool(user_id),
             "can_view_reports": bool(user_id), "can_manage_customers": True, "is_active": True, "created_at": now_iso(),
         })
-    logger.info("Created demo salon at /book/%s", DEMO_SLUG)
+    logger.info("Created demo business at /book/%s", slug)
