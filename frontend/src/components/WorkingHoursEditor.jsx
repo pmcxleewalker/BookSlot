@@ -99,8 +99,8 @@ const WorkingHoursEditor = ({ workingHours, onChange, readOnly = false }) => {
     <div className="space-y-4" data-testid="working-hours-editor">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-[#666666]" />
-          <h4 className="font-medium text-[#0A0A0A]">Working Hours</h4>
+          <Clock className="w-5 h-5 text-[#6B6890]" />
+          <h4 className="font-medium text-[#1E1B3A]">Working Hours</h4>
         </div>
       </div>
 
@@ -110,7 +110,7 @@ const WorkingHoursEditor = ({ workingHours, onChange, readOnly = false }) => {
           return (
             <div 
               key={day.key} 
-              className={`p-4 border ${dayHours.enabled ? 'border-[#E5E5E5] bg-white' : 'border-[#E5E5E5] bg-[#FAFAFA]'}`}
+              className={`p-4 border ${dayHours.enabled ? 'border-[#ECEAF5] bg-white' : 'border-[#ECEAF5] bg-[#F7F6FC]'}`}
               data-testid={`day-${day.key}`}
             >
               <div className="flex items-center justify-between mb-3">
@@ -121,7 +121,7 @@ const WorkingHoursEditor = ({ workingHours, onChange, readOnly = false }) => {
                     disabled={readOnly}
                     data-testid={`toggle-${day.key}`}
                   />
-                  <span className={`font-medium ${dayHours.enabled ? 'text-[#0A0A0A]' : 'text-[#999999]'}`}>
+                  <span className={`font-medium ${dayHours.enabled ? 'text-[#1E1B3A]' : 'text-[#9A97B0]'}`}>
                     {day.label}
                   </span>
                 </div>
@@ -130,7 +130,7 @@ const WorkingHoursEditor = ({ workingHours, onChange, readOnly = false }) => {
                     variant="ghost" 
                     size="sm" 
                     onClick={() => copyToAll(day.key)}
-                    className="text-xs text-[#666666]"
+                    className="text-xs text-[#6B6890]"
                   >
                     Copy to all days
                   </Button>
@@ -141,7 +141,7 @@ const WorkingHoursEditor = ({ workingHours, onChange, readOnly = false }) => {
                 <div className="ml-9 space-y-3">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <Label className="text-sm text-[#666666] w-10">From</Label>
+                      <Label className="text-sm text-[#6B6890] w-10">From</Label>
                       <Input
                         type="time"
                         value={dayHours.start}
@@ -152,7 +152,7 @@ const WorkingHoursEditor = ({ workingHours, onChange, readOnly = false }) => {
                       />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Label className="text-sm text-[#666666] w-10">To</Label>
+                      <Label className="text-sm text-[#6B6890] w-10">To</Label>
                       <Input
                         type="time"
                         value={dayHours.end}
@@ -166,8 +166,8 @@ const WorkingHoursEditor = ({ workingHours, onChange, readOnly = false }) => {
 
                   {/* Breaks */}
                   {dayHours.breaks && dayHours.breaks.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-dashed border-[#E5E5E5]">
-                      <Label className="text-xs text-[#666666]">Breaks</Label>
+                    <div className="space-y-2 pt-2 border-t border-dashed border-[#ECEAF5]">
+                      <Label className="text-xs text-[#6B6890]">Breaks</Label>
                       {dayHours.breaks.map((brk, idx) => (
                         <div key={idx} className="flex items-center gap-2">
                           <Input
@@ -177,7 +177,7 @@ const WorkingHoursEditor = ({ workingHours, onChange, readOnly = false }) => {
                             disabled={readOnly}
                             className="w-28"
                           />
-                          <span className="text-[#666666]">to</span>
+                          <span className="text-[#6B6890]">to</span>
                           <Input
                             type="time"
                             value={brk.end}
@@ -205,7 +205,7 @@ const WorkingHoursEditor = ({ workingHours, onChange, readOnly = false }) => {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleAddBreak(day.key)}
-                      className="text-xs text-[#666666] flex items-center gap-1"
+                      className="text-xs text-[#6B6890] flex items-center gap-1"
                     >
                       <Plus className="w-3 h-3" />
                       Add break

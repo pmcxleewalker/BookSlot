@@ -257,7 +257,7 @@ const StaffPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <p className="text-[#666666]">
+          <p className="text-[#6B6890]">
             {staff.length} of {getStaffLimit()} staff members
           </p>
         </div>
@@ -275,12 +275,12 @@ const StaffPage = () => {
 
       {/* Staff Grid */}
       {loading ? (
-        <div className="py-12 text-center text-[#666666]">Loading...</div>
+        <div className="py-12 text-center text-[#6B6890]">Loading...</div>
       ) : staff.length === 0 ? (
         <div className="card-flat py-12 text-center">
-          <User className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
-          <h3 className="font-semibold text-[#0A0A0A] mb-2">No staff members yet</h3>
-          <p className="text-[#666666] mb-4">Add your team to start scheduling</p>
+          <User className="w-12 h-12 text-[#D6D3E8] mx-auto mb-4" />
+          <h3 className="font-semibold text-[#1E1B3A] mb-2">No staff members yet</h3>
+          <p className="text-[#6B6890] mb-4">Add your team to start scheduling</p>
           <Button onClick={() => openDialog()} className="btn-primary">Add First Staff</Button>
         </div>
       ) : (
@@ -296,19 +296,19 @@ const StaffPage = () => {
                     {member.name.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[#0A0A0A]">{member.name}</h3>
-                    {member.title && <p className="text-sm text-[#666666]">{member.title}</p>}
+                    <h3 className="font-semibold text-[#1E1B3A]">{member.name}</h3>
+                    {member.title && <p className="text-sm text-[#6B6890]">{member.title}</p>}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1 self-end sm:self-auto">
-                  {(canManage || isSelf(member)) && <Button variant="ghost" size="sm" onClick={() => openTimeOff(member)} className="text-[#666666]" title="Time off" data-testid={`timeoff-staff-${member.staff_id}`}>
+                  {(canManage || isSelf(member)) && <Button variant="ghost" size="sm" onClick={() => openTimeOff(member)} className="text-[#6B6890]" title="Time off" data-testid={`timeoff-staff-${member.staff_id}`}>
                     <Plane className="w-4 h-4" />
                   </Button>}
                   {canManage && <><Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={() => openServicesDialog(member)}
-                    className="text-[#666666]"
+                    className="text-[#6B6890]"
                     title="Assign Services"
                     data-testid={`services-staff-${member.staff_id}`}
                   >
@@ -318,13 +318,13 @@ const StaffPage = () => {
                     variant="ghost" 
                     size="sm" 
                     onClick={() => openHoursDialog(member)}
-                    className="text-[#666666]"
+                    className="text-[#6B6890]"
                     title="Working Hours"
                     data-testid={`hours-staff-${member.staff_id}`}
                   >
                     <Clock className="w-4 h-4" />
                   </Button></>}
-                  {!canManage && isSelf(member) && <Button variant="ghost" size="sm" onClick={() => openHoursDialog(member)} className="text-[#666666]" title="Working Hours"><Clock className="w-4 h-4" /></Button>}
+                  {!canManage && isSelf(member) && <Button variant="ghost" size="sm" onClick={() => openHoursDialog(member)} className="text-[#6B6890]" title="Working Hours"><Clock className="w-4 h-4" /></Button>}
                   {canManage && <><Button 
                     variant="ghost" 
                     size="sm" 
@@ -348,25 +348,25 @@ const StaffPage = () => {
               </div>
 
               <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-[#666666]">
+                <div className="flex items-center gap-2 text-[#6B6890]">
                   <Mail className="w-4 h-4" />
                   {member.email}
                 </div>
                 {member.phone && (
-                  <div className="flex items-center gap-2 text-[#666666]">
+                  <div className="flex items-center gap-2 text-[#6B6890]">
                     <Phone className="w-4 h-4" />
                     {member.phone}
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-[#666666]">
+                <div className="flex items-center gap-2 text-[#6B6890]">
                   <Clock className="w-4 h-4" />
                   <span className="text-xs">{getWorkingDays(member)}</span>
                 </div>
-                <div className="flex items-center gap-2 text-[#666666]">
+                <div className="flex items-center gap-2 text-[#6B6890]">
                   <Briefcase className="w-4 h-4" />
                   <span className="text-xs">{getServiceNames(member)}</span>
                 </div>
-                <div className="flex items-center gap-2 text-[#666666]">
+                <div className="flex items-center gap-2 text-[#6B6890]">
                   <KeyRound className="w-4 h-4" />
                   <span className="text-xs">{member.has_account ? (member.role === 'admin' ? 'Can sign in · Admin' : 'Can sign in') : 'No login'}</span>
                 </div>
@@ -374,21 +374,21 @@ const StaffPage = () => {
 
               {/* Services Pills */}
               {member.services && member.services.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-[#E5E5E5]">
+                <div className="mt-3 pt-3 border-t border-[#ECEAF5]">
                   <div className="flex flex-wrap gap-1">
                     {member.services.slice(0, 3).map(serviceId => {
                       const service = services.find(s => s.service_id === serviceId);
                       return service ? (
                         <span 
                           key={serviceId}
-                          className="px-2 py-0.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded"
+                          className="px-2 py-0.5 text-xs bg-[#F7F6FC] border border-[#ECEAF5] rounded"
                         >
                           {service.name}
                         </span>
                       ) : null;
                     })}
                     {member.services.length > 3 && (
-                      <span className="px-2 py-0.5 text-xs text-[#666666]">
+                      <span className="px-2 py-0.5 text-xs text-[#6B6890]">
                         +{member.services.length - 3} more
                       </span>
                     )}
@@ -458,7 +458,7 @@ const StaffPage = () => {
                     type="button"
                     onClick={() => setFormData({...formData, color})}
                     className={`w-8 h-8 rounded-full border-2 ${
-                      formData.color === color ? 'border-[#0A0A0A]' : 'border-transparent'
+                      formData.color === color ? 'border-[#4F46E5]' : 'border-transparent'
                     }`}
                     style={{ backgroundColor: color }}
                     data-testid={`color-${color}`}
@@ -468,14 +468,14 @@ const StaffPage = () => {
             </div>
 
             {isManager && (
-              <div className="pt-4 border-t border-[#E5E5E5] space-y-3">
-                <p className="font-medium text-[#0A0A0A]">Login & permissions</p>
+              <div className="pt-4 border-t border-[#ECEAF5] space-y-3">
+                <p className="font-medium text-[#1E1B3A]">Login & permissions</p>
                 {!editingStaff ? (
                   <div>
                     <Label>Login password (optional)</Label>
                     <Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       placeholder="Min. 8 characters - leave empty for no login" data-testid="staff-password-input" />
-                    <p className="text-xs text-[#666666] mt-1">They'll sign in at the normal login page with their email and this password.</p>
+                    <p className="text-xs text-[#6B6890] mt-1">They'll sign in at the normal login page with their email and this password.</p>
                   </div>
                 ) : (
                   <div>
@@ -523,7 +523,7 @@ const StaffPage = () => {
               onChange={setWorkingHours}
             />
 
-            <div className="flex gap-3 pt-6 border-t border-[#E5E5E5] mt-6">
+            <div className="flex gap-3 pt-6 border-t border-[#ECEAF5] mt-6">
               <Button variant="outline" className="flex-1" onClick={() => setShowHoursDialog(false)}>
                 Cancel
               </Button>
@@ -546,12 +546,12 @@ const StaffPage = () => {
           </DialogHeader>
 
           <div className="mt-4">
-            <p className="text-sm text-[#666666] mb-4">
+            <p className="text-sm text-[#6B6890] mb-4">
               Choose what this person offers. Leave everything unticked to let them take every service.
             </p>
 
             {services.length === 0 ? (
-              <div className="text-center py-8 text-[#666666]">
+              <div className="text-center py-8 text-[#6B6890]">
                 <Briefcase className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>No services created yet.</p>
                 <p className="text-sm">Add services first to assign them to staff.</p>
@@ -563,8 +563,8 @@ const StaffPage = () => {
                     key={service.service_id}
                     className={`p-3 border rounded cursor-pointer transition-colors ${
                       selectedServices.includes(service.service_id)
-                        ? 'border-[#3730A3] bg-[#3730A3]/5'
-                        : 'border-[#E5E5E5] hover:border-[#0A0A0A]'
+                        ? 'border-[#4F46E5] bg-[#4F46E5]/5'
+                        : 'border-[#ECEAF5] hover:border-[#4F46E5]'
                     }`}
                     onClick={() => toggleService(service.service_id)}
                     data-testid={`service-checkbox-${service.service_id}`}
@@ -572,16 +572,16 @@ const StaffPage = () => {
                     <div className="flex items-center gap-3">
                       <div className={`w-5 h-5 rounded border flex items-center justify-center ${
                         selectedServices.includes(service.service_id)
-                          ? 'bg-[#3730A3] border-[#3730A3]'
-                          : 'border-[#E5E5E5]'
+                          ? 'bg-[#4F46E5] border-[#4F46E5]'
+                          : 'border-[#ECEAF5]'
                       }`}>
                         {selectedServices.includes(service.service_id) && (
                           <Check className="w-3 h-3 text-white" />
                         )}
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-[#0A0A0A]">{service.name}</p>
-                        <p className="text-xs text-[#666666]">
+                        <p className="font-medium text-[#1E1B3A]">{service.name}</p>
+                        <p className="text-xs text-[#6B6890]">
                           {service.duration} min • {formatMoney(service.price, currency)}
                         </p>
                       </div>
@@ -591,8 +591,8 @@ const StaffPage = () => {
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#E5E5E5]">
-              <p className="text-sm text-[#666666]">
+            <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#ECEAF5]">
+              <p className="text-sm text-[#6B6890]">
                 {selectedServices.length} of {services.length} services selected
               </p>
               <div className="flex gap-2">
@@ -629,8 +629,8 @@ const StaffPage = () => {
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Time off - {showTimeOff?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
-            <p className="text-sm text-[#666666]">Holidays, sick days or blocked hours. Clients can't book these times. Existing appointments are not moved.</p>
-            <div className="p-3 border border-[#E5E5E5] space-y-3">
+            <p className="text-sm text-[#6B6890]">Holidays, sick days or blocked hours. Clients can't book these times. Existing appointments are not moved.</p>
+            <div className="p-3 border border-[#ECEAF5] space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Type</Label>
@@ -666,12 +666,12 @@ const StaffPage = () => {
               <Button className="btn-primary w-full" onClick={addBlock} data-testid="add-timeoff-btn">Add time off</Button>
             </div>
             {blocks.length === 0 ? (
-              <p className="text-sm text-center text-[#666666] py-2">No upcoming time off</p>
+              <p className="text-sm text-center text-[#6B6890] py-2">No upcoming time off</p>
             ) : blocks.map((b) => (
-              <div key={b.block_id} className="flex items-center justify-between p-3 bg-[#FAFAFA] border border-[#E5E5E5] text-sm">
+              <div key={b.block_id} className="flex items-center justify-between p-3 bg-[#F7F6FC] border border-[#ECEAF5] text-sm">
                 <div>
                   <p className="font-medium">{b.title}</p>
-                  <p className="text-[#666666]">{b.start_date}{b.end_date && b.end_date !== b.start_date ? ` → ${b.end_date}` : ''}{b.all_day ? ' · all day' : ` · ${b.start_time}-${b.end_time}`}</p>
+                  <p className="text-[#6B6890]">{b.start_date}{b.end_date && b.end_date !== b.start_date ? ` → ${b.end_date}` : ''}{b.all_day ? ' · all day' : ` · ${b.start_time}-${b.end_time}`}</p>
                 </div>
                 <Button variant="ghost" size="sm" className="text-red-500" onClick={() => removeBlock(b.block_id)}><Trash2 className="w-4 h-4" /></Button>
               </div>

@@ -52,7 +52,7 @@ const BookingChatWidget = ({ slug, businessName, accent = '#4F46E5' }) => {
   return (
     <>
       <button onClick={() => setIsOpen(true)} style={{ backgroundColor: accent }}
-        className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-12 h-12 sm:w-14 sm:h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 z-50 ${isOpen ? 'scale-0' : 'scale-100'}`}
+        className={`fixed bottom-24 right-4 sm:bottom-6 sm:right-6 w-12 h-12 sm:w-14 sm:h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 z-50 ${isOpen ? 'scale-0' : 'scale-100'}`}
         data-testid="ai-widget-button" aria-label="Chat with us">
         <MessageCircle className="w-6 h-6" />
       </button>

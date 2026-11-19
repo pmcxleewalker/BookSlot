@@ -83,7 +83,7 @@ const NotificationBell = () => {
       case 'booking_approved':
         return <Check className="w-4 h-4 text-blue-500" />;
       default:
-        return <AlertCircle className="w-4 h-4 text-[#666666]" />;
+        return <AlertCircle className="w-4 h-4 text-[#6B6890]" />;
     }
   };
 
@@ -110,26 +110,26 @@ const NotificationBell = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 hover:bg-[#FAFAFA] rounded-md transition-colors"
+        className="relative p-2 hover:bg-[#F7F6FC] rounded-md transition-colors"
         data-testid="notification-bell"
       >
-        <Bell className="w-5 h-5 text-[#666666]" />
+        <Bell className="w-5 h-5 text-[#6B6890]" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 w-5 h-5 bg-[#3730A3] text-white text-xs font-bold rounded-full flex items-center justify-center transform translate-x-1 -translate-y-1">
+          <span className="absolute top-0 right-0 w-5 h-5 bg-[#4F46E5] text-white text-xs font-bold rounded-full flex items-center justify-center transform translate-x-1 -translate-y-1">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-[#E5E5E5] rounded-lg shadow-lg z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-[#ECEAF5] rounded-lg shadow-lg z-50 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E5E5] bg-[#FAFAFA]">
-            <h3 className="font-semibold text-[#0A0A0A]">Notifications</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#ECEAF5] bg-[#F7F6FC]">
+            <h3 className="font-semibold text-[#1E1B3A]">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-xs text-[#3730A3] hover:underline flex items-center gap-1"
+                className="text-xs text-[#4F46E5] hover:underline flex items-center gap-1"
                 data-testid="mark-all-read"
               >
                 <CheckCheck className="w-3 h-3" />
@@ -141,7 +141,7 @@ const NotificationBell = () => {
           {/* Notifications List */}
           <div className="max-h-[400px] overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="py-8 text-center text-[#666666]">
+              <div className="py-8 text-center text-[#6B6890]">
                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">No notifications yet</p>
               </div>
@@ -149,7 +149,7 @@ const NotificationBell = () => {
               notifications.map((notif) => (
                 <div
                   key={notif.notification_id}
-                  className={`px-4 py-3 border-b border-[#E5E5E5] last:border-0 hover:bg-[#FAFAFA] transition-colors cursor-pointer ${
+                  className={`px-4 py-3 border-b border-[#ECEAF5] last:border-0 hover:bg-[#F7F6FC] transition-colors cursor-pointer ${
                     !notif.read ? 'bg-blue-50/50' : ''
                   }`}
                   onClick={() => {
@@ -167,17 +167,17 @@ const NotificationBell = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className={`text-sm ${!notif.read ? 'font-medium text-[#0A0A0A]' : 'text-[#666666]'}`}>
+                        <p className={`text-sm ${!notif.read ? 'font-medium text-[#1E1B3A]' : 'text-[#6B6890]'}`}>
                           {notif.title}
                         </p>
                         {!notif.read && (
-                          <span className="w-2 h-2 bg-[#3730A3] rounded-full flex-shrink-0 mt-1.5" />
+                          <span className="w-2 h-2 bg-[#4F46E5] rounded-full flex-shrink-0 mt-1.5" />
                         )}
                       </div>
-                      <p className="text-xs text-[#666666] mt-0.5 line-clamp-2">
+                      <p className="text-xs text-[#6B6890] mt-0.5 line-clamp-2">
                         {notif.message}
                       </p>
-                      <p className="text-xs text-[#999999] mt-1">
+                      <p className="text-xs text-[#9A97B0] mt-1">
                         {formatTime(notif.created_at)}
                       </p>
                     </div>
@@ -189,10 +189,10 @@ const NotificationBell = () => {
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="px-4 py-2 border-t border-[#E5E5E5] bg-[#FAFAFA]">
+            <div className="px-4 py-2 border-t border-[#ECEAF5] bg-[#F7F6FC]">
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-xs text-[#666666] hover:text-[#0A0A0A] w-full text-center"
+                className="text-xs text-[#6B6890] hover:text-[#1E1B3A] w-full text-center"
               >
                 Close
               </button>

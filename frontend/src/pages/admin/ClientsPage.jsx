@@ -161,7 +161,7 @@ const ClientsPage = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666666]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B6890]" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -189,12 +189,12 @@ const ClientsPage = () => {
 
       {/* Client List */}
       {loading ? (
-        <div className="py-12 text-center text-[#666666]">Loading...</div>
+        <div className="py-12 text-center text-[#6B6890]">Loading...</div>
       ) : clients.length === 0 ? (
         <div className="card-flat py-12 text-center">
-          <User className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
-          <h3 className="font-semibold text-[#0A0A0A] mb-2">No clients found</h3>
-          <p className="text-[#666666] mb-4">
+          <User className="w-12 h-12 text-[#D6D3E8] mx-auto mb-4" />
+          <h3 className="font-semibold text-[#1E1B3A] mb-2">No clients found</h3>
+          <p className="text-[#6B6890] mb-4">
             {search || filterVip ? 'Try adjusting your filters' : 'Add your first client to get started'}
           </p>
           {!search && !filterVip && (
@@ -219,11 +219,11 @@ const ClientsPage = () => {
 
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#FAFAFA] border border-[#E5E5E5] rounded-full flex items-center justify-center">
-                    <User className="w-5 h-5 text-[#666666]" />
+                  <div className="w-10 h-10 bg-[#F7F6FC] border border-[#ECEAF5] rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-[#6B6890]" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[#0A0A0A]">{client.name}</h3>
+                    <h3 className="font-semibold text-[#1E1B3A]">{client.name}</h3>
                     {client.is_vip && <span className="text-xs text-yellow-600 font-medium">VIP Client</span>}
                   </div>
                 </div>
@@ -231,18 +231,18 @@ const ClientsPage = () => {
 
               <div className="space-y-1.5 text-sm">
                 {client.email && (
-                  <div className="flex items-center gap-2 text-[#666666]">
+                  <div className="flex items-center gap-2 text-[#6B6890]">
                     <Mail className="w-4 h-4" />
                     <span className="truncate">{client.email}</span>
                   </div>
                 )}
                 {client.phone && (
-                  <div className="flex items-center gap-2 text-[#666666]">
+                  <div className="flex items-center gap-2 text-[#6B6890]">
                     <Phone className="w-4 h-4" />
                     {client.phone}
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-[#666666]">
+                <div className="flex items-center gap-2 text-[#6B6890]">
                   <Calendar className="w-4 h-4" />
                   {client.total_appointments || 0} visits • {formatMoney(client.total_spent || 0, currency)} spent
                 </div>
@@ -250,7 +250,7 @@ const ClientsPage = () => {
 
               {/* Important Info Warning */}
               {client.important_info && (
-                <div className="mt-3 pt-3 border-t border-[#E5E5E5]">
+                <div className="mt-3 pt-3 border-t border-[#ECEAF5]">
                   <div className="flex items-start gap-2 text-amber-600 text-xs">
                     <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                     <span className="line-clamp-2">{client.important_info}</span>
@@ -260,7 +260,7 @@ const ClientsPage = () => {
 
               {/* Service Notes Preview */}
               {client.service_notes && (
-                <div className="mt-2 flex items-start gap-2 text-[#666666] text-xs">
+                <div className="mt-2 flex items-start gap-2 text-[#6B6890] text-xs">
                   <Scissors className="w-3 h-3 flex-shrink-0 mt-0.5" />
                   <span className="line-clamp-1">{client.service_notes}</span>
                 </div>
@@ -327,11 +327,11 @@ const ClientsPage = () => {
                 data-testid="vip-checkbox"
               />
               <div>
-                <label htmlFor="vip" className="font-medium text-[#0A0A0A] cursor-pointer flex items-center gap-2">
+                <label htmlFor="vip" className="font-medium text-[#1E1B3A] cursor-pointer flex items-center gap-2">
                   <Star className="w-4 h-4 text-yellow-500" />
                   VIP Client
                 </label>
-                <p className="text-xs text-[#666666]">Mark as VIP for priority treatment</p>
+                <p className="text-xs text-[#6B6890]">Mark as VIP for priority treatment</p>
               </div>
             </div>
 
@@ -399,19 +399,19 @@ const ClientsPage = () => {
               {/* Contact Info */}
               <div className="space-y-2">
                 {selectedClient.email && (
-                  <div className="flex items-center gap-2 text-[#666666]">
+                  <div className="flex items-center gap-2 text-[#6B6890]">
                     <Mail className="w-4 h-4" />
                     {selectedClient.email}
                   </div>
                 )}
                 {selectedClient.phone && (
-                  <div className="flex items-center gap-2 text-[#666666]">
+                  <div className="flex items-center gap-2 text-[#6B6890]">
                     <Phone className="w-4 h-4" />
                     {selectedClient.phone}
                   </div>
                 )}
                 {selectedClient.birthday && (
-                  <div className="flex items-center gap-2 text-[#666666]">
+                  <div className="flex items-center gap-2 text-[#6B6890]">
                     <Calendar className="w-4 h-4" />
                     Birthday: {selectedClient.birthday}
                   </div>
@@ -419,14 +419,14 @@ const ClientsPage = () => {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-[#FAFAFA] rounded">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-[#F7F6FC] rounded">
                 <div>
-                  <p className="text-2xl font-bold text-[#0A0A0A]">{selectedClient.total_appointments || 0}</p>
-                  <p className="text-xs text-[#666666]">Total Visits</p>
+                  <p className="text-2xl font-bold text-[#1E1B3A]">{selectedClient.total_appointments || 0}</p>
+                  <p className="text-xs text-[#6B6890]">Total Visits</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#3730A3]">{formatMoney(selectedClient.total_spent || 0, currency)}</p>
-                  <p className="text-xs text-[#666666]">Total Spent</p>
+                  <p className="text-2xl font-bold text-[#4F46E5]">{formatMoney(selectedClient.total_spent || 0, currency)}</p>
+                  <p className="text-xs text-[#6B6890]">Total Spent</p>
                 </div>
               </div>
 
@@ -443,8 +443,8 @@ const ClientsPage = () => {
 
               {/* Service Notes */}
               {selectedClient.service_notes && (
-                <div className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] rounded">
-                  <div className="flex items-center gap-2 text-[#666666] font-medium mb-1">
+                <div className="p-3 bg-[#F7F6FC] border border-[#ECEAF5] rounded">
+                  <div className="flex items-center gap-2 text-[#6B6890] font-medium mb-1">
                     <Scissors className="w-4 h-4" />
                     Service Preferences
                   </div>
@@ -455,7 +455,7 @@ const ClientsPage = () => {
               {/* General Notes */}
               {selectedClient.notes && (
                 <div>
-                  <p className="text-sm font-medium text-[#666666] mb-1">Notes</p>
+                  <p className="text-sm font-medium text-[#6B6890] mb-1">Notes</p>
                   <p className="text-sm">{selectedClient.notes}</p>
                 </div>
               )}
@@ -463,13 +463,13 @@ const ClientsPage = () => {
               {/* History */}
               {selectedClient.service_history?.length > 0 && (
                 <div>
-                  <p className="text-sm font-medium text-[#666666] mb-2">Appointment history</p>
-                  <div className="max-h-48 overflow-y-auto border border-[#E5E5E5] divide-y divide-[#E5E5E5]">
+                  <p className="text-sm font-medium text-[#6B6890] mb-2">Appointment history</p>
+                  <div className="max-h-48 overflow-y-auto border border-[#ECEAF5] divide-y divide-[#ECEAF5]">
                     {selectedClient.service_history.map((h) => (
                       <div key={h.appointment_id} className="flex items-center justify-between px-3 py-2 text-sm">
                         <div>
-                          <p className="text-[#0A0A0A]">{h.service_name} <span className="text-[#666666]">with {h.staff}</span></p>
-                          <p className="text-xs text-[#666666]">{format(parseLocal(h.date), 'd MMM yyyy, HH:mm')}</p>
+                          <p className="text-[#1E1B3A]">{h.service_name} <span className="text-[#6B6890]">with {h.staff}</span></p>
+                          <p className="text-xs text-[#6B6890]">{format(parseLocal(h.date), 'd MMM yyyy, HH:mm')}</p>
                         </div>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[h.status] || ''}`}>{STATUS_LABELS[h.status] || h.status}</span>
                       </div>
@@ -479,7 +479,7 @@ const ClientsPage = () => {
               )}
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-[#E5E5E5]">
+              <div className="flex gap-3 pt-4 border-t border-[#ECEAF5]">
                 <Button 
                   variant="outline" 
                   className="flex-1"

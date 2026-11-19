@@ -76,20 +76,20 @@ const FormsPage = () => {
     <TenantLayout title="Forms">
       {!allowed ? (
         <div className="card-flat py-12 text-center">
-          <FileText className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
-          <h3 className="font-semibold text-[#0A0A0A] mb-2">Intake forms are a Pro feature</h3>
-          <p className="text-[#666666]">Ask clients questions when they book - allergies, medical history, preferences, consent.</p>
+          <FileText className="w-12 h-12 text-[#D6D3E8] mx-auto mb-4" />
+          <h3 className="font-semibold text-[#1E1B3A] mb-2">Intake forms are a Pro feature</h3>
+          <p className="text-[#6B6890]">Ask clients questions when they book - allergies, medical history, preferences, consent.</p>
         </div>
       ) : (
         <>
           <div className="flex items-center justify-between mb-6">
-            <p className="text-[#666666]">Questions clients answer when they book online. Answers appear on the appointment.</p>
+            <p className="text-[#6B6890]">Questions clients answer when they book online. Answers appear on the appointment.</p>
             <Button className="btn-primary flex items-center gap-2" onClick={() => edit(null)} data-testid="add-form-btn"><Plus className="w-4 h-4" />Create form</Button>
           </div>
           {forms.length === 0 ? (
             <div className="card-flat py-12 text-center">
-              <FileText className="w-12 h-12 text-[#E5E5E5] mx-auto mb-4" />
-              <h3 className="font-semibold text-[#0A0A0A] mb-2">No forms yet</h3>
+              <FileText className="w-12 h-12 text-[#D6D3E8] mx-auto mb-4" />
+              <h3 className="font-semibold text-[#1E1B3A] mb-2">No forms yet</h3>
               <Button className="btn-primary" onClick={() => edit(null)}>Create your first form</Button>
             </div>
           ) : (
@@ -98,8 +98,8 @@ const FormsPage = () => {
                 <div key={form.form_id} className="card-flat" data-testid={`form-${form.form_id}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="font-semibold text-[#0A0A0A]">{form.name}</h3>
-                      <p className="text-sm text-[#666666]">{form.fields.length} question{form.fields.length === 1 ? '' : 's'} · {form.service_ids?.length ? `${form.service_ids.length} service(s)` : 'all services'}</p>
+                      <h3 className="font-semibold text-[#1E1B3A]">{form.name}</h3>
+                      <p className="text-sm text-[#6B6890]">{form.fields.length} question{form.fields.length === 1 ? '' : 's'} · {form.service_ids?.length ? `${form.service_ids.length} service(s)` : 'all services'}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <Switch checked={form.is_active} onCheckedChange={(v) => toggle(form, v)} />
@@ -107,7 +107,7 @@ const FormsPage = () => {
                       <Button variant="ghost" size="sm" className="text-red-500" onClick={() => remove(form)}><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   </div>
-                  <ul className="mt-3 text-sm text-[#666666] list-disc pl-5">
+                  <ul className="mt-3 text-sm text-[#6B6890] list-disc pl-5">
                     {form.fields.slice(0, 4).map((f) => <li key={f.field_id}>{f.label}{f.required ? ' *' : ''}</li>)}
                     {form.fields.length > 4 && <li>+{form.fields.length - 4} more</li>}
                   </ul>
@@ -138,17 +138,17 @@ const FormsPage = () => {
                     const on = editing.service_ids.includes(s.service_id);
                     return (
                       <button key={s.service_id} type="button" onClick={() => setEditing({ ...editing, service_ids: on ? editing.service_ids.filter((x) => x !== s.service_id) : [...editing.service_ids, s.service_id] })}
-                        className={`px-3 py-1 text-sm border ${on ? 'bg-[#0A0A0A] text-white border-[#0A0A0A]' : 'border-[#E5E5E5]'}`}>{s.name}</button>
+                        className={`px-3 py-1 text-sm border ${on ? 'bg-[#4F46E5] text-white border-[#4F46E5]' : 'border-[#ECEAF5]'}`}>{s.name}</button>
                     );
                   })}
                 </div>
-                <p className="text-xs text-[#666666] mt-1">{editing.service_ids.length ? 'Only for the selected services' : 'Nothing selected = every service'}</p>
+                <p className="text-xs text-[#6B6890] mt-1">{editing.service_ids.length ? 'Only for the selected services' : 'Nothing selected = every service'}</p>
               </div>
 
               <div className="space-y-3">
                 <Label>Questions</Label>
                 {editing.fields.map((f, i) => (
-                  <div key={i} className="p-3 border border-[#E5E5E5] space-y-2">
+                  <div key={i} className="p-3 border border-[#ECEAF5] space-y-2">
                     <div className="flex gap-2">
                       <Input value={f.label} onChange={(e) => updateField(i, { label: e.target.value })} placeholder="Question" className="flex-1" />
                       <select value={f.field_type} onChange={(e) => updateField(i, { field_type: e.target.value })} className="input-swiss !w-44">
